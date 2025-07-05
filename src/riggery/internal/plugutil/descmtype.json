@@ -1,0 +1,284 @@
+{
+    "Int32Array": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "Int64Array": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "IntArray": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "addr": {
+        "scalarType": "int"
+    },
+    "attributeAlias": {
+        "otherType": "attributeAlias"
+    },
+    "bezierCurve": {
+        "geoType": "bezierCurve"
+    },
+    "binary": {
+        "otherType": "binary"
+    },
+    "bool": {
+        "scalarType": "bool"
+    },
+    "box": {
+        "otherType": "box"
+    },
+    "byte": {
+        "scalarType": "int"
+    },
+    "char": {
+        "scalarType": "int"
+    },
+    "characterMapping": {
+        "otherType": "characterMapping"
+    },
+    "componentList": {
+        "otherType": "componentList"
+    },
+    "cone": {
+        "otherType": "cone"
+    },
+    "dataBezierCurve": {
+        "geoType": "bezierCurve"
+    },
+    "double": {
+        "scalarType": "float"
+    },
+    "double2": {
+        "scalarType": "float",
+        "tensorShape": 2
+    },
+    "double3": {
+        "scalarType": "float",
+        "tensorShape": 3
+    },
+    "double4": {
+        "scalarType": "float",
+        "tensorShape": 4
+    },
+    "doubleAngle": {
+        "scalarType": "float",
+        "unitType": "angle"
+    },
+    "doubleArray": {
+        "isArray": true,
+        "scalarType": "float"
+    },
+    "doubleLinear": {
+        "scalarType": "float",
+        "unitType": "distance"
+    },
+    "dynArrayAttrs": {
+        "otherType": "dynArrayAttrs"
+    },
+    "dynSweptGeometry": {
+        "otherType": "dynSweptGeometry"
+    },
+    "enum": {
+        "scalarType": "int",
+        "otherType": "enum"
+    },
+    "falloffFunction": {
+        "otherType": "falloffFunction"
+    },
+    "float": {
+        "scalarType": "float"
+    },
+    "float2": {
+        "scalarType": "float",
+        "tensorShape": 2
+    },
+    "float3": {
+        "scalarType": "float",
+        "tensorShape": 3
+    },
+    "floatAngle": {
+        "scalarType": "float",
+        "unitType": "angle"
+    },
+    "floatArray": {
+        "isArray": true,
+        "scalarType": "float"
+    },
+    "floatLinear": {
+        "scalarType": "float",
+        "unitType": "distance"
+    },
+    "floatMatrix": {
+        "tensorShape": 16,
+        "scalarType": "float",
+        "tensorType": "matrix"
+    },
+    "floatVectorArray": {
+        "isArray": true,
+        "tensorShape": 3,
+        "scalarType": "float",
+        "tensorType": "vector"
+    },
+    "fltMatrix": {
+        "tensorShape": 16,
+        "scalarType": "float",
+        "tensorType": "matrix"
+    },
+    "fluid": {
+        "otherType": "fluid"
+    },
+    "generic": {
+        "otherType": "generic"
+    },
+    "int2": {
+        "scalarType": "int",
+        "tensorShape": 2
+    },
+    "int3": {
+        "scalarType": "int",
+        "tensorShape": 3
+    },
+    "intArray": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "lattice": {
+        "geoType": "lattice"
+    },
+    "lightData": {
+        "otherType": "lightData"
+    },
+    "long": {
+        "scalarType": "int"
+    },
+    "long2": {
+        "scalarType": "int",
+        "tensorShape": 2
+    },
+    "long3": {
+        "scalarType": "int",
+        "tensorShape": 3
+    },
+    "matrix": {
+        "tensorShape": 16,
+        "scalarType": "float",
+        "tensorType": "matrix"
+    },
+    "matrixArray": {
+        "isArray": true,
+        "tensorShape": 16,
+        "scalarType": "float",
+        "tensorType": "matrix"
+    },
+    "mesh": {
+        "geoType": "mesh"
+    },
+    "message": {
+        "otherType": "message"
+    },
+    "nId": {
+        "otherType": "nId"
+    },
+    "nObject": {
+        "otherType": "nObject"
+    },
+    "nurbsCurve": {
+        "geoType": "nurbsCurve"
+    },
+    "nurbsSurface": {
+        "geoType": "nurbsSurface"
+    },
+    "nurbsTrimface": {
+        "otherType": "nurbsTrimface"
+    },
+    "plugin": {
+        "otherType": "plugin"
+    },
+    "pluginGeometry": {
+        "geoType": "pluginGeometry"
+    },
+    "pointArray": {
+        "isArray": true,
+        "tensorShape": 4,
+        "scalarType": "float",
+        "tensorType": "point"
+    },
+    "polyComponent": {
+        "otherType": "polyComponent"
+    },
+    "polyFaces": {
+        "otherType": "polyFaces"
+    },
+    "reflectance": {
+        "tensorShape": 3,
+        "scalarType": "float"
+    },
+    "reflectanceRGB": {
+        "tensorShape": 3,
+        "scalarType": "float"
+    },
+    "selectionList": {
+        "otherType": "selectionList"
+    },
+    "short": {
+        "scalarType": "int"
+    },
+    "short2": {
+        "scalarType": "int",
+        "tensorShape": 2
+    },
+    "short3": {
+        "scalarType": "int",
+        "tensorShape": 3
+    },
+    "spectrum": {
+        "tensorShape": 3,
+        "scalarType": "float"
+    },
+    "spectrumRGB": {
+        "tensorShape": 3,
+        "scalarType": "float"
+    },
+    "sphere": {
+        "otherType": "sphere"
+    },
+    "string": {
+        "otherType": "string"
+    },
+    "stringArray": {
+        "isArray": true,
+        "otherType": "string"
+    },
+    "subd": {
+        "geoType": "subdSurface"
+    },
+    "subdSurface": {
+        "geoType": "subdSurface"
+    },
+    "subdiv": {
+        "geoType": "subdSurface"
+    },
+    "time": {
+        "scalarType": "float",
+        "unitType": "time"
+    },
+    "uInt64Array": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "uintArray": {
+        "isArray": true,
+        "scalarType": "int"
+    },
+    "vectorArray": {
+        "isArray": true,
+        "tensorShape": 3,
+        "scalarType": "float",
+        "tensorType": "vector"
+    },
+    "weightFunction": {
+        "otherType": "weightFunction"
+    }
+}

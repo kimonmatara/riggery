@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include pyproject.toml
+
+recursive-include src *.json
+recursive-include src *.xml
+
+global-exclude *.pyc
+global-exclude *.bak
+global-exclude *~
+prune .idea
+prune __pycache__

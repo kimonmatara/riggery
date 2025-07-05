@@ -1,0 +1,32 @@
+[project]
+authors = [{name = "Kimon Matara", email = "kimon@riggery.com"}]
+license = "MIT"
+license-files = ["LICEN[CS]E"]
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Artistic Software",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+description = "An object-oriented, operator-overloaded rigging library for Maya."
+name = "riggery"
+version = "0.0.1"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
