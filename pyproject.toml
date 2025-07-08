@@ -13,7 +13,7 @@ classifiers = [
 ]
 description = "An object-oriented, operator-overloaded rigging library for Maya."
 name = "riggery"
-version = "0.0.1"
+version = "0.0.2"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
