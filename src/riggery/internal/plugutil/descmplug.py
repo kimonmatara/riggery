@@ -1,3 +1,4 @@
+"""MPlug analysis."""
 import re
 
 from .parseaac import parseAddAttrCmd

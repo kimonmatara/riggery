@@ -1,3 +1,5 @@
+"""String representations for Maya API objects."""
+
 from traceback import format_exc
 from typing import Union, Optional
 import re

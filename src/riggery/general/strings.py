@@ -1,3 +1,5 @@
+"""General string utilities."""
+
 import re
 from string import ascii_uppercase
 

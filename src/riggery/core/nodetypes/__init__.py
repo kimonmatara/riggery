@@ -1,3 +1,5 @@
+"""The main class pool for node types."""
+
 import riggery.internal.classpool as _cp
 import riggery.internal.nodeinfo as _ni
 

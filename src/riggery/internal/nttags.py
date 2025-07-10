@@ -1,3 +1,5 @@
+"""Extracts node type tags from online help."""
+
 import re
 import requests
 import maya.cmds as m

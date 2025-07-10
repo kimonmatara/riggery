@@ -1,3 +1,5 @@
+"""Helpers for the data types."""
+
 from functools import cache
 from .typeutil import TypeTree
 

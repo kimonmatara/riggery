@@ -1,3 +1,4 @@
+"""Attribute type routing."""
 import maya.api.OpenMaya as om
 
 from .plugtree import DATA as PLUG_TREE

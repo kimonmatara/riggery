@@ -1,3 +1,5 @@
+"""Maya command inspection."""
+
 import inspect
 from typing import Callable, Optional, Union
 import re

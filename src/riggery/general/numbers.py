@@ -1,3 +1,5 @@
+"""General arithmetic utilities."""
+
 from typing import Union, Generator, Literal, Optional, Iterable
 
 def remap(value, oldMin, oldMax, newMin, newMax):

@@ -1,3 +1,5 @@
+"""Base classes for class pools."""
+
 from typing import Optional, Iterable, Union
 import importlib
 import os

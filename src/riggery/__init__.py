@@ -1,0 +1,1 @@
+"""Riggery for Maya."""

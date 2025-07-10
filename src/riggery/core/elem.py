@@ -1,3 +1,5 @@
+"""Defines the fundamental Elem type."""
+
 import os
 from .nodetypes import __pool__ as nodes
 from .plugtypes import __pool__ as plugs

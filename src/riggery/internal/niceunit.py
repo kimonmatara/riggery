@@ -1,3 +1,5 @@
+"""'Nice' unit representations."""
+
 from riggery.general.strings import uncap
 import maya.api.OpenMaya as om
 

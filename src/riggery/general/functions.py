@@ -1,3 +1,4 @@
+"""Utilities for functions."""
 from typing import Callable
 from functools import wraps
 from pathlib import Path

@@ -1,6 +1,5 @@
-"""
-Utilities for context managers.
-"""
+"""Utilities for context managers."""
+
 from .iterables import expand_tuples_lists
 
 class nested:

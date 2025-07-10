@@ -1,3 +1,5 @@
+"""API node analysis."""
+
 from functools import cache
 import re
 import maya.cmds as m

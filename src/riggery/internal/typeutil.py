@@ -1,3 +1,5 @@
+"""Utilities for type wrangling."""
+
 from typing import Optional, Union, Generator
 import inspect
 import re

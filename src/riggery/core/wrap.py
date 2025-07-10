@@ -1,3 +1,5 @@
+"""Tools to wrap maya.cmds so that they can work with Elem."""
+
 from functools import wraps
 
 from riggery.general.functions import short

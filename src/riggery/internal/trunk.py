@@ -1,3 +1,4 @@
+"""Defines the 'Trunk' base class."""
 import os
 import inspect
 
