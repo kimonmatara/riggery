@@ -1,0 +1,7 @@
+riggery.core.plugtypes.float module
+===================================
+
+.. automodule:: riggery.core.plugtypes.float
+   :members:
+   :undoc-members:
+   :show-inheritance:

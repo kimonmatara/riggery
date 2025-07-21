@@ -1,0 +1,7 @@
+riggery.core.wrap module
+========================
+
+.. automodule:: riggery.core.wrap
+   :members:
+   :undoc-members:
+   :show-inheritance:

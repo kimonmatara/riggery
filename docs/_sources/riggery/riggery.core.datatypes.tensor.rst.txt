@@ -1,0 +1,7 @@
+riggery.core.datatypes.tensor module
+====================================
+
+.. automodule:: riggery.core.datatypes.tensor
+   :members:
+   :undoc-members:
+   :show-inheritance:

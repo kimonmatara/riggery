@@ -1,0 +1,10 @@
+Riggery for Maya (v0.0.2)
+=========================
+
+**Riggery** is an object-oriented, operator-overloaded rigging library for Maya.
+
+.. toctree::
+    :maxdepth: 7
+    :hidden:
+
+    API Reference <riggery/riggery>

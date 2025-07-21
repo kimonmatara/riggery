@@ -1,0 +1,7 @@
+riggery.core.plugtypes.vector module
+====================================
+
+.. automodule:: riggery.core.plugtypes.vector
+   :members:
+   :undoc-members:
+   :show-inheritance:

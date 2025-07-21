@@ -1,0 +1,7 @@
+riggery.core.datatypes.data module
+==================================
+
+.. automodule:: riggery.core.datatypes.data
+   :members:
+   :undoc-members:
+   :show-inheritance:

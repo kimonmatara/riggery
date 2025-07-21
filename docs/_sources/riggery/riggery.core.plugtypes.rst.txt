@@ -1,0 +1,46 @@
+riggery.core.plugtypes package
+==============================
+
+.. automodule:: riggery.core.plugtypes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.plugtypes.angle
+   riggery.core.plugtypes.attribute
+   riggery.core.plugtypes.bezierCurve
+   riggery.core.plugtypes.bool
+   riggery.core.plugtypes.distance
+   riggery.core.plugtypes.enum
+   riggery.core.plugtypes.eulerRotation
+   riggery.core.plugtypes.float
+   riggery.core.plugtypes.geometry
+   riggery.core.plugtypes.int
+   riggery.core.plugtypes.math
+   riggery.core.plugtypes.matrix
+   riggery.core.plugtypes.mesh
+   riggery.core.plugtypes.number
+   riggery.core.plugtypes.nurbsCurve
+   riggery.core.plugtypes.nurbsSurface
+   riggery.core.plugtypes.point
+   riggery.core.plugtypes.quaternion
+   riggery.core.plugtypes.string
+   riggery.core.plugtypes.subdSurface
+   riggery.core.plugtypes.tensor
+   riggery.core.plugtypes.tensor2
+   riggery.core.plugtypes.tensor2Float
+   riggery.core.plugtypes.tensor2Int
+   riggery.core.plugtypes.tensor3
+   riggery.core.plugtypes.tensor3Float
+   riggery.core.plugtypes.tensor3Int
+   riggery.core.plugtypes.tensor4
+   riggery.core.plugtypes.tensor4Int
+   riggery.core.plugtypes.time
+   riggery.core.plugtypes.unit
+   riggery.core.plugtypes.vector

@@ -1,0 +1,7 @@
+riggery.core.lib.controls module
+================================
+
+.. automodule:: riggery.core.lib.controls
+   :members:
+   :undoc-members:
+   :show-inheritance:

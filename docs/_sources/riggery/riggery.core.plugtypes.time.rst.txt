@@ -1,0 +1,7 @@
+riggery.core.plugtypes.time module
+==================================
+
+.. automodule:: riggery.core.plugtypes.time
+   :members:
+   :undoc-members:
+   :show-inheritance:

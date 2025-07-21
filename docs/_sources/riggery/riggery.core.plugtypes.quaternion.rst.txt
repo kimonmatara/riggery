@@ -1,0 +1,7 @@
+riggery.core.plugtypes.quaternion module
+========================================
+
+.. automodule:: riggery.core.plugtypes.quaternion
+   :members:
+   :undoc-members:
+   :show-inheritance:

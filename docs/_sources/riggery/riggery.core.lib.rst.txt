@@ -1,0 +1,31 @@
+riggery.core.lib package
+========================
+
+.. automodule:: riggery.core.lib
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.lib.controls
+   riggery.core.lib.controlshapes
+   riggery.core.lib.evaluation
+   riggery.core.lib.geo
+   riggery.core.lib.grouptree
+   riggery.core.lib.mathops
+   riggery.core.lib.mixedmode
+   riggery.core.lib.names
+   riggery.core.lib.namespaces
+   riggery.core.lib.nativeunits
+   riggery.core.lib.nodetracker
+   riggery.core.lib.nurbsutil
+   riggery.core.lib.reorderattrs
+   riggery.core.lib.skel
+   riggery.core.lib.tags
+   riggery.core.lib.triadutil
+   riggery.core.lib.undo

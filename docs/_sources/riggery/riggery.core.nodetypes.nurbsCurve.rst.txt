@@ -1,0 +1,7 @@
+riggery.core.nodetypes.nurbsCurve module
+========================================
+
+.. automodule:: riggery.core.nodetypes.nurbsCurve
+   :members:
+   :undoc-members:
+   :show-inheritance:

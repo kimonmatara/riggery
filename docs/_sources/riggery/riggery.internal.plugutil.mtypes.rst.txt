@@ -1,0 +1,7 @@
+riggery.internal.plugutil.mtypes module
+=======================================
+
+.. automodule:: riggery.internal.plugutil.mtypes
+   :members:
+   :undoc-members:
+   :show-inheritance:

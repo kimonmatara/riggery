@@ -1,0 +1,28 @@
+riggery.core package
+====================
+
+.. automodule:: riggery.core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.datatypes
+   riggery.core.lib
+   riggery.core.nodetypes
+   riggery.core.plugtypes
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.cmds
+   riggery.core.elem
+   riggery.core.wrap

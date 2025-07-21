@@ -1,0 +1,7 @@
+riggery.core.lib.nodetracker module
+===================================
+
+.. automodule:: riggery.core.lib.nodetracker
+   :members:
+   :undoc-members:
+   :show-inheritance:

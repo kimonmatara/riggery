@@ -1,0 +1,7 @@
+riggery.core.lib.nurbsutil module
+=================================
+
+.. automodule:: riggery.core.lib.nurbsutil
+   :members:
+   :undoc-members:
+   :show-inheritance:

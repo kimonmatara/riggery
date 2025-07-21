@@ -1,0 +1,7 @@
+riggery.internal.hashing module
+===============================
+
+.. automodule:: riggery.internal.hashing
+   :members:
+   :undoc-members:
+   :show-inheritance:

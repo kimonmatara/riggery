@@ -1,0 +1,7 @@
+riggery.core.elem module
+========================
+
+.. automodule:: riggery.core.elem
+   :members:
+   :undoc-members:
+   :show-inheritance:

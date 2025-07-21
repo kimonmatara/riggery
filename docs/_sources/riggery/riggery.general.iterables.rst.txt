@@ -1,0 +1,7 @@
+riggery.general.iterables module
+================================
+
+.. automodule:: riggery.general.iterables
+   :members:
+   :undoc-members:
+   :show-inheritance:

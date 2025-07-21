@@ -1,0 +1,7 @@
+riggery.core.datatypes.matrix module
+====================================
+
+.. automodule:: riggery.core.datatypes.matrix
+   :members:
+   :undoc-members:
+   :show-inheritance:

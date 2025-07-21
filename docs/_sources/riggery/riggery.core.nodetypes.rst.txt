@@ -1,0 +1,30 @@
+riggery.core.nodetypes package
+==============================
+
+.. automodule:: riggery.core.nodetypes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.nodetypes.bezierCurve
+   riggery.core.nodetypes.cluster
+   riggery.core.nodetypes.dagNode
+   riggery.core.nodetypes.deformableShape
+   riggery.core.nodetypes.dependNode
+   riggery.core.nodetypes.fourByFourMatrix
+   riggery.core.nodetypes.geometryShape
+   riggery.core.nodetypes.ikHandle
+   riggery.core.nodetypes.joint
+   riggery.core.nodetypes.network
+   riggery.core.nodetypes.nurbsCurve
+   riggery.core.nodetypes.remapValue
+   riggery.core.nodetypes.shape
+   riggery.core.nodetypes.subdiv
+   riggery.core.nodetypes.surfaceShape
+   riggery.core.nodetypes.transform

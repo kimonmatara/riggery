@@ -1,0 +1,7 @@
+riggery.core.nodetypes.cluster module
+=====================================
+
+.. automodule:: riggery.core.nodetypes.cluster
+   :members:
+   :undoc-members:
+   :show-inheritance:

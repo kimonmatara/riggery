@@ -1,0 +1,7 @@
+riggery.general.numbers module
+==============================
+
+.. automodule:: riggery.general.numbers
+   :members:
+   :undoc-members:
+   :show-inheritance:

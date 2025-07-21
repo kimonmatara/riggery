@@ -1,0 +1,7 @@
+riggery.general.contexts module
+===============================
+
+.. automodule:: riggery.general.contexts
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,804 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="riggery.core.nodetypes.bezierCurve module" href="riggery.core.nodetypes.bezierCurve.html" /><link rel="prev" title="riggery.core.lib.undo module" href="riggery.core.lib.undo.html" />
+        <link rel="canonical" href="https://kimonmatara.github.io/riggery/riggery/riggery.core.nodetypes.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>riggery.core.nodetypes package - riggery 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">riggery 0.0.2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">riggery 0.0.2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="riggery.html">API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="riggery.core.html">riggery.core package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of riggery.core package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.datatypes.html">riggery.core.datatypes package</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of riggery.core.datatypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.boundingBox.html">riggery.core.datatypes.boundingBox module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.data.html">riggery.core.datatypes.data module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.eulerRotation.html">riggery.core.datatypes.eulerRotation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.matrix.html">riggery.core.datatypes.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.point.html">riggery.core.datatypes.point module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.quaternion.html">riggery.core.datatypes.quaternion module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor.html">riggery.core.datatypes.tensor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor2.html">riggery.core.datatypes.tensor2 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor3.html">riggery.core.datatypes.tensor3 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor4.html">riggery.core.datatypes.tensor4 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.vector.html">riggery.core.datatypes.vector module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.lib.html">riggery.core.lib package</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of riggery.core.lib package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.controls.html">riggery.core.lib.controls module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.controlshapes.html">riggery.core.lib.controlshapes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.evaluation.html">riggery.core.lib.evaluation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.geo.html">riggery.core.lib.geo module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.grouptree.html">riggery.core.lib.grouptree module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.mathops.html">riggery.core.lib.mathops module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.mixedmode.html">riggery.core.lib.mixedmode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.names.html">riggery.core.lib.names module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.namespaces.html">riggery.core.lib.namespaces module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nativeunits.html">riggery.core.lib.nativeunits module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nodetracker.html">riggery.core.lib.nodetracker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nurbsutil.html">riggery.core.lib.nurbsutil module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.reorderattrs.html">riggery.core.lib.reorderattrs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.skel.html">riggery.core.lib.skel module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.tags.html">riggery.core.lib.tags module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.triadutil.html">riggery.core.lib.triadutil module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.undo.html">riggery.core.lib.undo module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children current-page"><a class="current reference internal" href="#">riggery.core.nodetypes package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of riggery.core.nodetypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html">riggery.core.nodetypes.bezierCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.cluster.html">riggery.core.nodetypes.cluster module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html">riggery.core.nodetypes.dagNode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html">riggery.core.nodetypes.deformableShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html">riggery.core.nodetypes.dependNode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html">riggery.core.nodetypes.fourByFourMatrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.geometryShape.html">riggery.core.nodetypes.geometryShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html">riggery.core.nodetypes.ikHandle module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.joint.html">riggery.core.nodetypes.joint module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.network.html">riggery.core.nodetypes.network module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html">riggery.core.nodetypes.nurbsCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html">riggery.core.nodetypes.remapValue module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.shape.html">riggery.core.nodetypes.shape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.subdiv.html">riggery.core.nodetypes.subdiv module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.surfaceShape.html">riggery.core.nodetypes.surfaceShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.transform.html">riggery.core.nodetypes.transform module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.plugtypes.html">riggery.core.plugtypes package</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of riggery.core.plugtypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.angle.html">riggery.core.plugtypes.angle module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.attribute.html">riggery.core.plugtypes.attribute module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html">riggery.core.plugtypes.bezierCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.bool.html">riggery.core.plugtypes.bool module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.distance.html">riggery.core.plugtypes.distance module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.enum.html">riggery.core.plugtypes.enum module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html">riggery.core.plugtypes.eulerRotation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.float.html">riggery.core.plugtypes.float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.geometry.html">riggery.core.plugtypes.geometry module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.int.html">riggery.core.plugtypes.int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.math.html">riggery.core.plugtypes.math module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.matrix.html">riggery.core.plugtypes.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.mesh.html">riggery.core.plugtypes.mesh module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.number.html">riggery.core.plugtypes.number module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html">riggery.core.plugtypes.nurbsCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.nurbsSurface.html">riggery.core.plugtypes.nurbsSurface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.point.html">riggery.core.plugtypes.point module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html">riggery.core.plugtypes.quaternion module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.string.html">riggery.core.plugtypes.string module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.subdSurface.html">riggery.core.plugtypes.subdSurface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor.html">riggery.core.plugtypes.tensor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2.html">riggery.core.plugtypes.tensor2 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2Float.html">riggery.core.plugtypes.tensor2Float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2Int.html">riggery.core.plugtypes.tensor2Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html">riggery.core.plugtypes.tensor3 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3Float.html">riggery.core.plugtypes.tensor3Float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3Int.html">riggery.core.plugtypes.tensor3Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor4.html">riggery.core.plugtypes.tensor4 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor4Int.html">riggery.core.plugtypes.tensor4Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.time.html">riggery.core.plugtypes.time module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.unit.html">riggery.core.plugtypes.unit module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.vector.html">riggery.core.plugtypes.vector module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.cmds.html">riggery.core.cmds module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.elem.html">riggery.core.elem module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.wrap.html">riggery.core.wrap module</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="riggery.general.html">riggery.general package</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of riggery.general package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.contexts.html">riggery.general.contexts module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.functions.html">riggery.general.functions module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.iterables.html">riggery.general.iterables module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.numbers.html">riggery.general.numbers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.strings.html">riggery.general.strings module</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="riggery.internal.html">riggery.internal package</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of riggery.internal package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.internal.plugutil.html">riggery.internal.plugutil package</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of riggery.internal.plugutil package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.descmplug.html">riggery.internal.plugutil.descmplug module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.descmtype.html">riggery.internal.plugutil.descmtype module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.mtypes.html">riggery.internal.plugutil.mtypes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.parseaac.html">riggery.internal.plugutil.parseaac module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.plugroute.html">riggery.internal.plugutil.plugroute module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.plugtree.html">riggery.internal.plugutil.plugtree module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.api2str.html">riggery.internal.api2str module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.apirunner.html">riggery.internal.apirunner module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.classpool.html">riggery.internal.classpool module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.cmdinfo.html">riggery.internal.cmdinfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.datainfo.html">riggery.internal.datainfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.hashing.html">riggery.internal.hashing module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.mfnmatches.html">riggery.internal.mfnmatches module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.niceunit.html">riggery.internal.niceunit module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.nodeinfo.html">riggery.internal.nodeinfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.nttags.html">riggery.internal.nttags module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.str2api.html">riggery.internal.str2api module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.trunk.html">riggery.internal.trunk module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.typeutil.html">riggery.internal.typeutil module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/riggery/riggery.core.nodetypes.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-riggery.core.nodetypes">
+<span id="riggery-core-nodetypes-package"></span><h1>riggery.core.nodetypes package<a class="headerlink" href="#module-riggery.core.nodetypes" title="Link to this heading">¶</a></h1>
+<p>The main class pool for node types.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="riggery.core.nodetypes.NodePool">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">riggery.core.nodetypes.</span></span><span class="sig-name descname"><span class="pre">NodePool</span></span><a class="headerlink" href="#riggery.core.nodetypes.NodePool" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="riggery.internal.classpool.html#riggery.internal.classpool.ClassPool" title="riggery.internal.classpool.ClassPool"><code class="xref py py-class docutils literal notranslate"><span class="pre">ClassPool</span></code></a></p>
+</dd></dl>
+
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html">riggery.core.nodetypes.bezierCurve module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html#riggery.core.nodetypes.bezierCurve.BezierCurve"><code class="docutils literal notranslate"><span class="pre">BezierCurve</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html#riggery.core.nodetypes.bezierCurve.BezierCurve.create"><code class="docutils literal notranslate"><span class="pre">BezierCurve.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html#riggery.core.nodetypes.bezierCurve.BezierCurve.createFromAnchorGroups"><code class="docutils literal notranslate"><span class="pre">BezierCurve.createFromAnchorGroups()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.cluster.html">riggery.core.nodetypes.cluster module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.cluster.html#riggery.core.nodetypes.cluster.Cluster"><code class="docutils literal notranslate"><span class="pre">Cluster</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.cluster.html#riggery.core.nodetypes.cluster.Cluster.create"><code class="docutils literal notranslate"><span class="pre">Cluster.create()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html">riggery.core.nodetypes.dagNode module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode"><code class="docutils literal notranslate"><span class="pre">DagNode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.absoluteName"><code class="docutils literal notranslate"><span class="pre">DagNode.absoluteName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.children"><code class="docutils literal notranslate"><span class="pre">DagNode.children</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.clearPickWalkChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.clearPickWalkChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.clearPickWalkParent"><code class="docutils literal notranslate"><span class="pre">DagNode.clearPickWalkParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.controllerTag"><code class="docutils literal notranslate"><span class="pre">DagNode.controllerTag</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.createNode"><code class="docutils literal notranslate"><span class="pre">DagNode.createNode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.exists"><code class="docutils literal notranslate"><span class="pre">DagNode.exists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.fromMDagPath"><code class="docutils literal notranslate"><span class="pre">DagNode.fromMDagPath()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.fromMObject"><code class="docutils literal notranslate"><span class="pre">DagNode.fromMObject()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.fromStr"><code class="docutils literal notranslate"><span class="pre">DagNode.fromStr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.getChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getControllerTag"><code class="docutils literal notranslate"><span class="pre">DagNode.getControllerTag()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getName"><code class="docutils literal notranslate"><span class="pre">DagNode.getName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getParent"><code class="docutils literal notranslate"><span class="pre">DagNode.getParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getParents"><code class="docutils literal notranslate"><span class="pre">DagNode.getParents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getPickWalkParent"><code class="docutils literal notranslate"><span class="pre">DagNode.getPickWalkParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.getSiblings"><code class="docutils literal notranslate"><span class="pre">DagNode.getSiblings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.hasParent"><code class="docutils literal notranslate"><span class="pre">DagNode.hasParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.hide"><code class="docutils literal notranslate"><span class="pre">DagNode.hide()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.inUnderWorld"><code class="docutils literal notranslate"><span class="pre">DagNode.inUnderWorld()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.isIntermediate"><code class="docutils literal notranslate"><span class="pre">DagNode.isIntermediate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.iterChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.iterChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.iterParents"><code class="docutils literal notranslate"><span class="pre">DagNode.iterParents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.iterPickWalkChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.iterPickWalkChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.iterRelatives"><code class="docutils literal notranslate"><span class="pre">DagNode.iterRelatives()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.iterSiblings"><code class="docutils literal notranslate"><span class="pre">DagNode.iterSiblings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.listRelatives"><code class="docutils literal notranslate"><span class="pre">DagNode.listRelatives()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.parent"><code class="docutils literal notranslate"><span class="pre">DagNode.parent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.parents"><code class="docutils literal notranslate"><span class="pre">DagNode.parents</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.pickWalkChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.pickWalkChildren</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.pickWalkParent"><code class="docutils literal notranslate"><span class="pre">DagNode.pickWalkParent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.removeInstance"><code class="docutils literal notranslate"><span class="pre">DagNode.removeInstance()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.setPickWalkChildren"><code class="docutils literal notranslate"><span class="pre">DagNode.setPickWalkChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.setPickWalkParent"><code class="docutils literal notranslate"><span class="pre">DagNode.setPickWalkParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.show"><code class="docutils literal notranslate"><span class="pre">DagNode.show()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html#riggery.core.nodetypes.dagNode.DagNode.siblings"><code class="docutils literal notranslate"><span class="pre">DagNode.siblings</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html">riggery.core.nodetypes.deformableShape module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape"><code class="docutils literal notranslate"><span class="pre">DeformableShape</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.getHistoryInput"><code class="docutils literal notranslate"><span class="pre">DeformableShape.getHistoryInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.getOrigShape"><code class="docutils literal notranslate"><span class="pre">DeformableShape.getOrigShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.hasHistory"><code class="docutils literal notranslate"><span class="pre">DeformableShape.hasHistory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.input"><code class="docutils literal notranslate"><span class="pre">DeformableShape.input</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.localOutput"><code class="docutils literal notranslate"><span class="pre">DeformableShape.localOutput</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.newInput"><code class="docutils literal notranslate"><span class="pre">DeformableShape.newInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html#riggery.core.nodetypes.deformableShape.DeformableShape.worldOutput"><code class="docutils literal notranslate"><span class="pre">DeformableShape.worldOutput</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html">riggery.core.nodetypes.dependNode module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode"><code class="docutils literal notranslate"><span class="pre">DependNode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.absoluteName"><code class="docutils literal notranslate"><span class="pre">DependNode.absoluteName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addAxisAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addAxisAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addColorIndexAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addColorIndexAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addEulerRotationAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addEulerRotationAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addPointAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addPointAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addQuatAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addQuatAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addRotateOrderAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addRotateOrderAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addSectionAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addSectionAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addTripleAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addTripleAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.addVectorAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.addVectorAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.attr"><code class="docutils literal notranslate"><span class="pre">DependNode.attr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.clearName"><code class="docutils literal notranslate"><span class="pre">DependNode.clearName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.clearNamespace"><code class="docutils literal notranslate"><span class="pre">DependNode.clearNamespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.collectIntoSection"><code class="docutils literal notranslate"><span class="pre">DependNode.collectIntoSection()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.createAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.createAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.createNode"><code class="docutils literal notranslate"><span class="pre">DependNode.createNode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.defaultTypeSuffix"><code class="docutils literal notranslate"><span class="pre">DependNode.defaultTypeSuffix</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.deleteAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.deleteAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.deleteHistory"><code class="docutils literal notranslate"><span class="pre">DependNode.deleteHistory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.deselect"><code class="docutils literal notranslate"><span class="pre">DependNode.deselect()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.duplicate"><code class="docutils literal notranslate"><span class="pre">DependNode.duplicate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.evaluate"><code class="docutils literal notranslate"><span class="pre">DependNode.evaluate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.exists"><code class="docutils literal notranslate"><span class="pre">DependNode.exists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.fromMObject"><code class="docutils literal notranslate"><span class="pre">DependNode.fromMObject()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.fromStr"><code class="docutils literal notranslate"><span class="pre">DependNode.fromStr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.getName"><code class="docutils literal notranslate"><span class="pre">DependNode.getName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.getNamespace"><code class="docutils literal notranslate"><span class="pre">DependNode.getNamespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.getReorderableAttrNames"><code class="docutils literal notranslate"><span class="pre">DependNode.getReorderableAttrNames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.hasAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.hasAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.hasUniqueName"><code class="docutils literal notranslate"><span class="pre">DependNode.hasUniqueName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.isControl"><code class="docutils literal notranslate"><span class="pre">DependNode.isControl</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.isLocked"><code class="docutils literal notranslate"><span class="pre">DependNode.isLocked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.isReferenced"><code class="docutils literal notranslate"><span class="pre">DependNode.isReferenced()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.isShape"><code class="docutils literal notranslate"><span class="pre">DependNode.isShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.isTransform"><code class="docutils literal notranslate"><span class="pre">DependNode.isTransform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.iterAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterReorderableAttrNames"><code class="docutils literal notranslate"><span class="pre">DependNode.iterReorderableAttrNames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterSectionAttrs"><code class="docutils literal notranslate"><span class="pre">DependNode.iterSectionAttrs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterSectionGroups"><code class="docutils literal notranslate"><span class="pre">DependNode.iterSectionGroups()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterSectionMembers"><code class="docutils literal notranslate"><span class="pre">DependNode.iterSectionMembers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.iterSectionNames"><code class="docutils literal notranslate"><span class="pre">DependNode.iterSectionNames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.listAttr"><code class="docutils literal notranslate"><span class="pre">DependNode.listAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.lock"><code class="docutils literal notranslate"><span class="pre">DependNode.lock()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.locked"><code class="docutils literal notranslate"><span class="pre">DependNode.locked</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.ls"><code class="docutils literal notranslate"><span class="pre">DependNode.ls()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.maskAnimAttrs"><code class="docutils literal notranslate"><span class="pre">DependNode.maskAnimAttrs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.name"><code class="docutils literal notranslate"><span class="pre">DependNode.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.namespace"><code class="docutils literal notranslate"><span class="pre">DependNode.namespace</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.nodeType"><code class="docutils literal notranslate"><span class="pre">DependNode.nodeType()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.referTo"><code class="docutils literal notranslate"><span class="pre">DependNode.referTo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.reorderAttrs"><code class="docutils literal notranslate"><span class="pre">DependNode.reorderAttrs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.sectionExists"><code class="docutils literal notranslate"><span class="pre">DependNode.sectionExists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.sections"><code class="docutils literal notranslate"><span class="pre">DependNode.sections</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.select"><code class="docutils literal notranslate"><span class="pre">DependNode.select()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.sendSectionAbove"><code class="docutils literal notranslate"><span class="pre">DependNode.sendSectionAbove()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.sendSectionBelow"><code class="docutils literal notranslate"><span class="pre">DependNode.sendSectionBelow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.setAttrs"><code class="docutils literal notranslate"><span class="pre">DependNode.setAttrs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.setLocked"><code class="docutils literal notranslate"><span class="pre">DependNode.setLocked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.setName"><code class="docutils literal notranslate"><span class="pre">DependNode.setName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.setNamespace"><code class="docutils literal notranslate"><span class="pre">DependNode.setNamespace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.shortName"><code class="docutils literal notranslate"><span class="pre">DependNode.shortName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.tags"><code class="docutils literal notranslate"><span class="pre">DependNode.tags</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.unlock"><code class="docutils literal notranslate"><span class="pre">DependNode.unlock()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNode.virtualType"><code class="docutils literal notranslate"><span class="pre">DependNode.virtualType()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.DependNodeMeta"><code class="docutils literal notranslate"><span class="pre">DependNodeMeta</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section"><code class="docutils literal notranslate"><span class="pre">Section</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.attr"><code class="docutils literal notranslate"><span class="pre">Section.attr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.collect"><code class="docutils literal notranslate"><span class="pre">Section.collect()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.exists"><code class="docutils literal notranslate"><span class="pre">Section.exists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.getName"><code class="docutils literal notranslate"><span class="pre">Section.getName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.name"><code class="docutils literal notranslate"><span class="pre">Section.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.node"><code class="docutils literal notranslate"><span class="pre">Section.node()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.remove"><code class="docutils literal notranslate"><span class="pre">Section.remove()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Section.setName"><code class="docutils literal notranslate"><span class="pre">Section.setName()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Sections"><code class="docutils literal notranslate"><span class="pre">Sections</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Sections.add"><code class="docutils literal notranslate"><span class="pre">Sections.add()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Sections.names"><code class="docutils literal notranslate"><span class="pre">Sections.names()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.Sections.node"><code class="docutils literal notranslate"><span class="pre">Sections.node()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.SectionsGetter"><code class="docutils literal notranslate"><span class="pre">SectionsGetter</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html#riggery.core.nodetypes.dependNode.uncap"><code class="docutils literal notranslate"><span class="pre">uncap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html">riggery.core.nodetypes.fourByFourMatrix module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix.set"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix.set()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix.w"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix.w</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix.x"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix.x</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix.y"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix.y</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html#riggery.core.nodetypes.fourByFourMatrix.FourByFourMatrix.z"><code class="docutils literal notranslate"><span class="pre">FourByFourMatrix.z</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.geometryShape.html">riggery.core.nodetypes.geometryShape module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.geometryShape.html#riggery.core.nodetypes.geometryShape.GeometryShape"><code class="docutils literal notranslate"><span class="pre">GeometryShape</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html">riggery.core.nodetypes.ikHandle module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html#riggery.core.nodetypes.ikHandle.IkHandle"><code class="docutils literal notranslate"><span class="pre">IkHandle</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html#riggery.core.nodetypes.ikHandle.IkHandle.chain"><code class="docutils literal notranslate"><span class="pre">IkHandle.chain</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html#riggery.core.nodetypes.ikHandle.IkHandle.create"><code class="docutils literal notranslate"><span class="pre">IkHandle.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html#riggery.core.nodetypes.ikHandle.IkHandle.effector"><code class="docutils literal notranslate"><span class="pre">IkHandle.effector</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html#riggery.core.nodetypes.ikHandle.IkHandle.setTwistVectors"><code class="docutils literal notranslate"><span class="pre">IkHandle.setTwistVectors()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.joint.html">riggery.core.nodetypes.joint module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint"><code class="docutils literal notranslate"><span class="pre">Joint</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.boneFromHere"><code class="docutils literal notranslate"><span class="pre">Joint.boneFromHere()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.chainFromHere"><code class="docutils literal notranslate"><span class="pre">Joint.chainFromHere()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.cleanCopy"><code class="docutils literal notranslate"><span class="pre">Joint.cleanCopy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.create"><code class="docutils literal notranslate"><span class="pre">Joint.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.createFromMacro"><code class="docutils literal notranslate"><span class="pre">Joint.createFromMacro()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.findRootJoint"><code class="docutils literal notranslate"><span class="pre">Joint.findRootJoint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.joint.html#riggery.core.nodetypes.joint.Joint.macro"><code class="docutils literal notranslate"><span class="pre">Joint.macro()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.network.html">riggery.core.nodetypes.network module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.network.html#riggery.core.nodetypes.network.Network"><code class="docutils literal notranslate"><span class="pre">Network</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.network.html#riggery.core.nodetypes.network.Network.createNode"><code class="docutils literal notranslate"><span class="pre">Network.createNode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.network.html#riggery.core.nodetypes.network.Network.updateType"><code class="docutils literal notranslate"><span class="pre">Network.updateType()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.network.html#riggery.core.nodetypes.network.NetworkMeta"><code class="docutils literal notranslate"><span class="pre">NetworkMeta</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html">riggery.core.nodetypes.nurbsCurve module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve"><code class="docutils literal notranslate"><span class="pre">NurbsCurve</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.cageLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cageLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.closestParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.closestParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.closestPoint"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.closestPoint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.clusterAll"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.clusterAll()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.create"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.createFromMacros"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.createFromMacros()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.cvPoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cvPoints</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.cvWeights"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cvWeights</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.cvsAtAnchor"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cvsAtAnchor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.degree"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.degree()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.distributeParams"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributeParams()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.distributePoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributePoints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.distributeTangents"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributeTangents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.driveCVs"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.driveCVs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.form"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.form()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.getAnchorGroup"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.getAnchorGroup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.getAnchorGroups"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.getAnchorGroups()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.getCollocatedCVGroups"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.getCollocatedCVGroups()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.is2D"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.is2D()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.isRational"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.isRational()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.iterCVPoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.iterCVPoints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.iterCVWeights"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.iterCVWeights()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.knotDomain"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.knotDomain()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.knots"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.knots()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.length"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.length()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.macro"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.macro()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.numAnchors"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.numAnchors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.numCVs"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.numCVs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.paramAtAnchor"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtAnchor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.paramAtFraction"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtFraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.paramAtLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.pointAtCV"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtCV()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.pointAtFraction"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtFraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.pointAtLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.pointAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html#riggery.core.nodetypes.nurbsCurve.NurbsCurve.tangentAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.tangentAtParam()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html">riggery.core.nodetypes.remapValue module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue"><code class="docutils literal notranslate"><span class="pre">RemapValue</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.clones"><code class="docutils literal notranslate"><span class="pre">RemapValue.clones</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.createClone"><code class="docutils literal notranslate"><span class="pre">RemapValue.createClone()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.findClone"><code class="docutils literal notranslate"><span class="pre">RemapValue.findClone()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.getClone"><code class="docutils literal notranslate"><span class="pre">RemapValue.getClone()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.iterClones"><code class="docutils literal notranslate"><span class="pre">RemapValue.iterClones()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.numClones"><code class="docutils literal notranslate"><span class="pre">RemapValue.numClones()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.sampleColorAt"><code class="docutils literal notranslate"><span class="pre">RemapValue.sampleColorAt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html#riggery.core.nodetypes.remapValue.RemapValue.sampleValueAt"><code class="docutils literal notranslate"><span class="pre">RemapValue.sampleValueAt()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.shape.html">riggery.core.nodetypes.shape module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape"><code class="docutils literal notranslate"><span class="pre">Shape</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.assignDefaultShader"><code class="docutils literal notranslate"><span class="pre">Shape.assignDefaultShader()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.conformShapeName"><code class="docutils literal notranslate"><span class="pre">Shape.conformShapeName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.createNode"><code class="docutils literal notranslate"><span class="pre">Shape.createNode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.defaultTypeSuffix"><code class="docutils literal notranslate"><span class="pre">Shape.defaultTypeSuffix</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.duplicate"><code class="docutils literal notranslate"><span class="pre">Shape.duplicate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.getParent"><code class="docutils literal notranslate"><span class="pre">Shape.getParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.isShape"><code class="docutils literal notranslate"><span class="pre">Shape.isShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.parent"><code class="docutils literal notranslate"><span class="pre">Shape.parent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.removeInstance"><code class="docutils literal notranslate"><span class="pre">Shape.removeInstance()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.setParent"><code class="docutils literal notranslate"><span class="pre">Shape.setParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.toShape"><code class="docutils literal notranslate"><span class="pre">Shape.toShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.shape.html#riggery.core.nodetypes.shape.Shape.toTransform"><code class="docutils literal notranslate"><span class="pre">Shape.toTransform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.subdiv.html">riggery.core.nodetypes.subdiv module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.subdiv.html#riggery.core.nodetypes.subdiv.Subdiv"><code class="docutils literal notranslate"><span class="pre">Subdiv</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.surfaceShape.html">riggery.core.nodetypes.surfaceShape module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.surfaceShape.html#riggery.core.nodetypes.surfaceShape.SurfaceShape"><code class="docutils literal notranslate"><span class="pre">SurfaceShape</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.surfaceShape.html#riggery.core.nodetypes.surfaceShape.SurfaceShape.assignDefaultShader"><code class="docutils literal notranslate"><span class="pre">SurfaceShape.assignDefaultShader()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.nodetypes.transform.html">riggery.core.nodetypes.transform module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform"><code class="docutils literal notranslate"><span class="pre">Transform</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.attr"><code class="docutils literal notranslate"><span class="pre">Transform.attr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.autoControlColor"><code class="docutils literal notranslate"><span class="pre">Transform.autoControlColor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.clearControlColor"><code class="docutils literal notranslate"><span class="pre">Transform.clearControlColor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.clearParent"><code class="docutils literal notranslate"><span class="pre">Transform.clearParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.conformShapeNames"><code class="docutils literal notranslate"><span class="pre">Transform.conformShapeNames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.controlColor"><code class="docutils literal notranslate"><span class="pre">Transform.controlColor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.create"><code class="docutils literal notranslate"><span class="pre">Transform.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.createFromDagPath"><code class="docutils literal notranslate"><span class="pre">Transform.createFromDagPath()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.createOffsetGroups"><code class="docutils literal notranslate"><span class="pre">Transform.createOffsetGroups()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.defaultTypeSuffix"><code class="docutils literal notranslate"><span class="pre">Transform.defaultTypeSuffix</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.duplicate"><code class="docutils literal notranslate"><span class="pre">Transform.duplicate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getControlColor"><code class="docutils literal notranslate"><span class="pre">Transform.getControlColor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getControlColorKeys"><code class="docutils literal notranslate"><span class="pre">Transform.getControlColorKeys()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getControlShapeKeys"><code class="docutils literal notranslate"><span class="pre">Transform.getControlShapeKeys()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getMatrix"><code class="docutils literal notranslate"><span class="pre">Transform.getMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getParent"><code class="docutils literal notranslate"><span class="pre">Transform.getParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getPosition"><code class="docutils literal notranslate"><span class="pre">Transform.getPosition()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getRotateMatrix"><code class="docutils literal notranslate"><span class="pre">Transform.getRotateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getShape"><code class="docutils literal notranslate"><span class="pre">Transform.getShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getShapeNameTemplate"><code class="docutils literal notranslate"><span class="pre">Transform.getShapeNameTemplate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.getShapes"><code class="docutils literal notranslate"><span class="pre">Transform.getShapes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.guessSide"><code class="docutils literal notranslate"><span class="pre">Transform.guessSide()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.hasAttr"><code class="docutils literal notranslate"><span class="pre">Transform.hasAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.inWorld"><code class="docutils literal notranslate"><span class="pre">Transform.inWorld()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.isTransform"><code class="docutils literal notranslate"><span class="pre">Transform.isTransform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.iterShapes"><code class="docutils literal notranslate"><span class="pre">Transform.iterShapes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.localPosition"><code class="docutils literal notranslate"><span class="pre">Transform.localPosition()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.makeIdentity"><code class="docutils literal notranslate"><span class="pre">Transform.makeIdentity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.parent"><code class="docutils literal notranslate"><span class="pre">Transform.parent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.resetMatrix"><code class="docutils literal notranslate"><span class="pre">Transform.resetMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.setControlColor"><code class="docutils literal notranslate"><span class="pre">Transform.setControlColor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.setControlShape"><code class="docutils literal notranslate"><span class="pre">Transform.setControlShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.setMatrix"><code class="docutils literal notranslate"><span class="pre">Transform.setMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.setParent"><code class="docutils literal notranslate"><span class="pre">Transform.setParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.setPosition"><code class="docutils literal notranslate"><span class="pre">Transform.setPosition()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.shape"><code class="docutils literal notranslate"><span class="pre">Transform.shape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.shapes"><code class="docutils literal notranslate"><span class="pre">Transform.shapes</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.toShape"><code class="docutils literal notranslate"><span class="pre">Transform.toShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.toTransform"><code class="docutils literal notranslate"><span class="pre">Transform.toTransform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.nodetypes.transform.html#riggery.core.nodetypes.transform.Transform.worldPosition"><code class="docutils literal notranslate"><span class="pre">Transform.worldPosition()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="riggery.core.nodetypes.bezierCurve.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">riggery.core.nodetypes.bezierCurve module</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="riggery.core.lib.undo.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">riggery.core.lib.undo module</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Kimon Matara
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">riggery.core.nodetypes package</a><ul>
+<li><a class="reference internal" href="#riggery.core.nodetypes.NodePool"><code class="docutils literal notranslate"><span class="pre">NodePool</span></code></a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=e3a6060d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    </body>
+</html>

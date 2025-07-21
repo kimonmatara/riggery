@@ -1,0 +1,7 @@
+riggery.internal.plugutil.plugtree module
+=========================================
+
+.. automodule:: riggery.internal.plugutil.plugtree
+   :members:
+   :undoc-members:
+   :show-inheritance:

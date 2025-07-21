@@ -1,0 +1,7 @@
+riggery.core.lib.geo module
+===========================
+
+.. automodule:: riggery.core.lib.geo
+   :members:
+   :undoc-members:
+   :show-inheritance:

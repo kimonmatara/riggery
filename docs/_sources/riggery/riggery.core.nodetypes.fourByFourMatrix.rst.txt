@@ -1,0 +1,7 @@
+riggery.core.nodetypes.fourByFourMatrix module
+==============================================
+
+.. automodule:: riggery.core.nodetypes.fourByFourMatrix
+   :members:
+   :undoc-members:
+   :show-inheritance:

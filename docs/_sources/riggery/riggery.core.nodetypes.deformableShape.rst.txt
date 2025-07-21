@@ -1,0 +1,7 @@
+riggery.core.nodetypes.deformableShape module
+=============================================
+
+.. automodule:: riggery.core.nodetypes.deformableShape
+   :members:
+   :undoc-members:
+   :show-inheritance:

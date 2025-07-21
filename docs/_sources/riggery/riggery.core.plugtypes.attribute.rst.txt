@@ -1,0 +1,7 @@
+riggery.core.plugtypes.attribute module
+=======================================
+
+.. automodule:: riggery.core.plugtypes.attribute
+   :members:
+   :undoc-members:
+   :show-inheritance:

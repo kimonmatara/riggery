@@ -1,0 +1,7 @@
+riggery.core.nodetypes.subdiv module
+====================================
+
+.. automodule:: riggery.core.nodetypes.subdiv
+   :members:
+   :undoc-members:
+   :show-inheritance:

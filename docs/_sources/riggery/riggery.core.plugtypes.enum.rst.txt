@@ -1,0 +1,7 @@
+riggery.core.plugtypes.enum module
+==================================
+
+.. automodule:: riggery.core.plugtypes.enum
+   :members:
+   :undoc-members:
+   :show-inheritance:

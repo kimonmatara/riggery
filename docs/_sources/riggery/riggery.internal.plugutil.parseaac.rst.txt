@@ -1,0 +1,7 @@
+riggery.internal.plugutil.parseaac module
+=========================================
+
+.. automodule:: riggery.internal.plugutil.parseaac
+   :members:
+   :undoc-members:
+   :show-inheritance:

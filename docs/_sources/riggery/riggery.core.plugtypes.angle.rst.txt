@@ -1,0 +1,7 @@
+riggery.core.plugtypes.angle module
+===================================
+
+.. automodule:: riggery.core.plugtypes.angle
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.internal.typeutil module
+================================
+
+.. automodule:: riggery.internal.typeutil
+   :members:
+   :undoc-members:
+   :show-inheritance:

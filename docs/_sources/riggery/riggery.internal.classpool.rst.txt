@@ -1,0 +1,7 @@
+riggery.internal.classpool module
+=================================
+
+.. automodule:: riggery.internal.classpool
+   :members:
+   :undoc-members:
+   :show-inheritance:

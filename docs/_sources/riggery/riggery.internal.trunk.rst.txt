@@ -1,0 +1,7 @@
+riggery.internal.trunk module
+=============================
+
+.. automodule:: riggery.internal.trunk
+   :members:
+   :undoc-members:
+   :show-inheritance:

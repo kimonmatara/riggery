@@ -1,0 +1,7 @@
+riggery.core.lib.undo module
+============================
+
+.. automodule:: riggery.core.lib.undo
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.internal.plugutil.descmtype module
+==========================================
+
+.. automodule:: riggery.internal.plugutil.descmtype
+   :members:
+   :undoc-members:
+   :show-inheritance:

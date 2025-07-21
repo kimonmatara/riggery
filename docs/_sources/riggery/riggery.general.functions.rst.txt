@@ -1,0 +1,7 @@
+riggery.general.functions module
+================================
+
+.. automodule:: riggery.general.functions
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.core.datatypes.boundingBox module
+=========================================
+
+.. automodule:: riggery.core.datatypes.boundingBox
+   :members:
+   :undoc-members:
+   :show-inheritance:

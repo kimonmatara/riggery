@@ -1,0 +1,7 @@
+riggery.core.lib.skel module
+============================
+
+.. automodule:: riggery.core.lib.skel
+   :members:
+   :undoc-members:
+   :show-inheritance:

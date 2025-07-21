@@ -1,0 +1,7 @@
+riggery.core.lib.evaluation module
+==================================
+
+.. automodule:: riggery.core.lib.evaluation
+   :members:
+   :undoc-members:
+   :show-inheritance:

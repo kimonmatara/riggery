@@ -1,0 +1,7 @@
+riggery.core.lib.mathops module
+===============================
+
+.. automodule:: riggery.core.lib.mathops
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.core.plugtypes.nurbsSurface module
+==========================================
+
+.. automodule:: riggery.core.plugtypes.nurbsSurface
+   :members:
+   :undoc-members:
+   :show-inheritance:

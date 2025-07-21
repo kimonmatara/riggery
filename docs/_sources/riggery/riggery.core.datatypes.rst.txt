@@ -1,0 +1,25 @@
+riggery.core.datatypes package
+==============================
+
+.. automodule:: riggery.core.datatypes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.core.datatypes.boundingBox
+   riggery.core.datatypes.data
+   riggery.core.datatypes.eulerRotation
+   riggery.core.datatypes.matrix
+   riggery.core.datatypes.point
+   riggery.core.datatypes.quaternion
+   riggery.core.datatypes.tensor
+   riggery.core.datatypes.tensor2
+   riggery.core.datatypes.tensor3
+   riggery.core.datatypes.tensor4
+   riggery.core.datatypes.vector

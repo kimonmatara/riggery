@@ -1,0 +1,7 @@
+riggery.core.plugtypes.string module
+====================================
+
+.. automodule:: riggery.core.plugtypes.string
+   :members:
+   :undoc-members:
+   :show-inheritance:

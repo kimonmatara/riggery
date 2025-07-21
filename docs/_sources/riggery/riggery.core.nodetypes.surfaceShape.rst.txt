@@ -1,0 +1,7 @@
+riggery.core.nodetypes.surfaceShape module
+==========================================
+
+.. automodule:: riggery.core.nodetypes.surfaceShape
+   :members:
+   :undoc-members:
+   :show-inheritance:

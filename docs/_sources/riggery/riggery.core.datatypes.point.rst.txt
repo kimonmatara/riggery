@@ -1,0 +1,7 @@
+riggery.core.datatypes.point module
+===================================
+
+.. automodule:: riggery.core.datatypes.point
+   :members:
+   :undoc-members:
+   :show-inheritance:

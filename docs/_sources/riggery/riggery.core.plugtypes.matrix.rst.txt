@@ -1,0 +1,7 @@
+riggery.core.plugtypes.matrix module
+====================================
+
+.. automodule:: riggery.core.plugtypes.matrix
+   :members:
+   :undoc-members:
+   :show-inheritance:

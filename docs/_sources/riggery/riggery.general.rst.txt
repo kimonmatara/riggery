@@ -1,0 +1,19 @@
+riggery.general package
+=======================
+
+.. automodule:: riggery.general
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.general.contexts
+   riggery.general.functions
+   riggery.general.iterables
+   riggery.general.numbers
+   riggery.general.strings

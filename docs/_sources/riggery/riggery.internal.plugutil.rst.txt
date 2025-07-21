@@ -1,0 +1,20 @@
+riggery.internal.plugutil package
+=================================
+
+.. automodule:: riggery.internal.plugutil
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.internal.plugutil.descmplug
+   riggery.internal.plugutil.descmtype
+   riggery.internal.plugutil.mtypes
+   riggery.internal.plugutil.parseaac
+   riggery.internal.plugutil.plugroute
+   riggery.internal.plugutil.plugtree

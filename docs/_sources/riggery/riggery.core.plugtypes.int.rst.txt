@@ -1,0 +1,7 @@
+riggery.core.plugtypes.int module
+=================================
+
+.. automodule:: riggery.core.plugtypes.int
+   :members:
+   :undoc-members:
+   :show-inheritance:

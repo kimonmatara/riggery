@@ -1,0 +1,7 @@
+riggery.core.lib.mixedmode module
+=================================
+
+.. automodule:: riggery.core.lib.mixedmode
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.core.lib.controlshapes module
+=====================================
+
+.. automodule:: riggery.core.lib.controlshapes
+   :members:
+   :undoc-members:
+   :show-inheritance:

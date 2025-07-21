@@ -1,0 +1,7 @@
+riggery.core.cmds module
+========================
+
+.. automodule:: riggery.core.cmds
+   :members:
+   :undoc-members:
+   :show-inheritance:

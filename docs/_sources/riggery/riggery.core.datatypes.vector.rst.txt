@@ -1,0 +1,7 @@
+riggery.core.datatypes.vector module
+====================================
+
+.. automodule:: riggery.core.datatypes.vector
+   :members:
+   :undoc-members:
+   :show-inheritance:

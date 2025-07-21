@@ -1,0 +1,7 @@
+riggery.internal.nodeinfo module
+================================
+
+.. automodule:: riggery.internal.nodeinfo
+   :members:
+   :undoc-members:
+   :show-inheritance:

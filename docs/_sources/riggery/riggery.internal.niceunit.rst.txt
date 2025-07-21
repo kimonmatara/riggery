@@ -1,0 +1,7 @@
+riggery.internal.niceunit module
+================================
+
+.. automodule:: riggery.internal.niceunit
+   :members:
+   :undoc-members:
+   :show-inheritance:

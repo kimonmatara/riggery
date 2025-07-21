@@ -1,0 +1,7 @@
+riggery.core.nodetypes.ikHandle module
+======================================
+
+.. automodule:: riggery.core.nodetypes.ikHandle
+   :members:
+   :undoc-members:
+   :show-inheritance:

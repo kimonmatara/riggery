@@ -1,0 +1,7 @@
+riggery.core.nodetypes.geometryShape module
+===========================================
+
+.. automodule:: riggery.core.nodetypes.geometryShape
+   :members:
+   :undoc-members:
+   :show-inheritance:

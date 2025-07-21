@@ -1,0 +1,7 @@
+riggery.core.lib.triadutil module
+=================================
+
+.. automodule:: riggery.core.lib.triadutil
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,939 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="riggery.core.plugtypes.angle module" href="riggery.core.plugtypes.angle.html" /><link rel="prev" title="riggery.core.nodetypes.transform module" href="riggery.core.nodetypes.transform.html" />
+        <link rel="canonical" href="https://kimonmatara.github.io/riggery/riggery/riggery.core.plugtypes.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>riggery.core.plugtypes package - riggery 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">riggery 0.0.2 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">riggery 0.0.2 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="riggery.html">API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="riggery.core.html">riggery.core package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of riggery.core package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.datatypes.html">riggery.core.datatypes package</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of riggery.core.datatypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.boundingBox.html">riggery.core.datatypes.boundingBox module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.data.html">riggery.core.datatypes.data module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.eulerRotation.html">riggery.core.datatypes.eulerRotation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.matrix.html">riggery.core.datatypes.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.point.html">riggery.core.datatypes.point module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.quaternion.html">riggery.core.datatypes.quaternion module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor.html">riggery.core.datatypes.tensor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor2.html">riggery.core.datatypes.tensor2 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor3.html">riggery.core.datatypes.tensor3 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.tensor4.html">riggery.core.datatypes.tensor4 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.datatypes.vector.html">riggery.core.datatypes.vector module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.lib.html">riggery.core.lib package</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of riggery.core.lib package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.controls.html">riggery.core.lib.controls module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.controlshapes.html">riggery.core.lib.controlshapes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.evaluation.html">riggery.core.lib.evaluation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.geo.html">riggery.core.lib.geo module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.grouptree.html">riggery.core.lib.grouptree module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.mathops.html">riggery.core.lib.mathops module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.mixedmode.html">riggery.core.lib.mixedmode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.names.html">riggery.core.lib.names module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.namespaces.html">riggery.core.lib.namespaces module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nativeunits.html">riggery.core.lib.nativeunits module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nodetracker.html">riggery.core.lib.nodetracker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.nurbsutil.html">riggery.core.lib.nurbsutil module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.reorderattrs.html">riggery.core.lib.reorderattrs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.skel.html">riggery.core.lib.skel module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.tags.html">riggery.core.lib.tags module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.triadutil.html">riggery.core.lib.triadutil module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.lib.undo.html">riggery.core.lib.undo module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.core.nodetypes.html">riggery.core.nodetypes package</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of riggery.core.nodetypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.bezierCurve.html">riggery.core.nodetypes.bezierCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.cluster.html">riggery.core.nodetypes.cluster module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.dagNode.html">riggery.core.nodetypes.dagNode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.deformableShape.html">riggery.core.nodetypes.deformableShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.dependNode.html">riggery.core.nodetypes.dependNode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.fourByFourMatrix.html">riggery.core.nodetypes.fourByFourMatrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.geometryShape.html">riggery.core.nodetypes.geometryShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.ikHandle.html">riggery.core.nodetypes.ikHandle module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.joint.html">riggery.core.nodetypes.joint module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.network.html">riggery.core.nodetypes.network module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.nurbsCurve.html">riggery.core.nodetypes.nurbsCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.remapValue.html">riggery.core.nodetypes.remapValue module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.shape.html">riggery.core.nodetypes.shape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.subdiv.html">riggery.core.nodetypes.subdiv module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.surfaceShape.html">riggery.core.nodetypes.surfaceShape module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.nodetypes.transform.html">riggery.core.nodetypes.transform module</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children current-page"><a class="current reference internal" href="#">riggery.core.plugtypes package</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of riggery.core.plugtypes package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.angle.html">riggery.core.plugtypes.angle module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.attribute.html">riggery.core.plugtypes.attribute module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html">riggery.core.plugtypes.bezierCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.bool.html">riggery.core.plugtypes.bool module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.distance.html">riggery.core.plugtypes.distance module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.enum.html">riggery.core.plugtypes.enum module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html">riggery.core.plugtypes.eulerRotation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.float.html">riggery.core.plugtypes.float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.geometry.html">riggery.core.plugtypes.geometry module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.int.html">riggery.core.plugtypes.int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.math.html">riggery.core.plugtypes.math module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.matrix.html">riggery.core.plugtypes.matrix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.mesh.html">riggery.core.plugtypes.mesh module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.number.html">riggery.core.plugtypes.number module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html">riggery.core.plugtypes.nurbsCurve module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.nurbsSurface.html">riggery.core.plugtypes.nurbsSurface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.point.html">riggery.core.plugtypes.point module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html">riggery.core.plugtypes.quaternion module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.string.html">riggery.core.plugtypes.string module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.subdSurface.html">riggery.core.plugtypes.subdSurface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor.html">riggery.core.plugtypes.tensor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2.html">riggery.core.plugtypes.tensor2 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2Float.html">riggery.core.plugtypes.tensor2Float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor2Int.html">riggery.core.plugtypes.tensor2Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html">riggery.core.plugtypes.tensor3 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3Float.html">riggery.core.plugtypes.tensor3Float module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor3Int.html">riggery.core.plugtypes.tensor3Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor4.html">riggery.core.plugtypes.tensor4 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.tensor4Int.html">riggery.core.plugtypes.tensor4Int module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.time.html">riggery.core.plugtypes.time module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.unit.html">riggery.core.plugtypes.unit module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.core.plugtypes.vector.html">riggery.core.plugtypes.vector module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.cmds.html">riggery.core.cmds module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.elem.html">riggery.core.elem module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.wrap.html">riggery.core.wrap module</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="riggery.general.html">riggery.general package</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of riggery.general package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.contexts.html">riggery.general.contexts module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.functions.html">riggery.general.functions module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.iterables.html">riggery.general.iterables module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.numbers.html">riggery.general.numbers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.general.strings.html">riggery.general.strings module</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="riggery.internal.html">riggery.internal package</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of riggery.internal package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="riggery.internal.plugutil.html">riggery.internal.plugutil package</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of riggery.internal.plugutil package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.descmplug.html">riggery.internal.plugutil.descmplug module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.descmtype.html">riggery.internal.plugutil.descmtype module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.mtypes.html">riggery.internal.plugutil.mtypes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.parseaac.html">riggery.internal.plugutil.parseaac module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.plugroute.html">riggery.internal.plugutil.plugroute module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="riggery.internal.plugutil.plugtree.html">riggery.internal.plugutil.plugtree module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.api2str.html">riggery.internal.api2str module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.apirunner.html">riggery.internal.apirunner module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.classpool.html">riggery.internal.classpool module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.cmdinfo.html">riggery.internal.cmdinfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.datainfo.html">riggery.internal.datainfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.hashing.html">riggery.internal.hashing module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.mfnmatches.html">riggery.internal.mfnmatches module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.niceunit.html">riggery.internal.niceunit module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.nodeinfo.html">riggery.internal.nodeinfo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.nttags.html">riggery.internal.nttags module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.str2api.html">riggery.internal.str2api module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.trunk.html">riggery.internal.trunk module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.internal.typeutil.html">riggery.internal.typeutil module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/riggery/riggery.core.plugtypes.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-riggery.core.plugtypes">
+<span id="riggery-core-plugtypes-package"></span><h1>riggery.core.plugtypes package<a class="headerlink" href="#module-riggery.core.plugtypes" title="Link to this heading">¶</a></h1>
+<p>The main class pool for plug types.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="riggery.core.plugtypes.PlugPool">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">riggery.core.plugtypes.</span></span><span class="sig-name descname"><span class="pre">PlugPool</span></span><a class="headerlink" href="#riggery.core.plugtypes.PlugPool" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="riggery.internal.classpool.html#riggery.internal.classpool.ClassPool" title="riggery.internal.classpool.ClassPool"><code class="xref py py-class docutils literal notranslate"><span class="pre">ClassPool</span></code></a></p>
+</dd></dl>
+
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.angle.html">riggery.core.plugtypes.angle module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.angle.html#riggery.core.plugtypes.angle.Angle"><code class="docutils literal notranslate"><span class="pre">Angle</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.angle.html#riggery.core.plugtypes.angle.Angle.unitEnums"><code class="docutils literal notranslate"><span class="pre">Angle.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.attribute.html">riggery.core.plugtypes.attribute module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute"><code class="docutils literal notranslate"><span class="pre">Attribute</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.aaInfo"><code class="docutils literal notranslate"><span class="pre">Attribute.aaInfo</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.asType"><code class="docutils literal notranslate"><span class="pre">Attribute.asType()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.attr"><code class="docutils literal notranslate"><span class="pre">Attribute.attr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.attrName"><code class="docutils literal notranslate"><span class="pre">Attribute.attrName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.attributeType"><code class="docutils literal notranslate"><span class="pre">Attribute.attributeType()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.canBeReordered"><code class="docutils literal notranslate"><span class="pre">Attribute.canBeReordered()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.children"><code class="docutils literal notranslate"><span class="pre">Attribute.children</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.clearMulti"><code class="docutils literal notranslate"><span class="pre">Attribute.clearMulti()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.connectInput"><code class="docutils literal notranslate"><span class="pre">Attribute.connectInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.connectOutput"><code class="docutils literal notranslate"><span class="pre">Attribute.connectOutput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.createProxies"><code class="docutils literal notranslate"><span class="pre">Attribute.createProxies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.createProxy"><code class="docutils literal notranslate"><span class="pre">Attribute.createProxy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.dataType"><code class="docutils literal notranslate"><span class="pre">Attribute.dataType()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.defaultValue"><code class="docutils literal notranslate"><span class="pre">Attribute.defaultValue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.disable"><code class="docutils literal notranslate"><span class="pre">Attribute.disable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.disconnect"><code class="docutils literal notranslate"><span class="pre">Attribute.disconnect()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.disconnectInput"><code class="docutils literal notranslate"><span class="pre">Attribute.disconnectInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.disconnectOutput"><code class="docutils literal notranslate"><span class="pre">Attribute.disconnectOutput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.dv"><code class="docutils literal notranslate"><span class="pre">Attribute.dv</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.enable"><code class="docutils literal notranslate"><span class="pre">Attribute.enable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.evaluate"><code class="docutils literal notranslate"><span class="pre">Attribute.evaluate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.exists"><code class="docutils literal notranslate"><span class="pre">Attribute.exists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.feedMulti"><code class="docutils literal notranslate"><span class="pre">Attribute.feedMulti()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.fromMPlug"><code class="docutils literal notranslate"><span class="pre">Attribute.fromMPlug()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.fromStr"><code class="docutils literal notranslate"><span class="pre">Attribute.fromStr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.get"><code class="docutils literal notranslate"><span class="pre">Attribute.get()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getAddAttrCmdFlags"><code class="docutils literal notranslate"><span class="pre">Attribute.getAddAttrCmdFlags()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getArrayIndices"><code class="docutils literal notranslate"><span class="pre">Attribute.getArrayIndices()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getAttr"><code class="docutils literal notranslate"><span class="pre">Attribute.getAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getChildren"><code class="docutils literal notranslate"><span class="pre">Attribute.getChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getDefaultValue"><code class="docutils literal notranslate"><span class="pre">Attribute.getDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getFlag"><code class="docutils literal notranslate"><span class="pre">Attribute.getFlag()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getInputOrValue"><code class="docutils literal notranslate"><span class="pre">Attribute.getInputOrValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getOrig"><code class="docutils literal notranslate"><span class="pre">Attribute.getOrig()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getParent"><code class="docutils literal notranslate"><span class="pre">Attribute.getParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getProxies"><code class="docutils literal notranslate"><span class="pre">Attribute.getProxies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getProxySource"><code class="docutils literal notranslate"><span class="pre">Attribute.getProxySource()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getSiblings"><code class="docutils literal notranslate"><span class="pre">Attribute.getSiblings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.getValue"><code class="docutils literal notranslate"><span class="pre">Attribute.getValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.hasInput"><code class="docutils literal notranslate"><span class="pre">Attribute.hasInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.hasOutput"><code class="docutils literal notranslate"><span class="pre">Attribute.hasOutput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.hasOutputs"><code class="docutils literal notranslate"><span class="pre">Attribute.hasOutputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.hide"><code class="docutils literal notranslate"><span class="pre">Attribute.hide()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.index"><code class="docutils literal notranslate"><span class="pre">Attribute.index()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.indexMatters"><code class="docutils literal notranslate"><span class="pre">Attribute.indexMatters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.indices"><code class="docutils literal notranslate"><span class="pre">Attribute.indices()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.input"><code class="docutils literal notranslate"><span class="pre">Attribute.input</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.inputs"><code class="docutils literal notranslate"><span class="pre">Attribute.inputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isAnimatableDynamic"><code class="docutils literal notranslate"><span class="pre">Attribute.isAnimatableDynamic()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isChild"><code class="docutils literal notranslate"><span class="pre">Attribute.isChild()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isCompound"><code class="docutils literal notranslate"><span class="pre">Attribute.isCompound()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isDynamic"><code class="docutils literal notranslate"><span class="pre">Attribute.isDynamic()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isElement"><code class="docutils literal notranslate"><span class="pre">Attribute.isElement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isGeneric"><code class="docutils literal notranslate"><span class="pre">Attribute.isGeneric()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isHidden"><code class="docutils literal notranslate"><span class="pre">Attribute.isHidden()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isLocked"><code class="docutils literal notranslate"><span class="pre">Attribute.isLocked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isMulti"><code class="docutils literal notranslate"><span class="pre">Attribute.isMulti()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isProxy"><code class="docutils literal notranslate"><span class="pre">Attribute.isProxy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isSectionAttr"><code class="docutils literal notranslate"><span class="pre">Attribute.isSectionAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.isTyped"><code class="docutils literal notranslate"><span class="pre">Attribute.isTyped()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.iterChildren"><code class="docutils literal notranslate"><span class="pre">Attribute.iterChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.iterInputs"><code class="docutils literal notranslate"><span class="pre">Attribute.iterInputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.iterOutputs"><code class="docutils literal notranslate"><span class="pre">Attribute.iterOutputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.iterProxies"><code class="docutils literal notranslate"><span class="pre">Attribute.iterProxies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.iterSiblings"><code class="docutils literal notranslate"><span class="pre">Attribute.iterSiblings()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.lastElement"><code class="docutils literal notranslate"><span class="pre">Attribute.lastElement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.linkAxisVectorAttrs"><code class="docutils literal notranslate"><span class="pre">Attribute.linkAxisVectorAttrs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.lock"><code class="docutils literal notranslate"><span class="pre">Attribute.lock()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.longName"><code class="docutils literal notranslate"><span class="pre">Attribute.longName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.nextElement"><code class="docutils literal notranslate"><span class="pre">Attribute.nextElement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.nextIndex"><code class="docutils literal notranslate"><span class="pre">Attribute.nextIndex()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.node"><code class="docutils literal notranslate"><span class="pre">Attribute.node()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.numChildren"><code class="docutils literal notranslate"><span class="pre">Attribute.numChildren()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.numElements"><code class="docutils literal notranslate"><span class="pre">Attribute.numElements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.outputs"><code class="docutils literal notranslate"><span class="pre">Attribute.outputs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.parent"><code class="docutils literal notranslate"><span class="pre">Attribute.parent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.proxies"><code class="docutils literal notranslate"><span class="pre">Attribute.proxies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.put"><code class="docutils literal notranslate"><span class="pre">Attribute.put()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.release"><code class="docutils literal notranslate"><span class="pre">Attribute.release()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.resetValue"><code class="docutils literal notranslate"><span class="pre">Attribute.resetValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.sendAbove"><code class="docutils literal notranslate"><span class="pre">Attribute.sendAbove()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.sendBelow"><code class="docutils literal notranslate"><span class="pre">Attribute.sendBelow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.set"><code class="docutils literal notranslate"><span class="pre">Attribute.set()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setAttr"><code class="docutils literal notranslate"><span class="pre">Attribute.setAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">Attribute.setDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setFlag"><code class="docutils literal notranslate"><span class="pre">Attribute.setFlag()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setFlags"><code class="docutils literal notranslate"><span class="pre">Attribute.setFlags()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setLocked"><code class="docutils literal notranslate"><span class="pre">Attribute.setLocked()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.setValue"><code class="docutils literal notranslate"><span class="pre">Attribute.setValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.shortName"><code class="docutils literal notranslate"><span class="pre">Attribute.shortName()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.show"><code class="docutils literal notranslate"><span class="pre">Attribute.show()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.siblings"><code class="docutils literal notranslate"><span class="pre">Attribute.siblings</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.splitInput"><code class="docutils literal notranslate"><span class="pre">Attribute.splitInput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.toMulti"><code class="docutils literal notranslate"><span class="pre">Attribute.toMulti()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.toProxySource"><code class="docutils literal notranslate"><span class="pre">Attribute.toProxySource()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.type"><code class="docutils literal notranslate"><span class="pre">Attribute.type()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.unlock"><code class="docutils literal notranslate"><span class="pre">Attribute.unlock()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.value"><code class="docutils literal notranslate"><span class="pre">Attribute.value</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.Attribute.virtualType"><code class="docutils literal notranslate"><span class="pre">Attribute.virtualType()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.AttributeMeta"><code class="docutils literal notranslate"><span class="pre">AttributeMeta</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.attribute.html#riggery.core.plugtypes.attribute.uncap"><code class="docutils literal notranslate"><span class="pre">uncap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html">riggery.core.plugtypes.bezierCurve module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html#riggery.core.plugtypes.bezierCurve.BezierCurve"><code class="docutils literal notranslate"><span class="pre">BezierCurve</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html#riggery.core.plugtypes.bezierCurve.BezierCurve.numAnchors"><code class="docutils literal notranslate"><span class="pre">BezierCurve.numAnchors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html#riggery.core.plugtypes.bezierCurve.BezierCurve.paramAtAnchor"><code class="docutils literal notranslate"><span class="pre">BezierCurve.paramAtAnchor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.bezierCurve.html#riggery.core.plugtypes.bezierCurve.BezierCurve.subdivide"><code class="docutils literal notranslate"><span class="pre">BezierCurve.subdivide()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.bool.html">riggery.core.plugtypes.bool module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.bool.html#riggery.core.plugtypes.bool.Bool"><code class="docutils literal notranslate"><span class="pre">Bool</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.distance.html">riggery.core.plugtypes.distance module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.distance.html#riggery.core.plugtypes.distance.Distance"><code class="docutils literal notranslate"><span class="pre">Distance</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.distance.html#riggery.core.plugtypes.distance.Distance.unitEnums"><code class="docutils literal notranslate"><span class="pre">Distance.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.enum.html">riggery.core.plugtypes.enum module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum"><code class="docutils literal notranslate"><span class="pre">Enum</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.axisPickerVectorOutput"><code class="docutils literal notranslate"><span class="pre">Enum.axisPickerVectorOutput</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.createAxisPicker"><code class="docutils literal notranslate"><span class="pre">Enum.createAxisPicker()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.createBoolCarousel"><code class="docutils literal notranslate"><span class="pre">Enum.createBoolCarousel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.enumNames"><code class="docutils literal notranslate"><span class="pre">Enum.enumNames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.enumValues"><code class="docutils literal notranslate"><span class="pre">Enum.enumValues()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.enums"><code class="docutils literal notranslate"><span class="pre">Enum.enums()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.flipAxisPickerOutput"><code class="docutils literal notranslate"><span class="pre">Enum.flipAxisPickerOutput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.isSectionAttr"><code class="docutils literal notranslate"><span class="pre">Enum.isSectionAttr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.enum.html#riggery.core.plugtypes.enum.Enum.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">Enum.setDefaultValue()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html">riggery.core.plugtypes.eulerRotation module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation"><code class="docutils literal notranslate"><span class="pre">EulerRotation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.asAxisAngle"><code class="docutils literal notranslate"><span class="pre">EulerRotation.asAxisAngle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.asMatrix"><code class="docutils literal notranslate"><span class="pre">EulerRotation.asMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.asQuaternion"><code class="docutils literal notranslate"><span class="pre">EulerRotation.asQuaternion()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.asRotateMatrix"><code class="docutils literal notranslate"><span class="pre">EulerRotation.asRotateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.guessRotateOrder"><code class="docutils literal notranslate"><span class="pre">EulerRotation.guessRotateOrder()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.isRotateChannel"><code class="docutils literal notranslate"><span class="pre">EulerRotation.isRotateChannel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.loc"><code class="docutils literal notranslate"><span class="pre">EulerRotation.loc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.reorder"><code class="docutils literal notranslate"><span class="pre">EulerRotation.reorder()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.eulerRotation.html#riggery.core.plugtypes.eulerRotation.EulerRotation.unitEnums"><code class="docutils literal notranslate"><span class="pre">EulerRotation.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.float.html">riggery.core.plugtypes.float module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float"><code class="docutils literal notranslate"><span class="pre">Float</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.clearMaxLimit"><code class="docutils literal notranslate"><span class="pre">Float.clearMaxLimit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.clearMinLimit"><code class="docutils literal notranslate"><span class="pre">Float.clearMinLimit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.getMaxLimit"><code class="docutils literal notranslate"><span class="pre">Float.getMaxLimit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.getMinLimit"><code class="docutils literal notranslate"><span class="pre">Float.getMinLimit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.maxLimit"><code class="docutils literal notranslate"><span class="pre">Float.maxLimit</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.minLimit"><code class="docutils literal notranslate"><span class="pre">Float.minLimit</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.setMaxLimit"><code class="docutils literal notranslate"><span class="pre">Float.setMaxLimit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.float.html#riggery.core.plugtypes.float.Float.setMinLimit"><code class="docutils literal notranslate"><span class="pre">Float.setMinLimit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.geometry.html">riggery.core.plugtypes.geometry module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry"><code class="docutils literal notranslate"><span class="pre">Geometry</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry.createShape"><code class="docutils literal notranslate"><span class="pre">Geometry.createShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry.findParent"><code class="docutils literal notranslate"><span class="pre">Geometry.findParent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry.findShape"><code class="docutils literal notranslate"><span class="pre">Geometry.findShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry.getOrigShape"><code class="docutils literal notranslate"><span class="pre">Geometry.getOrigShape()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.Geometry.getShapeClass"><code class="docutils literal notranslate"><span class="pre">Geometry.getShapeClass()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.GeometryMeta"><code class="docutils literal notranslate"><span class="pre">GeometryMeta</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.geometry.html#riggery.core.plugtypes.geometry.uncap"><code class="docutils literal notranslate"><span class="pre">uncap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.int.html">riggery.core.plugtypes.int module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.int.html#riggery.core.plugtypes.int.Int"><code class="docutils literal notranslate"><span class="pre">Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.math.html">riggery.core.plugtypes.math module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.math.html#riggery.core.plugtypes.math.Math"><code class="docutils literal notranslate"><span class="pre">Math</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.matrix.html">riggery.core.plugtypes.matrix module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix"><code class="docutils literal notranslate"><span class="pre">Matrix</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.aimTowards"><code class="docutils literal notranslate"><span class="pre">Matrix.aimTowards()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.applyViaOpm"><code class="docutils literal notranslate"><span class="pre">Matrix.applyViaOpm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asCachedOffset"><code class="docutils literal notranslate"><span class="pre">Matrix.asCachedOffset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asFourByFourMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asFourByFourMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asOffset"><code class="docutils literal notranslate"><span class="pre">Matrix.asOffset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asRotateMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asRotateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asScaleMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asScaleMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asScaleMatrixFromMagnitudes"><code class="docutils literal notranslate"><span class="pre">Matrix.asScaleMatrixFromMagnitudes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asShearMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asShearMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asTranslateMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asTranslateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.asTranslateRotateMatrix"><code class="docutils literal notranslate"><span class="pre">Matrix.asTranslateRotateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.averageScale"><code class="docutils literal notranslate"><span class="pre">Matrix.averageScale()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.blend"><code class="docutils literal notranslate"><span class="pre">Matrix.blend()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.decompose"><code class="docutils literal notranslate"><span class="pre">Matrix.decompose()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.decomposeAndApply"><code class="docutils literal notranslate"><span class="pre">Matrix.decomposeAndApply()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.determinant"><code class="docutils literal notranslate"><span class="pre">Matrix.determinant()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.eulerRotation"><code class="docutils literal notranslate"><span class="pre">Matrix.eulerRotation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.explode"><code class="docutils literal notranslate"><span class="pre">Matrix.explode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.getAxis"><code class="docutils literal notranslate"><span class="pre">Matrix.getAxis()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.getDefaultValue"><code class="docutils literal notranslate"><span class="pre">Matrix.getDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.getRow"><code class="docutils literal notranslate"><span class="pre">Matrix.getRow()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.guessRotateOrder"><code class="docutils literal notranslate"><span class="pre">Matrix.guessRotateOrder()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.hold"><code class="docutils literal notranslate"><span class="pre">Matrix.hold()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.inverse"><code class="docutils literal notranslate"><span class="pre">Matrix.inverse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.isFFOutput"><code class="docutils literal notranslate"><span class="pre">Matrix.isFFOutput</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.isFlipped"><code class="docutils literal notranslate"><span class="pre">Matrix.isFlipped()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.loc"><code class="docutils literal notranslate"><span class="pre">Matrix.loc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.mul"><code class="docutils literal notranslate"><span class="pre">Matrix.mul()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.multiply"><code class="docutils literal notranslate"><span class="pre">Matrix.multiply()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.pick"><code class="docutils literal notranslate"><span class="pre">Matrix.pick()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.quaternion"><code class="docutils literal notranslate"><span class="pre">Matrix.quaternion()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.rotation"><code class="docutils literal notranslate"><span class="pre">Matrix.rotation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">Matrix.setDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.w"><code class="docutils literal notranslate"><span class="pre">Matrix.w</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.withNormalizedAxes"><code class="docutils literal notranslate"><span class="pre">Matrix.withNormalizedAxes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.x"><code class="docutils literal notranslate"><span class="pre">Matrix.x</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.y"><code class="docutils literal notranslate"><span class="pre">Matrix.y</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.Matrix.z"><code class="docutils literal notranslate"><span class="pre">Matrix.z</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.matrix.html#riggery.core.plugtypes.matrix.collapseFactors"><code class="docutils literal notranslate"><span class="pre">collapseFactors()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.mesh.html">riggery.core.plugtypes.mesh module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.mesh.html#riggery.core.plugtypes.mesh.Mesh"><code class="docutils literal notranslate"><span class="pre">Mesh</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.mesh.html#riggery.core.plugtypes.mesh.Mesh.separate"><code class="docutils literal notranslate"><span class="pre">Mesh.separate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.number.html">riggery.core.plugtypes.number module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number"><code class="docutils literal notranslate"><span class="pre">Number</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.abs"><code class="docutils literal notranslate"><span class="pre">Number.abs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.acos"><code class="docutils literal notranslate"><span class="pre">Number.acos()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.asScaleMatrix"><code class="docutils literal notranslate"><span class="pre">Number.asScaleMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.asin"><code class="docutils literal notranslate"><span class="pre">Number.asin()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.atan"><code class="docutils literal notranslate"><span class="pre">Number.atan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.average"><code class="docutils literal notranslate"><span class="pre">Number.average()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.blend"><code class="docutils literal notranslate"><span class="pre">Number.blend()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.clamp"><code class="docutils literal notranslate"><span class="pre">Number.clamp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.cos"><code class="docutils literal notranslate"><span class="pre">Number.cos()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.eq"><code class="docutils literal notranslate"><span class="pre">Number.eq()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.gatedClamp"><code class="docutils literal notranslate"><span class="pre">Number.gatedClamp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.ge"><code class="docutils literal notranslate"><span class="pre">Number.ge()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.gt"><code class="docutils literal notranslate"><span class="pre">Number.gt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.ifElse"><code class="docutils literal notranslate"><span class="pre">Number.ifElse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.le"><code class="docutils literal notranslate"><span class="pre">Number.le()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.lt"><code class="docutils literal notranslate"><span class="pre">Number.lt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.max"><code class="docutils literal notranslate"><span class="pre">Number.max()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.maxClamp"><code class="docutils literal notranslate"><span class="pre">Number.maxClamp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.min"><code class="docutils literal notranslate"><span class="pre">Number.min()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.minClamp"><code class="docutils literal notranslate"><span class="pre">Number.minClamp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.mul"><code class="docutils literal notranslate"><span class="pre">Number.mul()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.multiply"><code class="docutils literal notranslate"><span class="pre">Number.multiply()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.select"><code class="docutils literal notranslate"><span class="pre">Number.select()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.sin"><code class="docutils literal notranslate"><span class="pre">Number.sin()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.slowDownAndStop"><code class="docutils literal notranslate"><span class="pre">Number.slowDownAndStop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.sum"><code class="docutils literal notranslate"><span class="pre">Number.sum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.tan"><code class="docutils literal notranslate"><span class="pre">Number.tan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.trunc"><code class="docutils literal notranslate"><span class="pre">Number.trunc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.number.html#riggery.core.plugtypes.number.Number.unaryExpr"><code class="docutils literal notranslate"><span class="pre">Number.unaryExpr()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html">riggery.core.plugtypes.nurbsCurve module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve"><code class="docutils literal notranslate"><span class="pre">NurbsCurve</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.close"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.closestFraction"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.closestFraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.closestParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.closestParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.createLine"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.createLine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.cut"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cut()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.cvPoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.cvPoints</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.degree"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.degree()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.distributeParams"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributeParams()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.distributePoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributePoints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.distributeTangents"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.distributeTangents()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.extendByDistance"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.extendByDistance()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.extendByVector"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.extendByVector()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.extendToPoint"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.extendToPoint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.fractionAtLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.fractionAtLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.fractionAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.fractionAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.hasMultipleEndKnots"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.hasMultipleEndKnots()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.info"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.infoAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.infoAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.initClosestNode"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.initClosestNode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.isBezier"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.isBezier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.isPeriodic"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.isPeriodic()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.iterCVPoints"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.iterCVPoints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.join"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.join()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.knotDomain"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.knotDomain()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.knots"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.knots()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.length"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.length()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.lengthAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.lengthAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.multiJoin"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.multiJoin()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.numCVs"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.numCVs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.numSpans"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.numSpans()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.open"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.open()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.paramAtFraction"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtFraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.paramAtLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.paramAtPoint"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.paramAtPoint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.pointAtCV"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtCV()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.pointAtFraction"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtFraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.pointAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.pointAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.rebuildCVs"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.rebuildCVs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.rebuildLinear"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.rebuildLinear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.rebuildRange"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.rebuildRange()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.retract"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.retract()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.reverse"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.reverse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.setLength"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.setLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.squashStretch"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.squashStretch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.tangentAtParam"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.tangentAtParam()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.toBSpline"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.toBSpline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.toBezier"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.toBezier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.nurbsCurve.html#riggery.core.plugtypes.nurbsCurve.NurbsCurve.toNurbs"><code class="docutils literal notranslate"><span class="pre">NurbsCurve.toNurbs()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.nurbsSurface.html">riggery.core.plugtypes.nurbsSurface module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.nurbsSurface.html#riggery.core.plugtypes.nurbsSurface.NurbsSurface"><code class="docutils literal notranslate"><span class="pre">NurbsSurface</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.point.html">riggery.core.plugtypes.point module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.point.html#riggery.core.plugtypes.point.Point"><code class="docutils literal notranslate"><span class="pre">Point</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.point.html#riggery.core.plugtypes.point.Point.asMatrix"><code class="docutils literal notranslate"><span class="pre">Point.asMatrix</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.point.html#riggery.core.plugtypes.point.Point.blend"><code class="docutils literal notranslate"><span class="pre">Point.blend()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.point.html#riggery.core.plugtypes.point.Point.unitEnums"><code class="docutils literal notranslate"><span class="pre">Point.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html">riggery.core.plugtypes.quaternion module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion"><code class="docutils literal notranslate"><span class="pre">Quaternion</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.asAxisAngle"><code class="docutils literal notranslate"><span class="pre">Quaternion.asAxisAngle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.asEulerRotation"><code class="docutils literal notranslate"><span class="pre">Quaternion.asEulerRotation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.asMatrix"><code class="docutils literal notranslate"><span class="pre">Quaternion.asMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.asOffset"><code class="docutils literal notranslate"><span class="pre">Quaternion.asOffset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.asRotateMatrix"><code class="docutils literal notranslate"><span class="pre">Quaternion.asRotateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.atten"><code class="docutils literal notranslate"><span class="pre">Quaternion.atten()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.conjugate"><code class="docutils literal notranslate"><span class="pre">Quaternion.conjugate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.fromAxisAngle"><code class="docutils literal notranslate"><span class="pre">Quaternion.fromAxisAngle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.inverse"><code class="docutils literal notranslate"><span class="pre">Quaternion.inverse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.loc"><code class="docutils literal notranslate"><span class="pre">Quaternion.loc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.negate"><code class="docutils literal notranslate"><span class="pre">Quaternion.negate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.normal"><code class="docutils literal notranslate"><span class="pre">Quaternion.normal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.quaternion.html#riggery.core.plugtypes.quaternion.Quaternion.slerp"><code class="docutils literal notranslate"><span class="pre">Quaternion.slerp()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.string.html">riggery.core.plugtypes.string module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.string.html#riggery.core.plugtypes.string.String"><code class="docutils literal notranslate"><span class="pre">String</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.string.html#riggery.core.plugtypes.string.String.getDefaultValue"><code class="docutils literal notranslate"><span class="pre">String.getDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.string.html#riggery.core.plugtypes.string.String.put"><code class="docutils literal notranslate"><span class="pre">String.put()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.string.html#riggery.core.plugtypes.string.String.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">String.setDefaultValue()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.subdSurface.html">riggery.core.plugtypes.subdSurface module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.subdSurface.html#riggery.core.plugtypes.subdSurface.SubdSurface"><code class="docutils literal notranslate"><span class="pre">SubdSurface</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor.html">riggery.core.plugtypes.tensor module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor.html#riggery.core.plugtypes.tensor.Tensor"><code class="docutils literal notranslate"><span class="pre">Tensor</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.tensor.html#riggery.core.plugtypes.tensor.Tensor.getDefaultValue"><code class="docutils literal notranslate"><span class="pre">Tensor.getDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.tensor.html#riggery.core.plugtypes.tensor.Tensor.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">Tensor.setDefaultValue()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor2.html">riggery.core.plugtypes.tensor2 module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor2.html#riggery.core.plugtypes.tensor2.Tensor2"><code class="docutils literal notranslate"><span class="pre">Tensor2</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.tensor2.html#riggery.core.plugtypes.tensor2.Tensor2.average"><code class="docutils literal notranslate"><span class="pre">Tensor2.average()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor2Float.html">riggery.core.plugtypes.tensor2Float module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor2Float.html#riggery.core.plugtypes.tensor2Float.Tensor2Float"><code class="docutils literal notranslate"><span class="pre">Tensor2Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor2Int.html">riggery.core.plugtypes.tensor2Int module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor2Int.html#riggery.core.plugtypes.tensor2Int.Tensor2Int"><code class="docutils literal notranslate"><span class="pre">Tensor2Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html">riggery.core.plugtypes.tensor3 module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html#riggery.core.plugtypes.tensor3.Tensor3"><code class="docutils literal notranslate"><span class="pre">Tensor3</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html#riggery.core.plugtypes.tensor3.Tensor3.average"><code class="docutils literal notranslate"><span class="pre">Tensor3.average()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.tensor3.html#riggery.core.plugtypes.tensor3.Tensor3.blend"><code class="docutils literal notranslate"><span class="pre">Tensor3.blend()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor3Float.html">riggery.core.plugtypes.tensor3Float module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor3Float.html#riggery.core.plugtypes.tensor3Float.Tensor3Float"><code class="docutils literal notranslate"><span class="pre">Tensor3Float</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor3Int.html">riggery.core.plugtypes.tensor3Int module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor3Int.html#riggery.core.plugtypes.tensor3Int.Tensor3Int"><code class="docutils literal notranslate"><span class="pre">Tensor3Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor4.html">riggery.core.plugtypes.tensor4 module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor4.html#riggery.core.plugtypes.tensor4.Tensor4"><code class="docutils literal notranslate"><span class="pre">Tensor4</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.tensor4Int.html">riggery.core.plugtypes.tensor4Int module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.tensor4Int.html#riggery.core.plugtypes.tensor4Int.Tensor4Int"><code class="docutils literal notranslate"><span class="pre">Tensor4Int</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.time.html">riggery.core.plugtypes.time module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.time.html#riggery.core.plugtypes.time.Time"><code class="docutils literal notranslate"><span class="pre">Time</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.time.html#riggery.core.plugtypes.time.Time.unitEnums"><code class="docutils literal notranslate"><span class="pre">Time.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.unit.html">riggery.core.plugtypes.unit module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.unit.html#riggery.core.plugtypes.unit.Unit"><code class="docutils literal notranslate"><span class="pre">Unit</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.unit.html#riggery.core.plugtypes.unit.Unit.getDefaultValue"><code class="docutils literal notranslate"><span class="pre">Unit.getDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.unit.html#riggery.core.plugtypes.unit.Unit.setDefaultValue"><code class="docutils literal notranslate"><span class="pre">Unit.setDefaultValue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.unit.html#riggery.core.plugtypes.unit.Unit.unitEnums"><code class="docutils literal notranslate"><span class="pre">Unit.unitEnums()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="riggery.core.plugtypes.vector.html">riggery.core.plugtypes.vector module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector"><code class="docutils literal notranslate"><span class="pre">Vector</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.angleTo"><code class="docutils literal notranslate"><span class="pre">Vector.angleTo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.asScaleMatrix"><code class="docutils literal notranslate"><span class="pre">Vector.asScaleMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.asTranslateMatrix"><code class="docutils literal notranslate"><span class="pre">Vector.asTranslateMatrix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.blend"><code class="docutils literal notranslate"><span class="pre">Vector.blend()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.coneFalloff"><code class="docutils literal notranslate"><span class="pre">Vector.coneFalloff()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.createAxisVectors"><code class="docutils literal notranslate"><span class="pre">Vector.createAxisVectors()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.cross"><code class="docutils literal notranslate"><span class="pre">Vector.cross()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.dot"><code class="docutils literal notranslate"><span class="pre">Vector.dot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.guessUpVector"><code class="docutils literal notranslate"><span class="pre">Vector.guessUpVector()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.length"><code class="docutils literal notranslate"><span class="pre">Vector.length()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.loc"><code class="docutils literal notranslate"><span class="pre">Vector.loc()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.matrixTo"><code class="docutils literal notranslate"><span class="pre">Vector.matrixTo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.mostPerpendicular"><code class="docutils literal notranslate"><span class="pre">Vector.mostPerpendicular()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.normal"><code class="docutils literal notranslate"><span class="pre">Vector.normal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.projectOnto"><code class="docutils literal notranslate"><span class="pre">Vector.projectOnto()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.quatTo"><code class="docutils literal notranslate"><span class="pre">Vector.quatTo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.rejectFrom"><code class="docutils literal notranslate"><span class="pre">Vector.rejectFrom()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.rotateByAxisAngle"><code class="docutils literal notranslate"><span class="pre">Vector.rotateByAxisAngle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.transport"><code class="docutils literal notranslate"><span class="pre">Vector.transport()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="riggery.core.plugtypes.vector.html#riggery.core.plugtypes.vector.Vector.withLength"><code class="docutils literal notranslate"><span class="pre">Vector.withLength()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="riggery.core.plugtypes.angle.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">riggery.core.plugtypes.angle module</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="riggery.core.nodetypes.transform.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">riggery.core.nodetypes.transform module</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Kimon Matara
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">riggery.core.plugtypes package</a><ul>
+<li><a class="reference internal" href="#riggery.core.plugtypes.PlugPool"><code class="docutils literal notranslate"><span class="pre">PlugPool</span></code></a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=e3a6060d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    </body>
+</html>

@@ -1,0 +1,35 @@
+riggery.internal package
+========================
+
+.. automodule:: riggery.internal
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.internal.plugutil
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery.internal.api2str
+   riggery.internal.apirunner
+   riggery.internal.classpool
+   riggery.internal.cmdinfo
+   riggery.internal.datainfo
+   riggery.internal.hashing
+   riggery.internal.mfnmatches
+   riggery.internal.niceunit
+   riggery.internal.nodeinfo
+   riggery.internal.nttags
+   riggery.internal.str2api
+   riggery.internal.trunk
+   riggery.internal.typeutil

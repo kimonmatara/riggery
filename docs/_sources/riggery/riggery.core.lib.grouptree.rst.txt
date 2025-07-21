@@ -1,0 +1,7 @@
+riggery.core.lib.grouptree module
+=================================
+
+.. automodule:: riggery.core.lib.grouptree
+   :members:
+   :undoc-members:
+   :show-inheritance:

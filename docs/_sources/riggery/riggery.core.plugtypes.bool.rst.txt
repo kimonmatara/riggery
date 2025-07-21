@@ -1,0 +1,7 @@
+riggery.core.plugtypes.bool module
+==================================
+
+.. automodule:: riggery.core.plugtypes.bool
+   :members:
+   :undoc-members:
+   :show-inheritance:

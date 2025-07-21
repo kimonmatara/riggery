@@ -1,0 +1,7 @@
+riggery.internal.plugutil.plugroute module
+==========================================
+
+.. automodule:: riggery.internal.plugutil.plugroute
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.internal.mfnmatches module
+==================================
+
+.. automodule:: riggery.internal.mfnmatches
+   :members:
+   :undoc-members:
+   :show-inheritance:

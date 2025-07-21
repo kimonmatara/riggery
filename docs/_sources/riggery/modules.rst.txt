@@ -1,0 +1,7 @@
+riggery
+=======
+
+.. toctree::
+   :maxdepth: 4
+
+   riggery

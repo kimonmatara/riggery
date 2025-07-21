@@ -1,0 +1,7 @@
+riggery.core.plugtypes.math module
+==================================
+
+.. automodule:: riggery.core.plugtypes.math
+   :members:
+   :undoc-members:
+   :show-inheritance:

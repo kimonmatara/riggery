@@ -1,0 +1,7 @@
+riggery.core.plugtypes.number module
+====================================
+
+.. automodule:: riggery.core.plugtypes.number
+   :members:
+   :undoc-members:
+   :show-inheritance:

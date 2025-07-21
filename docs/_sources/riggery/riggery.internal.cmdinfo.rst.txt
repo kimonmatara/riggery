@@ -1,0 +1,7 @@
+riggery.internal.cmdinfo module
+===============================
+
+.. automodule:: riggery.internal.cmdinfo
+   :members:
+   :undoc-members:
+   :show-inheritance:

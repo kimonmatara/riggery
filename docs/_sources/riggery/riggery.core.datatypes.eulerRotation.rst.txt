@@ -1,0 +1,7 @@
+riggery.core.datatypes.eulerRotation module
+===========================================
+
+.. automodule:: riggery.core.datatypes.eulerRotation
+   :members:
+   :undoc-members:
+   :show-inheritance:

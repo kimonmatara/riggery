@@ -1,0 +1,7 @@
+riggery.core.lib.namespaces module
+==================================
+
+.. automodule:: riggery.core.lib.namespaces
+   :members:
+   :undoc-members:
+   :show-inheritance:

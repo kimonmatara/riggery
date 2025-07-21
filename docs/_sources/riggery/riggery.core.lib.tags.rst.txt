@@ -1,0 +1,7 @@
+riggery.core.lib.tags module
+============================
+
+.. automodule:: riggery.core.lib.tags
+   :members:
+   :undoc-members:
+   :show-inheritance:

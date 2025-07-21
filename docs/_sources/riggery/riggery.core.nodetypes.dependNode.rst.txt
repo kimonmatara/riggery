@@ -1,0 +1,7 @@
+riggery.core.nodetypes.dependNode module
+========================================
+
+.. automodule:: riggery.core.nodetypes.dependNode
+   :members:
+   :undoc-members:
+   :show-inheritance:

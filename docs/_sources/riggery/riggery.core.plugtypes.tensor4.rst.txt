@@ -1,0 +1,7 @@
+riggery.core.plugtypes.tensor4 module
+=====================================
+
+.. automodule:: riggery.core.plugtypes.tensor4
+   :members:
+   :undoc-members:
+   :show-inheritance:

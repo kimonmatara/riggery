@@ -1,0 +1,7 @@
+riggery.core.plugtypes.geometry module
+======================================
+
+.. automodule:: riggery.core.plugtypes.geometry
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.core.lib.names module
+=============================
+
+.. automodule:: riggery.core.lib.names
+   :members:
+   :undoc-members:
+   :show-inheritance:

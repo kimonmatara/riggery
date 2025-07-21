@@ -1,0 +1,7 @@
+riggery.core.plugtypes.subdSurface module
+=========================================
+
+.. automodule:: riggery.core.plugtypes.subdSurface
+   :members:
+   :undoc-members:
+   :show-inheritance:

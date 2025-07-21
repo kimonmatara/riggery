@@ -1,0 +1,7 @@
+riggery.core.nodetypes.joint module
+===================================
+
+.. automodule:: riggery.core.nodetypes.joint
+   :members:
+   :undoc-members:
+   :show-inheritance:

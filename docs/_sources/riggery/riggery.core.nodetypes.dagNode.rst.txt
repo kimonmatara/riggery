@@ -1,0 +1,7 @@
+riggery.core.nodetypes.dagNode module
+=====================================
+
+.. automodule:: riggery.core.nodetypes.dagNode
+   :members:
+   :undoc-members:
+   :show-inheritance:

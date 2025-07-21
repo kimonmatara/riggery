@@ -1,0 +1,7 @@
+riggery.internal.datainfo module
+================================
+
+.. automodule:: riggery.internal.datainfo
+   :members:
+   :undoc-members:
+   :show-inheritance:

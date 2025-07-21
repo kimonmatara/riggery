@@ -1,0 +1,7 @@
+riggery.general.strings module
+==============================
+
+.. automodule:: riggery.general.strings
+   :members:
+   :undoc-members:
+   :show-inheritance:

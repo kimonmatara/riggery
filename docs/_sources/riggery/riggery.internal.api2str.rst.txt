@@ -1,0 +1,7 @@
+riggery.internal.api2str module
+===============================
+
+.. automodule:: riggery.internal.api2str
+   :members:
+   :undoc-members:
+   :show-inheritance:

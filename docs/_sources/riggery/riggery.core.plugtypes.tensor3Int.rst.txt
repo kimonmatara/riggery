@@ -1,0 +1,7 @@
+riggery.core.plugtypes.tensor3Int module
+========================================
+
+.. automodule:: riggery.core.plugtypes.tensor3Int
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+riggery.core.nodetypes.bezierCurve module
+=========================================
+
+.. automodule:: riggery.core.nodetypes.bezierCurve
+   :members:
+   :undoc-members:
+   :show-inheritance:

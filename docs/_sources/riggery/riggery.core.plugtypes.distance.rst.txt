@@ -1,0 +1,7 @@
+riggery.core.plugtypes.distance module
+======================================
+
+.. automodule:: riggery.core.plugtypes.distance
+   :members:
+   :undoc-members:
+   :show-inheritance:
