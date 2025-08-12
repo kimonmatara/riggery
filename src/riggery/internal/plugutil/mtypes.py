@@ -10,8 +10,6 @@ import re
 import os
 import json
 
-import requests
-
 import maya.api.OpenMaya as om
 import maya.cmds as m
 
@@ -46,6 +44,8 @@ def _fromOnlineHelp(version:str='2025') -> Generator[str, None, None]:
     yielded = []
 
     #--------------------|    FROM ADDATTR PAGE
+
+    import requests
 
     url = f"https://help.autodesk.com/cloudhelp/{version}/ENU/Maya-Tech-Docs/CommandsPython/addAttr.html"
     response = requests.get(url)
