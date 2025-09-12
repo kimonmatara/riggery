@@ -123,6 +123,7 @@ class Section:
 
 
 class Sections:
+
     def __init__(self, node):
         self._node = node
 
@@ -208,17 +209,22 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     #-----------------------------------------|    Constructor(s)
 
     @classmethod
-    def ls(cls, *patterns):
+    @short(selection='sl')
+    def ls(cls, *patterns, selection:bool=False) -> Generator:
         """
         Generator. Yields objects of this type in the scene.
+
+        :param \*patterns: name patterns to match
+        :param \*selection/sl: selected objects only; defaults to False
         """
-        result = m.ls(*patterns, type=cls.__melnode__)
+        kwargs = {}
+        if selection:
+            kwargs['selection'] = selection
+        result = m.ls(*patterns, type=cls.__melnode__, **kwargs)
 
         if result:
             for x in result:
-                x = DependNode(x)
-                if isinstance(x, cls):
-                    yield x
+                yield DependNode(x)
 
     @classmethod
     @short(name='n')

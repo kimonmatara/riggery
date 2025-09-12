@@ -185,7 +185,7 @@ class Transform(nodes['DagNode']):
             if worldSpace:
                 if not self.hasAttr('_cachedWorldPosition'):
                     plug = self.addPointAttr('_cachedWorldPosition')
-                    inp = (self.attr('t') * self.attr('pm')[0])
+                    inp = self.attr('t') * self.attr('pm')[0]
                     inp >> plug
                     plug.lock()
                     return plug
@@ -201,6 +201,37 @@ class Transform(nodes['DagNode']):
         if worldSpace:
             out *= self.attr('pm')[0].get()
         return out
+
+    @short(worldSpace='ws')
+    def getQuaternion(self, worldSpace:bool=False):
+        """
+        :param worldSpace/ws: return a world-space rotation; defaults to False
+        :return: The rotation of this transform, as a quaternion.
+        :rtype: :class:`~riggery.core.datatypes.quaternion.Quaternion`
+        """
+        mfn = om.MFnTransform(self.__apimdagpath__())
+        if worldSpace:
+            space = om.MSpace.kWorld
+        else:
+            space = om.MSpace.kTransform
+        quat = mfn.rotation(space=space, asQuaternion=True)
+        return data['Quaternion'](quat)
+
+    @short(worldSpace='ws')
+    def setQuaternion(self, quat, worldSpace:bool=False):
+        """
+        :param quat: the quaternion to use to set this transform's rotation
+        :param worldSpace/ws: set the rotation in world-space; defaults to False
+        :return: Self.
+        """
+        quat = om.MQuaternion(*quat)
+        mfn = om.MFnTransform(self.__apimdagpath__())
+        if worldSpace:
+            space = om.MSpace.kWorld
+        else:
+            space = om.MSpace.kTransform
+        mfn.setRotation(quat, space)
+        return self
 
     @short(worldSpace='ws')
     def setPosition(self, position, worldSpace:bool=False):

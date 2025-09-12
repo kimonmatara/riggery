@@ -219,8 +219,10 @@ class Quaternion(__pool__['Tensor4']):
             raise ValueError(
                 "angleInterpolation is only available if *otherQuat* is a plug"
             )
-        otherQuat = om.MQuaternion(otherQuat)
-        return Quaternion(self.api.slerp(otherQuat, weight))
+        startQuat = self.api
+        endQuat = om.MQuaternion(otherQuat)
+        outQuat = om.MQuaternion.slerp(startQuat, endQuat, weight)
+        return Quaternion(outQuat)
 
     #-----------------------------------------|    Conversions
 
