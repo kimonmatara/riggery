@@ -6,6 +6,7 @@ import maya.api.OpenMaya as om
 
 from riggery.general.functions import short, resolve_flags
 from riggery.general.iterables import expand_tuples_lists
+from riggery.general.numbers import floatrange
 
 from ..elem import Elem, ElemInstError
 from ..nodetypes import __pool__ as nodes
@@ -203,6 +204,16 @@ class Transform(nodes['DagNode']):
         return out
 
     @short(worldSpace='ws')
+    def setPosition(self, position, worldSpace:bool=False):
+        """
+        :param position: the position values to set
+        :param worldSpace/ws: apply position in world-space; defaults to False
+        :return: self
+        """
+        m.xform(str(self), t=position, worldSpace=worldSpace, a=True)
+        return self
+
+    @short(worldSpace='ws')
     def getQuaternion(self, worldSpace:bool=False):
         """
         :param worldSpace/ws: return a world-space rotation; defaults to False
@@ -234,13 +245,23 @@ class Transform(nodes['DagNode']):
         return self
 
     @short(worldSpace='ws')
-    def setPosition(self, position, worldSpace:bool=False):
+    def getScale(self, worldSpace:bool=False):
         """
-        :param position: the position values to set
-        :param worldSpace/ws: apply position in world-space; defaults to False
-        :return: self
+        :param worldSpace/ws: return the scale in world space; defaults to False
+        :return: The scale of this transform, as a vector.
         """
-        m.xform(str(self), t=position, worldSpace=worldSpace, a=True)
+        return self.getMatrix(worldSpace=True).scale
+
+    @short(worldSpace='ws')
+    def setScale(self, scale, worldSpace:bool=False):
+        """
+        :param scale: the scale to set (sequence of three floats)
+        :param worldSpace/ws: set the scale in world-space; defaults to False
+        :return: Self
+        """
+        matrix = self.getMatrix(worldSpace=worldSpace)
+        matrix.scale = scale
+        self.setMatrix(matrix, worldSpace=worldSpace)
         return self
 
     @short(worldSpace='ws', plug='p')
@@ -784,6 +805,68 @@ class Transform(nodes['DagNode']):
         :return: The shape names available for use with :meth:`setControlShape`.
         """
         return list(sorted(_cs.CONTROLSHAPES.keys()))
+
+    #-----------------------------------------|    Layout utilities
+
+    @short(translate='t',
+           rotate='r',
+           scale='s')
+    def distribute(self,
+                   *others,
+                   translate:Optional[bool]=None,
+                   rotate:Optional[bool]=None,
+                   scale:Optional[bool]=None):
+        """
+        Blends transformations (non-dynamically) across transforms between this
+        object and the last of \*others. Only the interceding nodes are
+        transformed; the start and end nodes are mere references.
+
+        This method will quietly do nothing if fewer than three transform nodes
+        are involved, or if all transformation filters are set to False.
+
+        :param \*others: the rest of the transforms in the span
+        :param translate/t: modify translation; defaults to True
+        :param rotate/r: modify rotation; defaults to True
+        :param scale/s: modify scale; defaults to True
+        :return: Self.
+        """
+        translate, rotate, scale = resolve_flags(translate, rotate, scale)
+        if any((translate, rotate, scale)):
+            span = [self] + list(map(Transform, expand_tuples_lists(others)))
+            num = len(span)
+            if num > 2:
+                endXf = span[-1]
+                tweenXfs = span[1:-1]
+                weights = list(floatrange(0, 1, num))[1:-1]
+
+                if translate:
+                    startPoint = self.getPosition(worldSpace=True)
+                    endPoint = endXf.getPosition(worldSpace=True)
+                    tweenPoints = [startPoint.blend(
+                        endPoint, weight) for weight in weights]
+
+                    for xf, point in zip(tweenXfs, tweenPoints):
+                        xf.setPosition(point, worldSpace=True)
+
+                if rotate:
+                    startQuat = self.getQuaternion(worldSpace=True)
+                    endQuat = endXf.getQuaternion(worldSpace=True)
+                    tweenQuats = [startQuat.slerp(endQuat,
+                                                  weight) for weight in weights]
+
+                    for xf, quat in zip(tweenXfs, tweenQuats):
+                        xf.setQuaternion(quat, worldSpace=True)
+
+                if scale:
+                    startScale = self.getScale(worldSpace=True)
+                    endScale = endXf.getScale(worldSpace=True)
+                    tweenScales = [startScale.blend(
+                        endScale, weight) for weight in weights]
+
+                    for xf, scale in zip(tweenXfs, tweenScales):
+                        xf.setScale(scale, worldSpace=True)
+
+        return self
 
     #-----------------------------------------|    Repr
 

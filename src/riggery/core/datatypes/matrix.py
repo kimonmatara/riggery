@@ -699,3 +699,26 @@ class Matrix(data['Tensor']):
         axis = axis.strip('-')
         setattr(self, axis, -getattr(self, axis))
         return self
+
+    #-------------------------------------------|   Transformations
+
+    def getScale(self):
+        """
+        :return: The scale of this matrix, as a vector.
+        """
+        mtx = self.api
+        xf = om.MTransformationMatrix(mtx)
+        scale = xf.scale(om.MSpace.kTransform)
+        return data['Vector'](scale)
+
+    def setScale(self, scale):
+        """
+        :param scale: The scale to set (sequence of three floats)
+        :return: Self.
+        """
+        xf = om.MTransformationMatrix(self.api)
+        xf.setScale(scale, om.MSpace.kTransform)
+        self[:] = xf.asMatrix()
+        return self
+
+    scale = property(fget=getScale, fset=setScale)
