@@ -5,6 +5,7 @@ import maya.cmds as m
 
 from ..lib import names as _nm
 from riggery.general.functions import short, resolve_flags
+from riggery.core.elem import Elem
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from riggery.internal.nodeinfo import UNCAPMAP
@@ -37,6 +38,30 @@ class Geometry(Attribute, metaclass=GeometryMeta):
         return self._getSamplingPlug().asMDataHandle().data()
 
     #--------------------------------------|    Shape interops
+
+    @classmethod
+    def conformToOutput(cls, geo):
+        """
+        Utility node. Conforms *geo* to a geometry output plug.
+
+        :param geo: a transform, shape node or plug for a deformable shape
+        :return: A local-space output plug or, if *geo* was a plug to begin
+            with, the original plug.
+        """
+        geo = Elem(geo)
+        if isinstance(geo, Geometry):
+            return geo
+        if isinstance(geo, nodes['DagNode']):
+            if isinstance(geo, nodes['Transform']):
+                shape = geo.getShape()
+                if shape:
+                    if isinstance(shape, nodes['DeformableShape']):
+                        return shape.localOutput
+            else:
+                if isinstance(geo, nodes['DeformableShape']):
+                    return geo.localOutput
+
+        raise TypeError(f"Can't conform {geo} to a geometry output.")
 
     @classmethod
     def getShapeClass(cls) -> type:
