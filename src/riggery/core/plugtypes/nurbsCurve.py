@@ -4,6 +4,7 @@ from typing import Generator, Union, Optional, Iterable
 import maya.api.OpenMaya as om
 
 from riggery.core.lib.evaluation import cache_dg_output
+import riggery.core.lib.nurbsutil as _nut
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 from riggery.general.numbers import floatrange
@@ -505,17 +506,26 @@ class NurbsCurve(plugs['Geometry']):
         self >> node.attr('inputCurve')
         return node.attr('outputCurve')
 
-    def rebuildCVs(self, numCVs:int, *, keepRange:Union[int, str]=1):
+    @short(degree='d',
+           keepRange='kr')
+    def rebuildCVs(self,
+                   numCVs:int, *,
+                   degree:Optional[int]=None,
+                   keepRange:Union[int, str]=1):
         """
         :param numCVs: the target number of CVs; if this is very low, the curve
             degree may be dropped as well
-        :param keepRange: a setting for the 'keepRange' enum on the
+        :param degree/d: an optional override for the curve degree; defaults to
+            the current degree, or lower if the number of CVs requires it
+        :param keepRange/kr: a setting for the 'keepRange' enum on the
             ``rebuildCurve`` node; defaults to 1 ('Original')
         """
-        degree = self.degree()
+        if degree is None:
+            degree = self.degree()
+
         while True:
             try:
-                spans, knots = getSpansKnots(numCVs, degree)
+                spans, knots = _nut.getSpansKnots(numCVs, degree)
             except ValueError as exc:
                 if degree == 1:
                     raise exc
