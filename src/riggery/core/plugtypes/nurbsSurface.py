@@ -17,11 +17,9 @@ class NurbsSurface(plugs['Geometry']):
 
         :return: The surface output.
         """
-        ...
 
     #-------------------------------------|    Esoteric queries
 
     def _getData(self) -> om.MObject:
         return self._getSamplingPlug(
             ).asMDataHandle().asNurbsSurfaceTransformed()
-
