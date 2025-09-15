@@ -1,12 +1,13 @@
 import math
+from functools import reduce
 from typing import Generator, Union, Optional, Iterable
 
 import maya.api.OpenMaya as om
 
 from riggery.core.lib.evaluation import cache_dg_output
 import riggery.core.lib.nurbsutil as _nut
-from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists
+from riggery.general.functions import short, conform_multi_arg
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.numbers import floatrange
 from ..lib import geo as _geo
 from ..lib import mixedmode as _mm
@@ -841,3 +842,101 @@ class NurbsCurve(plugs['Geometry']):
                 return isinstance(shape, nodes['BezierCurve'])
             return False
         return data.hasFn(om.MFn.kBezierCurveData)
+
+    #--------------------------------------|    Surfaces
+
+    @short(autoReverse='ar',
+           close='c',
+           degree='d',
+           reverse='r',
+           reverseSurfaceNormals='rsn',
+           sectionSpans='ss',
+           uniform='u',
+           blend='b')
+    def loft(self,
+             *others,
+             autoReverse=False,
+             close=False,
+             degree=3,
+             reverse=False,
+             reverseSurfaceNormals=False,
+             sectionSpans=1,
+             uniform=True,
+             blend=False):
+        """
+        :param \*others: at least one other curve across which to loft
+        :param autoReverse/ar: computer the direction of the curves for the loft
+            automatically; defaults to False
+        :param close/c: if set to True, the resulting surface will be closed
+            (periodic) with the start (end) at the first curve; if set to False,
+            the surface will remain open; defaults to False
+        :param degree/d: the degree of the resulting surface; defaults to 3
+        :param reverse/r: multi-use flag; each occurence of the flag refers to
+            the matching curve in the loft operation; if the flag is set the
+            particular curve will be reversed before being used in the loft
+            operation; defaults to False
+        :param reverseSurfaceNormals/rsn: if set, the surface normals on the
+            output NURBS surface will be reversed; this is accomplished by
+            swapping the U and V parametric directions; defaults to False
+        :param sectionSpans/ss: the number of surface spans between consecutive
+            curves in the loft; defaults to 1
+        :param uniform/u: if set to True, the resulting surface will have
+            uniform parameterization in the loft direction; if set to False, the
+            parameterization will be chord length; defaults to True
+        :param blend/b: ignored if there are fewer than three curves; lofts the
+            curves in pairs, then attaches the surfaces using the 'blend'
+            method; useful when you want to avoid EP 'pops' along the edge;
+            defaults to False
+        :raises ValueError: Need at least two input curves.
+        :raises ValueError: Auto-reverse is not supported with 'blend' on.
+        :return: The lofted surface.
+        """
+        others = expand_tuples_lists(*others)
+        num = len(others) + 1
+
+        if num < 2:
+            raise ValueError("Need at least two input curves.")
+
+        blend = blend and num > 2
+        if blend and autoReverse:
+            raise ValueError("Auto-reverse is not supported with 'blend' on.")
+
+        others = [self.conformToOutput(x) for x in others]
+        inputCurves = [self] + others
+
+        reverses = conform_multi_arg(reverse, num)
+
+        if blend and num > 2:
+            surfaces = [
+                thisCurve.loft(nextCurve,
+                               autoReverse=autoReverse,
+                               close=close,
+                               degree=degree,
+                               reverse=[thisReverse, nextReverse],
+                               reverseSurfaceNormals=reverseSurfaceNormals,
+                               sectionSpans=sectionSpans,
+                               uniform=uniform)
+                for (thisCurve, nextCurve), (thisReverse, nextReverse) in zip(
+                    zip(inputCurves, inputCurves[1:]),
+                    zip(reverses, reverses[1:])
+                )
+            ]
+            return reduce(lambda x, y: x.attach(y,
+                                                directionU=False,
+                                                method=1), surfaces)
+
+        node = nodes['Loft'].createNode()
+        autoReverse >> node.attr('autoReverse')
+        close >> node.attr('close')
+        degree >> node.attr('degree')
+        reverseSurfaceNormals >> node.attr('reverseSurfaceNormals')
+        sectionSpans >> node.attr('sectionSpans')
+        uniform >> node.attr('uniform')
+
+        for i, reverse in enumerate(reverses):
+            reverse >> node.attr('reverse')[i]
+
+        for i, inputCurve in enumerate(inputCurves):
+            inputCurve >> node.attr('inputCurve')[i]
+
+        return node.attr('outputSurface')

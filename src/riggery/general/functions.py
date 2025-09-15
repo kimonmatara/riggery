@@ -1,5 +1,5 @@
 """Utilities for functions."""
-from typing import Callable
+from typing import Callable, Any
 from functools import wraps
 from pathlib import Path
 import os
@@ -21,6 +21,25 @@ def resolve_flags(*flags) -> tuple:
     else:
         flags = [True] * len(flags)
     return tuple(flags)
+
+def conform_multi_arg(arg, length:int=0) -> list[Any]:
+    """
+    :param arg: a list, tuple, or single input argument
+    :param length: the length of the list that *arg* should be conformed to
+    :raises ValueError: *arg* is a list of tuple, with a length that is neither
+        1 nor matches *length*
+    :return: A list of arguments of the specified *length*.
+    """
+    if length < 1:
+        return arg
+    if isinstance(arg, (tuple, list)):
+        num = len(arg)
+        if num == length:
+            return list(arg)
+        if num == 0:
+            return list(arg) * length
+        raise ValueError("Wrong argument length")
+    return [arg] * length
 
 class short:
     """
