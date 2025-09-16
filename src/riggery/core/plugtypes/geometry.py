@@ -152,32 +152,24 @@ class Geometry(Attribute, metaclass=GeometryMeta):
            intermediate='i')
     def createShape(self,
                     name:Optional[str]=None,
-                    parent=None,
-                    pop=False,
-                    intermediate=False):
+                    intermediate:Optional[bool]=False,
+                    parent=None):
         """
         Creates a shape of the matching geometry type and sets this plug as its
         input.
 
         :param name/n: an optional name override; defaults to block naming
-        :param parent/p: an optional destination parent; defaults to the nearest
-            detect parent, unless *pop* is True, in which case a new parent is
-            created; defaults to None
-        :param pop: if no *parent* is specified, create a new transform at scene
-            level; defaults to False
+        :param parent/p: an optional destination parent; if omitted, a new
+            transform will be created; defaults to None
         :param intermediate/i: make it an intermediate shape; defaults to False
         :return: The shape.
         """
-        if parent is None and not pop:
-            parent = self.findParent()
-
         shape = self.getShapeClass().createNode(name=name, parent=parent)
         self >> shape.input
         if intermediate:
             shape.attr('intermediateObject').set(True)
         else:
             shape.assignDefaultShader()
-
         return shape
 
     #--------------------------------------|    Deformations
