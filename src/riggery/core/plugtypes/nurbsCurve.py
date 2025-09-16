@@ -907,23 +907,30 @@ class NurbsCurve(plugs['Geometry']):
         reverses = conform_multi_arg(reverse, num)
 
         if blend and num > 2:
-            surfaces = [
-                thisCurve.loft(nextCurve,
-                               autoReverse=autoReverse,
-                               close=close,
-                               degree=degree,
-                               reverse=[thisReverse, nextReverse],
-                               reverseSurfaceNormals=reverseSurfaceNormals,
-                               sectionSpans=sectionSpans,
-                               uniform=uniform)
-                for (thisCurve, nextCurve), (thisReverse, nextReverse) in zip(
-                    zip(inputCurves, inputCurves[1:]),
-                    zip(reverses, reverses[1:])
+            surfaces = []
+
+            for (thisCurve, nextCurve), (thisReverse, nextReverse) in zip(
+                zip(inputCurves, inputCurves[1:]),
+                zip(reverses, reverses[1:])
+            ):
+                surface = thisCurve.loft(
+                    nextCurve,
+                    autoReverse=autoReverse,
+                    close=close,
+                    degree=degree,
+                    reverse=(thisReverse, nextReverse),
+                    reverseSurfaceNormals=reverseSurfaceNormals,
+                    sectionSpans=sectionSpans,
+                    uniform=uniform
                 )
-            ]
-            return reduce(lambda x, y: x.attach(y,
-                                                directionU=False,
-                                                method=1), surfaces)
+                surfaces.append(surface)
+
+            return reduce(
+                lambda x, y: x.attach(y,
+                                      directionU=not reverseSurfaceNormals,
+                                      method=1),
+                surfaces
+            )
 
         node = nodes['Loft'].createNode()
         autoReverse >> node.attr('autoReverse')
