@@ -3,13 +3,23 @@ from typing import Any, Iterable, Optional, Union
 class Reorder(list):
     """
     List subclass with convenience reordering methods. Members must be hashable
-    and unique. If in doubt, run this on dictionary keys instead.
+    and unique. If in doubt, assign to unique keys in a dict, run reordering
+    operations on the keys, and then re-extract the values.
     """
     def _check_members(self, members):
         """
         :raises ValueError: Non-members.
+        :raises ValueError: Duplicate members.
+        :raises TypeError: Unhashable type(s).
         """
         members = list(members)
+        try:
+            _members = set(members)
+        except TypeError:
+            raise TypeError("Unhashable member types.")
+        if len(_members) < len(members):
+            raise ValueError("Duplicate members.")
+
         nonmembers = [member for member in members if member not in self]
         if nonmembers:
             raise ValueError("Non-member(s): {}".format(', '.join(nonmembers)))
