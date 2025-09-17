@@ -368,14 +368,6 @@ def reorderAttrs(node:om.MObject, attrNames:list[str]) -> list[om.MPlug]:
     :return: :class:`~maya.api.OpenMaya.MPlug` instances for the specified
         attributes.
     """
-    print('The requested attr names are:')
-    for x in attrNames:
-        print(x)
-    allAttrs = ReorderableAttr.fromNode(node)
-    print('All attrs are:')
-    for x in allAttrs:
-        print(x)
-
     # The valmap is required because of a bug whereby some attribute values
     # change after the .remove() step, not sure why
 
