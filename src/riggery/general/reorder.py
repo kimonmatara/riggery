@@ -2,7 +2,8 @@ from typing import Any, Iterable, Optional, Union
 
 class Reorder(list):
     """
-    List subclass with convenience reordering methods.
+    List subclass with convenience reordering methods. Members must be hashable
+    and unique. If in doubt, run this on dictionary keys instead.
     """
     def _check_members(self, members):
         """
