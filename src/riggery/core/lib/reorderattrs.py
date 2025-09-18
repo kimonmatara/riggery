@@ -373,6 +373,8 @@ def reorderAttrs(node:om.MObject, attrNames:list[str]) -> list[om.MPlug]:
 
     valmap = {}
 
+    allAttrs = list(ReorderableAttr.fromNode(node))
+
     for attr in allAttrs:
         try:
             valmap[attr.attrPath] = m.getAttr(attr.attrPath)
