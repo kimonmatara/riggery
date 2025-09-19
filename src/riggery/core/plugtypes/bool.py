@@ -9,6 +9,15 @@ class Bool(__pool__['Number']):
 
     #-----------------------------------------|    Logic
 
+    def NOT(self):
+        """
+        Unary 'not' operator, since Python doesn't allow you to override ``!``
+        or ``not(~)`` directly.
+        """
+        node = _nodes['Not'].createNode()
+        self >> node.attr('input')
+        return node.attr('output')
+
     def __or__(self, other):
         node = _nodes['Or'].createNode()
         self >> node.attr('input1')
