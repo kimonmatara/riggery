@@ -615,3 +615,20 @@ class Number(__pool__['Math']):
         for slot in ('in00', 'in11', 'in22'):
             self >> node.attr(slot)
         return node.attr('output')
+
+    #-----------------------------------------|    Connections
+
+    def slipInput(self, input):
+        """
+        If this attribute already has an input, multiplies *input* by the
+        existing input before connecting it into this plug. Otherwise, connects
+        *input* as-is.
+
+        :param input: the input to connect into this plug
+        :return: Self.
+        """
+        currentInputs = self.inputs(plugs=True)
+        if currentInputs:
+            input = currentInputs[0] * input
+        input >> self
+        return self
