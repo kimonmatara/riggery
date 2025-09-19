@@ -192,13 +192,15 @@ class Vector(__pool__['Tensor3']):
                               lock=True)
 
         # Use API calls for everything
-        self = om.MVector(self)
-        other = om.MVector(otherVector)
+        self = om.MVector(self).normal()
+        other = om.MVector(otherVector).normal()
 
         normal = om.MVector(normal).normal()
-
         cross = self ^ other
+
         if cross.length() < 1e-10:
+            if (self * other) > 0.0:
+                return 0.0
             return math.radians(180)
 
         # Get partial angle
