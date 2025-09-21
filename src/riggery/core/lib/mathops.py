@@ -371,3 +371,33 @@ def getLengthFromPoints(points):
         return node.attr('output')
 
     return sum(lengths)
+
+def bezierInterp(points, u):
+    """
+    Performs bezier interpolation.
+
+    :param points: three (quadratic) or four (cubic) points to define the bezier
+        curve
+    :param u: the parameter at which to sample a point
+    :return: The sampled point.
+    """
+    num = len(points)
+    if num not in (3, 4):
+        raise ValueError("Need three or four points.")
+    points = list(map(
+        lambda x: _mm.conform(x, (data.Point, plugs.Point)),
+        points
+    ))
+    u = _mm.conform(u, (float, plugs.Number))
+
+    for i in range(num-1):
+        interpolated = []
+
+        for p0, p1 in zip(points, points[1:]):
+            vec = p1 - p0
+            newPoint = p0 + (vec * u)
+            interpolated.append(newPoint)
+
+        points = interpolated
+
+    return points[0]
