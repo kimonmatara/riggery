@@ -1,5 +1,6 @@
 from riggery.core.lib.evaluation import cache_dg_output
 from riggery.general.functions import short, resolve_flags
+from riggery.general.iterables import without_duplicates
 from typing import Union, Optional
 from ..plugtypes import __pool__
 from ..nodetypes import __pool__ as nodes
@@ -12,75 +13,105 @@ import maya.cmds as m
 
 class Enum(__pool__['Int']):
 
-    #-----------------------------------------|    Axis pickers
+    #-----------------------------------------|    Selectors
 
     @classmethod
-    @short(defaultValue='dv',
-           channelBox='cb',
-           keyable='k')
-    def createBoolCarousel(cls,
-                           node,
-                           attrName:str,
-                           nameGroupPairs:list[tuple[str, list]],
-                           defaultValue=None,
-                           channelBox=None,
-                           keyable=None):
+    @short(noneLabel='nl',
+           allLabel='al',
+           section='s',
+           defaultValue='dv')
+    def createVisCarousel(cls,
+                          node,
+                          attrName:str,
+                          labelsGroups:Union[list, dict],
+                          noneLabel:Optional[str]=None,
+                          allLabel:Optional[str]=None,
+                          section:Optional[str]=None,
+                          defaultValue:Optional[Union[str, int]]=None):
         """
-        Creates a sort of 'switchboard' configuration for boolean attributes,
-        where selecting one of the enums will pipe True into every boolean
-        attribute in the group assigned to that enum, and False into every
-        boolean attribute that's not assigned to that enum, but is a member of
-        the overall pool.
-
-        Good for user visibility presets.
+        Creates an enum attribute where each item defines a visibility group for
+        DAG nodes.
 
         :param node: the node on which to create the attribute
         :param attrName: the attribute name
-        :param nameGroupPairs: a list of tuples, where each tuple comprises
-            an enum name and a list of target boolean attributes (e.g. node
-            visibility channels)
-        :param defaultValue/dv: a default value for the enum; defaults to None
-        :param channelBox/cb: make the enum settable; defaults to False
-        :param keyable/k: make the enum keyable; defaults to False
-        :return: The enum attribute.
+        :param labelsGroups: a mapping of label: [dagNode, dagNode...]; this
+            can either be a dict or zipped pairs
+        :param noneLabel: if this is specified, an extra group with this label,
+            and an empty member list, will be inserted at index 0 of
+            *labelsGroups*; defaults to None
+        :param allLabel: if this is specified, an extra group with this label,
+            and a list comprising all members, will be appended to
+            *labelsGroups*; defaults to None
+        :param defaultValue/dv: the default value of the attribute, as a label
+            of index; defaults to 0
+        :param section/s: an optional section name for the new attribute;
+            defaults to None
+        :return: The constructed attribute.
         """
-        # Conform the group pairs
-        Attribute = __pool__['Attribute']
 
-        nameGroupPairs = [(name, list(map(Attribute, group)))
-                          for (name, group) in nameGroupPairs]
+        # Conform args
 
-        allMembers = []
-        for (name, group) in nameGroupPairs:
-            allMembers += list(group)
-        allMembers = list(set(allMembers))
-        names = [pair[0] for pair in nameGroupPairs]
-
-        # Init the attribute
         node = nodes['DependNode'](node)
 
-        kwargs = {}
-        if keyable is not None:
-            kwargs['keyable'] = keyable
-        if channelBox is not None:
-            kwargs['channelBox'] = channelBox
-        if defaultValue is not None:
-            kwargs['defaultValue'] = defaultValue
+        if isinstance(labelsGroups, dict):
+            labels, groups = zip(*labelsGroups.items())
+        else:
+            labels, groups = zip(*labelsGroups)
 
-        attr = node.addAttr(attrName,
-                            at='enum',
-                            enumName=':'.join(names),
-                            **kwargs)
-        _attr = str(attr)
+        DagNode = nodes['DagNode']
 
-        for i, (name, group) in enumerate(nameGroupPairs):
-            for member in allMembers:
-                m.setDrivenKeyframe(str(member),
-                                    currentDriver=_attr,
-                                    driverValue=i,
-                                    value=member in group)
+        labels = list(labels)
+        groups = [[DagNode(x).attr('v') for x in group] for group in groups]
 
-        return attr
+        allPlugs = []
+
+        for group in groups:
+            allPlugs += group
+        allPlugs = without_duplicates(allPlugs)
+
+        if allLabel:
+            labels.append(allLabel)
+            groups.append(allPlugs)
+
+        if noneLabel:
+            labels.insert(0, noneLabel)
+            groups.insert(0, [])
+
+        # Create attribute
+
+        sw = node.createAttr(attrName,
+                             at='enum',
+                             enumName=':'.join(labels),
+                             cb=True,
+                             dv=defaultValue,
+                             s=section)
+
+        # Capture existing inputs
+
+        inputMap = {}
+
+        for plug in allPlugs:
+            inputs = plug.inputs(plugs=True)
+            if inputs:
+                input = inputs[0]
+                input // plug
+                inputMap[plug] = input
+
+        # Iterate
+
+        for i, group in enumerate(groups):
+            for plug in allPlugs:
+                value = 1 if plug in group else 0
+                m.setDrivenKeyframe(str(plug),
+                                    cd=str(sw),
+                                    dv=i,
+                                    v=value,
+                                    ott='step')
+
+        for plug, input in inputMap.items():
+            (plug.inputs(plugs=True) * input) >> input
+
+        return sw
 
     @classmethod
     @short(defaultValue='dv',
