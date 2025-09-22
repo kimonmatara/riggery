@@ -65,15 +65,13 @@ class Vector(plugs['Tensor3Float']):
               other,
               weight=0.5,
               slerp:bool=False, *,
-              preserveLength:bool=False,
-              blendLength:bool=False):
+              preserveLength:bool=False):
         """
         Blends this vector towards *other*.
 
         :param other: the vector towards which to blend
         :param weight: the blending weight towards *other*
         :param slerp: perform quaternion-based slerping; defaults to False
-        :param blendLength: blend the vector lengths as well; defaults to False
         :param preserveLength: preserve this vector's length; defaults to False
         :return:
         """
@@ -84,11 +82,7 @@ class Vector(plugs['Tensor3Float']):
         else:
             out = super().blend(other, weight)
 
-        if blendLength:
-            l1 = self.length()
-            l2 = _mm.info(other, data['Vector'])[0].length()
-            out = out.normal() * l1.blend(l2, weight)
-        elif preserveLength:
+        if preserveLength:
             out = out.normal() * self.length()
 
         return out
