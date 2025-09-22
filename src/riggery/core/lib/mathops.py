@@ -372,6 +372,9 @@ def getLengthFromPoints(points):
 
     return sum(lengths)
 
+# Tangent length to get a quadrant of a unit circle
+BEZIER_CIRCLE_CONSTANT = 0.55228474983079
+
 def bezierInterp(points, u):
     """
     Performs bezier interpolation.
