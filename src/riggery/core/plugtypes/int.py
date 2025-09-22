@@ -1,6 +1,6 @@
+from typing import Union
 import maya.api.OpenMaya as om
 
-from riggery.general.functions import short
 from ..plugtypes import __pool__
 
 
