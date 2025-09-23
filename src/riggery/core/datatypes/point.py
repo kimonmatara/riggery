@@ -65,7 +65,7 @@ class Point(Vector):
                 node.attr('operation').set(2)
                 node.attr('input3D')[0].set(self)
                 node.attr('input3D')[1].put(other, True)
-                return node.attr('output3D').asType(Vector.plugClass())
+                return node.attr('output3D').asType(self.plugClass())
             return NotImplemented
         return Vector(super().__sub__(other))
 
@@ -77,7 +77,7 @@ class Point(Vector):
                 node.attr('operation').set(2)
                 node.attr('input3D')[0].put(other, True)
                 node.attr('input3D')[1].set(self)
-                return node.attr('output3D').asType(Vector.plugClass())
+                return node.attr('output3D').asType(self.plugClass())
             return NotImplemented
         return Vector(super().__rsub__(other))
 
