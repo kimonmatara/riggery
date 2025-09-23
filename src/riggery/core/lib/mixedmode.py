@@ -51,6 +51,24 @@ def getPlug(item):
             pass
 
 @short(force='f')
+def valueAndPlug(item,
+                 preferredTypes:Union[None, type, tuple[type], list[type]]=None,
+                 force:bool=False):
+    """
+    :param item: the item to examine
+    :param preferredTypes: one or more preferred plug or data types to cast to;
+        defaults to None
+    :param force/f: use one of the preferred types even if *item* is already
+        a plug or data type; defaults to False
+    :return: If *item* is a plug, a tuple of (current value, plug); otherwise,
+        (current value, None).
+    """
+    item, _, itemIsPlug = info(item, preferredTypes, force)
+    if itemIsPlug:
+        return item(), item
+    return item, None
+
+@short(force='f')
 def info(
         item,
         preferredTypes:Union[None, type, tuple[type], list[type]]=None,
