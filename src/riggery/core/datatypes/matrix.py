@@ -700,6 +700,14 @@ class Matrix(data['Tensor']):
         setattr(self, axis, -getattr(self, axis))
         return self
 
+    def flipAxes(self, *axes):
+        """
+        'Multi' version of :meth:`flipAxis`.
+        """
+        for axis in axes:
+            self.flipAxis(axis)
+        return self
+
     #-------------------------------------------|   Transformations
 
     def getScale(self):
