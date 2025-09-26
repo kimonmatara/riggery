@@ -339,98 +339,135 @@ class NurbsCurve(plugs['Geometry']):
 
     #--------------------------------------|    Join / cut
 
-    def cut(self, *parameters, keep=None) -> list:
+    @short(keep='k')
+    def detach(self, parameter, keep:Optional[Iterable]=None) -> list:
         """
-        :param parameters: the parameter(s) at which to cut
-        :param keep: one or more output plug indices to keep for the return;
-            defaults to all outputs
-        :return: The selected output(s), in a list.
+        :param parameter: either one parameter (value or plug) or a list or
+            tuple of parameters (values or plugs)
+        :param keep/k: one or more indices for curve outputs to return; defaults
+            to all indices
+        :return: If *keep* was specified, and it was a single element, a single
+            curve output; otherwise, if *keep* was specified, and it was a list
+            or tuple, a list of curve outputs; otherwise, if *keep* was omitted,
+            a list of curve outputs.
         """
         node = nodes['DetachCurve'].createNode()
         self >> node.attr('inputCurve')
-        for i, parameter in enumerate(expand_tuples_lists(*parameters)):
+
+        for i, parameter in enumerate(expand_tuples_lists(parameter)):
             parameter >> node.attr('parameter')[i]
+
         node.attr('outputCurve').evaluate()
 
         if keep is None:
-            keep = node.attr('outputCurve').indices()
-        else:
-            keep = expand_tuples_lists(keep)
+            return list(node.attr('outputCurve'))
 
-        for i in range(len(parameters)+1):
-            node.attr('keep')[i].set(i in keep)
+        if isinstance(keep, (tuple, list)):
+            return [node.attr('outputCurve')[i] for i in keep]
 
-        return [node.attr('outputCurve')[index] for index in keep]
+        return node.attr('outputCurve')[keep]
 
-    @short(blend='bl',
-           keepMultipleKnots='kmk',
+    @short(keepMultipleKnots='kmk',
            reverse1='rv1',
-           reverse2='rv2')
-    def join(self,
-             otherCurve, *,
-             blend:bool=False,
-             keepMultipleKnots=True,
-             reverse1:bool=False,
-             reverse2:bool=False):
+           reverse2='rv2',
+           method='m',
+           blendBias='bb',
+           blendKnotInsertion='bki',
+           parameter='p')
+    def attach(self,
+               other,
+               reverse1=False,
+               reverse2=False,
+               method='Connect',
+               keepMultipleKnots=True,
+               blendBias=0.5,
+               blendKnotInsertion=False,
+               parameter=0.1):
         """
-        :param otherCurve: the curve to connect to this one; if it's a shape,
-            the local output is used
-        :param blend/bl: use the 'blend' method rather than 'connect'; defaults
-            to False
-        :param keepMultipleKnots/kmk: keep multiple knots; defaults to True
-        :param reverse1: reverse this curve before connecting; defaults to False
-        :param reverse2: reverse the other curve before connecting; defaults to
-            False
-        :return: The combination curve.
-        """
-        otherCurve = Elem(otherCurve)
-        if not isinstance(otherCurve, plugs['Attribute']):
-            otherCurve = otherCurve.localOutput
+        Runs this output through an ``attachCurve`` node.
 
+        :param other: the curve output to attach to
+        :param blendBias: skew the result toward the first or the second curve
+            depending on the blend factory being smaller or larger than 0.5;
+            defaults to 0.5
+        :param blendKnotInsertion/bki: if set to true, insert a knot in one of
+            the original curves (relative position given by the parameter
+            attribute below) in order to produce a slightly different effect;
+            defaults to False
+        :param method/m: attach method (0 / 'Connect', 1 / 'Blend); defaults to
+            0 / 'Connect'
+        :param parameter/p: the parameter value for the positioning of the newly
+            inserted knot.
+        :param reverse1/rv1: if true, reverse the first input curve before doing
+            attach. Otherwise, do nothing to the first input curve before
+            attaching; defaults to False
+        :param reverse1/rv: if true, reverse the second input curve before doing
+            attach. Otherwise, do nothing to the second input curve before
+            attaching; defaults to False
+        """
         node = nodes['AttachCurve'].createNode()
-        node.setAttrs(reverse1=reverse1,
-                      reverse2=reverse2,
-                      keepMultipleKnots=keepMultipleKnots,
-                      method=1 if blend else 0)
         self >> node.attr('inputCurve1')
-        otherCurve >> node.attr('inputCurve2')
+        other >> node.attr('inputCurve2')
+
+        reverse1 >> node.attr('reverse1')
+        reverse2 >> node.attr('reverse2')
+        method >> node.attr('method')
+        keepMultipleKnots >> node.attr('keepMultipleKnots')
+        blendBias >> node.attr('blendBias')
+        blendKnotInsertion >> node.attr('blendKnotInsertion')
+        parameter >> node.attr('parameter')
+
         return node.attr('outputCurve')
 
-    @short(blend='bl',
-           keepMultipleKnots='kmk')
-    def multiJoin(self,
-                  *otherCurves,
-                  blend:bool=False,
-                  keepMultipleKnots=True):
-        """
-        Runs chained :method:`join` operations. No auto-reversals are performed;
-        input curves must have the correct direction already.
-
-        .. note::
-
-            This does *not* run all the curves through a single ``attachCurve``
-            node, as I've run into problems using that in the past.
-
-        :param otherCurves: the curves to tack-on; if shapes are passed, the
-            local output is used
-        :param blend/bl: use the 'blend' method rather than 'connect'; defaults
-            to False
-        :param keepMultipleKnots/kmk: keep multiple knots; defaults to True
-        :return: The combination curve.
-        """
-        Attribute = plugs['Attribute']
-        otherCurves = map(Elem, expand_tuples_lists(*otherCurves))
-        otherCurves = [curve if isinstance(curve, Attribute) \
-                           else curve.localOutput for curve in otherCurves]
-        allCurves = [self] + otherCurves
-        return reduce(
-            lambda x, y: x.join(y,
-                                blend=blend,
-                                keepMultipleKnots=keepMultipleKnots),
-            allCurves
-        )
+    # @short(blend='bl',
+    #        keepMultipleKnots='kmk',
+    #        reverse1='rv1',
+    #        reverse2='rv2')
+    # def join(self,
+    #          otherCurve, *,
+    #          blend:bool=False,
+    #          keepMultipleKnots=True,
+    #          reverse1:bool=False,
+    #          reverse2:bool=False):
+    #     """
+    #     :param otherCurve: the curve to connect to this one; if it's a shape,
+    #         the local output is used
+    #     :param blend/bl: use the 'blend' method rather than 'connect'; defaults
+    #         to False
+    #     :param keepMultipleKnots/kmk: keep multiple knots; defaults to True
+    #     :param reverse1: reverse this curve before connecting; defaults to False
+    #     :param reverse2: reverse the other curve before connecting; defaults to
+    #         False
+    #     :return: The combination curve.
+    #     """
+    #     otherCurve = Elem(otherCurve)
+    #     if not isinstance(otherCurve, plugs['Attribute']):
+    #         otherCurve = otherCurve.localOutput
+    #
+    #     node = nodes['AttachCurve'].createNode()
+    #     node.setAttrs(reverse1=reverse1,
+    #                   reverse2=reverse2,
+    #                   keepMultipleKnots=keepMultipleKnots,
+    #                   method=1 if blend else 0)
+    #     self >> node.attr('inputCurve1')
+    #     otherCurve >> node.attr('inputCurve2')
+    #     return node.attr('outputCurve')
 
     #--------------------------------------|    Rebuilds
+
+    @short(keepRange='kr')
+    def removeMultipleKnots(self, keepRange='Original'):
+        """
+        Removes multiple knots.
+
+        :param keepRange/kr: one of 0 ('0 to 1'), 1 ('Original'), 2
+            ('0 to # spans'); defaults to 1 ('Original')
+        """
+        node = nodes['RebuildCurve'].createNode()
+        node.attr('rebuildType').set(3)
+        self >> node.attr('inputCurve')
+        keepRange >> node.attr('keepRange')
+        return node.attr('outputCurve')
 
     @cache_dg_output
     def reverse(self):
@@ -573,9 +610,9 @@ class NurbsCurve(plugs['Geometry']):
         if useSegment:
             startPoint = self.pointAtCV(self.numCVs()-1)
             segment = self.createLine(startPoint, point)
-            return self.join(segment,
-                             keepMultipleKnots=not removeMultipleKnots,
-                             blend=blendSegment)
+            return self.attach(segment,
+                               keepMultipleKnots=not removeMultipleKnots,
+                               method='Blend' if blendSegment else 'Connect')
 
         node = nodes['ExtendCurve'].createNode()
         self >> node.attr('inputCurve1')
@@ -612,9 +649,9 @@ class NurbsCurve(plugs['Geometry']):
 
         if useSegment:
             segment = self.createLine(startPoint, endPoint)
-            return self.join(segment,
-                             keepMultipleKnots=not removeMultipleKnots,
-                             blend=blendSegment)
+            return self.attach(segment,
+                               keepmultipleKnots=not removeMultipleKnots,
+                               method='Blend' if blendSegment else 'Connect')
 
         node = nodes['ExtendCurve'].createNode()
         self >> node.attr('inputCurve1')
@@ -659,34 +696,79 @@ class NurbsCurve(plugs['Geometry']):
         """
         targetLength = self.length() - length
         param = self.paramAtLength(targetLength)
-        return self.cut(param, keep=0)[0]
+        return self.detach(param, keep=0)
 
-    def setLength(self, length, extensionVector):
-        nw = nodes['Network'].createNode()
-        targetLength = nw.addAttr('targetLength', k=True, i=length, l=True)
-        currentLen = nw.addAttr('currentLength',
-                                k=True, i=self.length(), l=True)
-        extensionVector = nw.addVectorAttr('extensionVector', k=True,
-                                           i=extensionVector, l=True)
-        tolerance = nw.addAttr('tolerance', k=True, dv=1e-6)
+    @short(extensionVector='ev',
+           extensionType='et',
+           removeMultipleKnots='rmk',
+           scalePivot='sp')
+    def setLength(self,
+                  length,
+                  extensionVector=None,
+                  extensionType='Extrapolate',
+                  scalePivot=None,
+                  removeMultipleKnots=False):
+        """
+        Uses combined extensions and retractions to force this curve's length.
 
-        extension = nw.addAttr('extension', k=True, l=True,
-                               i=(targetLength-currentLen).minClamp(tolerance))
+        :param length: the target length
+        :param extensionVector/ev: providing this is recommended, for
+            predictable and stable results
+        :param extensionType/et: ignored if *extensionVector* is provided; one
+            of 0 ('Linear'), 1 ('Circular') or 2 ('Extrapolate'); defaults to
+            2 ('Extrapolate')
+        :param removeMultipleKnots/rmk: used for the extension methods; remove
+            multiple knots after extending; defaults to False
+        """
+        targetLength = _mm.conform(length, (float, plugs['Number']))
+        currentLen = self.length()
 
-        retraction = nw.addAttr('retraction', k=True, l=True,
-                               i=(currentLen-targetLength).minClamp(tolerance))
+        if scalePivot is not None:
+            print("yah pivot!")
+            scalePivot = _mm.conform(scalePivot,
+                                     (data['Point'], plugs['Point']),
+                                     force=True)
 
-        extensionOutput = self.extendByVector(
-            extensionVector.normal() * extension,
-            useSegment=True
-        )
+            scaleRatio = targetLength / currentLen
+            scaleMatrix = _mm.createScaleMatrix(scaleRatio,
+                                                scaleRatio,
+                                                scaleRatio)
+            translateMatrix = scalePivot.asTranslateMatrix()
+            matrix = translateMatrix.inverse() * scaleMatrix * translateMatrix
+            return self * matrix
 
-        retractionOutput = self.retract(retraction)
+        tolerance = 1e-6
+
+        # Prepare retraction
+
+        retractionLength = (currentLen-targetLength).minClamp(tolerance)
+        retractionOutput = self.retract(retractionLength)
+
+        # Prepare extension
+
+        extensionLength = (targetLength-currentLen).minClamp(tolerance)
+
+        if extensionVector is None:
+            extensionOutput = self.extendByDistance(
+                extensionLength,
+                extensionType=extensionType,
+                removeMultipleKnots=removeMultipleKnots
+            )
+        else:
+            extensionVector = _mm.conform(extensionVector,
+                                          (plugs['Vector'], data['Vector']),
+                                          force=True)
+            extensionOutput = self.extendByVector(
+                extensionVector.normal() * extensionLength,
+                useSegment=True,
+                removeMultipleKnots=removeMultipleKnots
+            )
+
         T = type(self)
 
-        return extension.gt(tolerance).ifElse(
+        return (extensionLength > tolerance).ifElse(
             extensionOutput,
-            retraction.gt(tolerance).ifElse(
+            (retractionLength > tolerance).ifElse(
                 retractionOutput,
                 self,
                 T
@@ -722,7 +804,7 @@ class NurbsCurve(plugs['Geometry']):
         targetLen = liveLen.gatedClamp(nativeLen,
                                        squashyAttr,
                                        stretchyAttr)
-        return self.setLength(targetLen, extensionVector)
+        return self.setLength(targetLen, ev=extensionVector)
 
     #--------------------------------------|    Distributions
 
