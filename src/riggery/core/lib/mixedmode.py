@@ -51,6 +51,28 @@ def getPlug(item):
             pass
 
 @short(force='f')
+def getValue(item,
+             preferredTypes:Union[None, type, tuple[type], list[type]]=None,
+             force:bool=False):
+    if isinstance(item, str):
+        try:
+            item = _plugs['Attribute'](item)
+        except:
+            return item
+        if preferredTypes is not None:
+            item = conform(item, preferredTypes, force=force)
+        return item
+
+    if isinstance(item, _plugs['Attribute']):
+        if preferredTypes is not None:
+            item = conform(item, preferredTypes, force=force)
+        return item
+
+    if preferredTypes is not None:
+            item = conform(item, preferredTypes, force=force)
+    return item
+
+@short(force='f')
 def valueAndPlug(item,
                  preferredTypes:Union[None, type, tuple[type], list[type]]=None,
                  force:bool=False):
