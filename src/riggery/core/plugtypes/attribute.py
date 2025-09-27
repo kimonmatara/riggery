@@ -1171,7 +1171,8 @@ class Attribute(Elem, metaclass=AttributeMeta):
             self = self[0]
         return list(self.iterChildren())
 
-    def splitInput(self, quiet:bool=False):
+    @short(keepCompound='kc')
+    def splitInput(self, quiet:bool=False, keepCompound:bool=True):
         """
         If this is a compound with a parent-level connection, connects-up
         the children too.
@@ -1194,6 +1195,8 @@ class Attribute(Elem, metaclass=AttributeMeta):
                         pass
                     else:
                         raise exc
+                if not keepCompound:
+                    input // self
         else:
             if quiet:
                 return self
