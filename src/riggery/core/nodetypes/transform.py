@@ -345,6 +345,36 @@ class Transform(nodes['DagNode']):
         m.makeIdentity(str(self), *args, **kwargs)
         return self
 
+    @short(translate='t', rotate='r', scale='s', shear='sh')
+    def resetSRT(self, translate=None, rotate=None, scale=None, shear=None):
+        """
+        Resets translate, rotate, scale and shear on this transform node.
+
+        :param translate/t: reset translation
+        :param rotate/r: reset translation
+        :param scale/s: reset translation
+        :param shear/sh: reset translation
+        :return: Self.
+        """
+        translate, rotate, scale, shear = resolve_flags(
+            translate, rotate, scale, shear
+        )
+
+        for chanName, state, defaults in zip(
+                ('translate', 'rotate', 'scale', 'shear'),
+                (translate, rotate, scale, shear),
+                ([0, 0, 0], [0, 0, 0], [1, 1, 1], [0, 0, 0])
+        ):
+            if state:
+                plug = self.attr(chanName)
+                for child, default in zip(plug.children, defaults):
+                    try:
+                        child.set(default)
+                    except:
+                        continue
+
+        return self
+
     @short(translate='t',
            rotate='r',
            scale='s',
