@@ -222,14 +222,16 @@ class Vector(plugs['Tensor3Float']):
         :return: A normalized version of this vector.
         """
         if quiet:
-            return self._quietNormal()
-        return self._rawNormal()
+            out = self._quietNormal()
+        else:
+            out = self._rawNormal()
+        return out
 
     @cache_dg_output
     def _rawNormal(self):
         node = nodes['Normalize'].createNode()
         self >> node.attr('input')
-        return node.attr('output')
+        return node.attr('output').asType(type(self))
 
     @cache_dg_output
     def _quietNormal(self):
@@ -243,7 +245,7 @@ class Vector(plugs['Tensor3Float']):
                                              k=True).lock()
         mag = isZero.ifElse(fallbackMag, mag, type(mag))
         out = isZero.ifElse(fallbackVec, self / mag)
-        return out
+        return out.asType(type(self))
 
     def cross(self, other, normalize:bool=False):
         """
