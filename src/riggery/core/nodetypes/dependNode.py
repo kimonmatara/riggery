@@ -1,6 +1,7 @@
 from functools import cached_property
 import re
 from typing import Union, Optional, Generator, Iterable, Literal
+from contextlib import contextmanager
 import os
 
 import maya.cmds as m
@@ -1181,6 +1182,37 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-----------------------------------------|    Repr
 
+    @property
+    @contextmanager
+    def nameContext(self):
+        """
+        :return: A combined, overriding
+            :class:`~riggery.core.lib.namespaces.Namespace` and
+            :class:`~riggery.core.lib.names.Name` context manager to match this
+            node.
+        """
+        with self.namespaceContext as a, self.prefixContext as b:
+            yield (a, b)
+
+    @property
+    def prefixContext(self):
+        """
+        :return: An overriding :class:`~riggery.core.lib.names.Name` block to
+            match this node.
+        """
+        shortName = self.shortName(sns=True, sts=True)
+        if shortName:
+            return _n.Name(shortName, override=True)
+        return _n.Name(override=True)
+
+    @property
+    def namespaceContext(self):
+        """
+        :return: An overriding :class:`~riggery.core.lib.namespaces.Namespace`
+            block to match this node.
+        """
+        return self.namespace
+
     def hasUniqueName(self) -> bool:
         """
         :return: True if this node's name is unique.
@@ -1192,6 +1224,18 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         :return: The shortest unambiguous absolute name for this node.
         """
         return om.MFnDependencyNode(self.__apimobject__()).absoluteName()
+
+    @property
+    def prefix(self) -> str:
+        """
+        :return: Returns the short name of this node, excluding type suffix,
+            with a trailing underscore. Where this would yield an orphan
+            underscore, an empty string is returned instead.
+        """
+        sn = self.shortName(sns=True, sts=True)
+        if sn:
+            return sn + '_'
+        return '_'
 
     @short(stripNamespace='sns',
            stripTypeSuffix='sts')
