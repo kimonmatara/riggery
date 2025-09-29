@@ -3,18 +3,26 @@
 import re
 from string import ascii_uppercase
 
+def cap(s:str) -> str:
+    """
+    Capitalizes the first letter of *s*.
+    """
+    if s:
+        return s[0].upper() + s[1:]
+    return
+
 def uncap(s:str) -> str:
     """
     Uncapitalizes the first letter of *s*, but only if it's not followed by
     another capital letter.
     """
-    def replacer(x):
-        start, end = x.span()
-        orig = x.string[start:end]
-        return orig.lower()
+    if s:
+        def replacer(x):
+            start, end = x.span()
+            orig = x.string[start:end]
+            return orig.lower()
 
-    s = re.sub(r"(?<=^)[A-Z](?![A-Z])", replacer, s)
-
+        s = re.sub(r"(?<=^)[A-Z](?![A-Z])", replacer, s)
     return s
 
 def int_to_letter(number:int, start:int=0) -> str:
