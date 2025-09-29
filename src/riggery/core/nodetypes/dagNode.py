@@ -415,6 +415,12 @@ class DagNode(nodes['DependNode']):
 
     #-----------------------------------------|    Repr
 
+    def longName(self) -> str:
+        """
+        :return: This node's full DAG name.
+        """
+        return self.__apimdagpath__().fullPathName()
+
     def absoluteName(self, *, short:bool=False) -> str:
         """
         :param short: discard DAG information and just return the short name;
