@@ -81,7 +81,7 @@ class Matrix(data['Tensor']):
     #-------------------------------------------|    Testing
 
     @short(inheritsTransform='it', name='n')
-    def loc(self, name=None, /, inheritsTransform:bool=True):
+    def loc(self, name=None, *, inheritsTransform:bool=True):
         """
         :param name/n: an optional name for the locator; defaults to block
             naming
