@@ -1,7 +1,7 @@
 """Utilities for managing mathematical triads."""
 
 import math
-from typing import Union, Optional, Iterable
+from typing import Union, Optional, Iterable, Literal
 
 from riggery.general.functions import short
 from ..datatypes import __pool__ as _data
@@ -102,6 +102,40 @@ def unbevelTriad(p0, p1, p2, p3) -> tuple:
 
     return p0, midpoint, p3
 
+def getBoneVectorsFromTriadPoints(
+        triadPoints:list[list[float]]
+) -> tuple[list[float], list[float]]:
+    """
+    Convenience method. Returns two bone vectors from a list of three or four
+    (bevelled) triad points.
+    """
+    num = len(triadPoints)
+    if num == 3:
+        triadPoints = [_data['Point'](x) for x in triadPoints]
+        v0 = triadPoints[1] - triadPoints[0]
+        v1 = triadPoints[2] - triadPoints[1]
+    elif num == 4:
+        triadPoints = [_data['Point'](x) for x in triadPoints]
+        v0 = triadPoints[1] - triadPoints[0]
+        v1 = triadPoints[3] - triadPoints[2]
+    else:
+        raise ValueError("Expected three or four (bevelled) triad points")
+    return v0, v1
+
+@short(inlineTolerance='tol')
+def boneVectorsAreInline(v0, v1,
+                         inlineTolerance:float=INLINE_TOLERANCE) -> bool:
+    """
+    :param v0: the top triad bone vector
+    :param v0: the bottom triad bone vector
+    :param inlineTolerance/tol: the dot product value below which the triad will
+        be considered to be in-line; defaults to the global INLINE_TOLERANCE
+        constant
+    :return: True if the triad is in-line, otherwise False.
+    """
+    v0, v1 = map(_data['Vector'], (v0, v1))
+    return v0.dot(v1, normalize=True) > 1.0 - inlineTolerance
+
 @short(inlineTolerance='tol')
 def triadIsInline(p0, p1, p2, inlineTolerance:float=INLINE_TOLERANCE) -> bool:
     """
@@ -116,7 +150,7 @@ def triadIsInline(p0, p1, p2, inlineTolerance:float=INLINE_TOLERANCE) -> bool:
     p0, p1, p2 = map(_data['Point'], (p0, p1, p2))
     v0 = p1 - p0
     v1 = p2 - p1
-    return v0.dot(v1, normalize=True) > 1.0 - inlineTolerance
+    return boneVectorsAreInline(v0, v1, inlineTolerance)
 
 @short(curlVector='cv',
        poleVector='pv',
@@ -280,3 +314,72 @@ def getTriadInfo(points, *,
             'polePoint': polePoint,
             'chordVector': chordVector,
             'vectors': (v0, v1)}
+
+def getTriadMatrices(
+        triadPoints:list[list[float]],
+        boneAxis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+        curlAxis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+        curlVector:Optional[list[float]]=None, *,
+        bevel:Optional[float]=None,
+        inlineTolerance:float=INLINE_TOLERANCE
+) -> list[list[float]]:
+    """
+    Generates construction matrices for a triad chain.
+
+    :param triadPoints: three or four (bevelled) triad points
+    :param boneAxis: one of 'x', 'y', 'z', '-x', '-y', '-z'
+    :param curlAxis: one of 'x', 'y', 'z', '-x', '-y', '-z'
+    :param curlVector: this *will* be required if the points are in-line;
+        defaults to None
+    :param bevel: ignored if there are already four *triadPoints*; an optional
+        length to split the middle point into two; defaults to None
+    :param inlineTolerance: the dot product value below which the triad will
+        be considered to be in-line; defaults to the global INLINE_TOLERANCE
+        constant
+    :return: World-space construction matrices for a triad chain.
+    """
+    num = len(triadPoints)
+
+    if num == 3:
+        if bevel is None:
+            triadPoints = [_data['Point'](x) for x in triadPoints]
+            isBevelled = False
+        else:
+            triadPoints = bevelTriad(*triadPoints, bevel)
+            isBevelled = True
+    elif num == 4:
+        triadPoints = [_data['Point'](x) for x in triadPoints]
+        isBevelled = False
+    else:
+        raise ValueError("Expected three or four (bevelled) triad points")
+
+    triadV0, triadV1 = getBoneVectorsFromTriadPoints(triadPoints)
+    isInline = boneVectorsAreInline(triadV0, triadV1, inlineTolerance)
+
+    if isInline:
+        if curlVector is None:
+            raise TriadInsufficientHintsError(
+                "Insufficient hints for in-line triad"
+            )
+    else:
+        curlVector = triadV0.cross(triadV1)
+
+    boneVectors = [(nextPoint - thisPoint) for thisPoint, nextPoint in zip(
+        triadPoints, triadPoints[1:]
+    )]
+    boneVectors.append(boneVectors[-1])
+
+    matrices = [
+        _mm.createOrthoMatrix(
+            boneAxis, boneVector,
+            curlAxis, curlVector,
+            w=point
+        ).pick(t=True, r=True) for boneVector, point in zip(boneVectors,
+                                                            triadPoints[:-1])
+    ]
+
+    lastMatrix = matrices[-1].copy()
+    lastMatrix.w = triadPoints[-1]
+    matrices.append(lastMatrix)
+
+    return matrices
