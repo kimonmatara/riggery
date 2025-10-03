@@ -745,12 +745,16 @@ class Transform(nodes['DagNode']):
 
     @short(shapeScale='ss',
            shapeColor='sc',
-           shapeAxisRemap='sar')
+           shapeAxisRemap='sar',
+           preserveVisInput='pvi',
+           preserveOverride='po')
     def setControlShape(self,
                         libraryKey:str, *,
                         shapeScale=None,
                         shapeColor:Union[None, int, str]=None,
-                        shapeAxisRemap=None):
+                        shapeAxisRemap=None,
+                        preserveVisInput:bool=False,
+                        preserveOverride:bool=False):
         """
         :param libraryKey: the name of the shape library entry
         :param shapeScale/ss: an optional scaling factor for the control shape;
@@ -766,7 +770,9 @@ class Transform(nodes['DagNode']):
         out = _cs.CONTROLSHAPES.apply(libraryKey,
                                       self,
                                       shapeScale=shapeScale,
-                                      shapeAxisRemap=shapeAxisRemap)
+                                      shapeAxisRemap=shapeAxisRemap,
+                                      preserveOverride=preserveOverride,
+                                      preserveVisInput=preserveVisInput)
         if shapeColor is not None:
             self.controlColor = shapeColor
         return out
