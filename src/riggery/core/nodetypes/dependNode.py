@@ -261,7 +261,10 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         dagPath, mObject = _s2a.getNodeBundle(path)
 
-        T = cls.__pool__[_ni.getKeyFromMObject(mObject)]
+        if cls is DependNode:
+            T = cls.__pool__[_ni.getKeyFromMObject(mObject)]
+        else:
+            T = cls
         apiObjects = {}
         if dagPath is None:
             apiObjects['MObject'] = mObject
@@ -271,7 +274,10 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     @classmethod
     def fromMObject(cls, obj: om.MObject):
-        T = cls.__pool__[_ni.getKeyFromMObject(obj)]
+        if cls is DependNode:
+            T = cls.__pool__[_ni.getKeyFromMObject(obj)]
+        else:
+            T = cls
         apiObjects = {}
         if obj.hasFn(om.MFn.kDagNode):
             apiObjects['MDagPath'] = om.MFnDagNode(obj).getPath()
@@ -1235,7 +1241,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         sn = self.shortName(sns=True, sts=True)
         if sn:
             return sn + '_'
-        return '_'
+        return ''
 
     @short(stripNamespace='sns',
            stripTypeSuffix='sts')
