@@ -42,6 +42,24 @@ def getPathFromMObject(mObject:om.MObject,
         classNames=classNames
     )
 
+def getMObjectNodeType(mobj:om.MObject) -> str:
+    return om.MFnDependencyNode(mobj).typeName
+
+def mObjectIsOfNodeType(mobj:om.MObject,
+                        nodeType:str,
+                        exact:bool=False) -> bool:
+    """
+    :param mobj: the dependency node MObject to inspect
+    :param nodeType: the node type to check against, e.g. 'joint'
+    :param exact: don't match types that derive from *nodeType*; defaults to
+        False
+    :return: True if the node type matches, otherwise False.
+    """
+    fn = om.MFnDependencyNode(mobj)
+    if exact:
+        return fn.typeId == om.MNodeClass(nodeType).typeId
+    return nodeType in m.nodeType(fn.typeName, inherited=True, isTypeName=True)
+
 ABSTRACT_PAT = re.compile(r"^(.*?) \(abstract\)$")
 
 def _start():
