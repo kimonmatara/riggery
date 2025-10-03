@@ -1,6 +1,6 @@
 """Tools for automatic node capture / collection."""
 
-from typing import Generator, Union
+from typing import Generator, Union, Optional, Callable
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -8,6 +8,8 @@ import maya.cmds as m
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 import riggery.internal.nodeinfo as _ni
+import riggery.internal.api2str as _a2s
+from ..lib import namespaces as _ns
 from ..nodetypes import __pool__ as _nodes
 
 
@@ -18,20 +20,28 @@ class NodeTracker:
 
     #-------------------------------------|    Inst
 
-    def __init__(self, shallow:bool=False, predicate=None):
+    def __init__(self, predicate=None):
         """
-        :param shallow: don't include nodes contributed by child node trackers;
-            defaults to False
         :param predicate: an optional callable, that will receive an MObject
             for a node, and should return True if the node should be tracked or
             False if it shouldn't; defaults to None
         """
         self._nodes = []
-        self._shallow = shallow
+        self.predicate = predicate
 
+    def getPredicate(self):
+        return self._predicate
+
+    def setPredicate(self, predicate:Optional[Callable]):
         if predicate is None:
-            predicate = lambda mObject: True
-        self._predicate = predicate
+            self._predicate = lambda _: True
+        else:
+            self._predicate = predicate
+
+    def clearPredicate(self):
+        self.setPredicate(None)
+
+    predicate = property(getPredicate, setPredicate, clearPredicate)
 
     #-------------------------------------|    Context
 
@@ -48,34 +58,35 @@ class NodeTracker:
         if len(NodeTracker.__stack__) == 1:
             self._stopCallbacks()
 
-        NodeTracker.__stack__.remove(self)
+        del(NodeTracker.__stack__[-1])
 
         return False
 
     #-------------------------------------|    Add / remove methods
 
-    def _addNode(self, node:om.MObject):
-        if self._predicate(node):
+    def _addNode(self, node:om.MObject) -> bool:
+        if self.predicate(node):
             self._nodes.append(node)
+            return True
+        return False
 
-    def _removeNode(self, node:om.MObject):
-        if self._predicate(node):
+    def _removeNode(self, node:om.MObject) -> bool:
+        try:
             self._nodes.remove(node)
+            return True
+        except ValueError:
+            return False
 
     #-------------------------------------|    Callbacks
 
     @classmethod
     def _nodeAdded(cls, node:om.MObject, *args):
-        for i, tracker in enumerate(NodeTracker.__stack__[::-1]):
-            if tracker._shallow and i > 0:
-                break
+        for tracker in reversed(NodeTracker.__stack__):
             tracker._addNode(node)
 
     @classmethod
     def _nodeRemoved(cls, node:om.MObject, *args):
-        for i, tracker in enumerate(NodeTracker.__stack__[::-1]):
-            if tracker._shallow and i > 0:
-                break
+        for tracker in reversed(NodeTracker.__stack__):
             tracker._removeNode(node)
 
     @classmethod
