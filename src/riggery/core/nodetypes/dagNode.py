@@ -110,7 +110,10 @@ class DagNode(nodes['DependNode']):
     @classmethod
     def fromMDagPath(cls, dagPath:om.MDagPath):
         key = _ni.getKeyFromMObject(dagPath.node())
-        T = cls.__pool__[key]
+        if cls is DagNode:
+            T = cls.__pool__[key]
+        else:
+            T = cls
         apiObjects = {'MDagPath': dagPath}
         return cls._constructInst(T, apiObjects)
 
