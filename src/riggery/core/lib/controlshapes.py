@@ -183,31 +183,59 @@ class ControlShapesLibrary(metaclass=SingletonMeta):
     #-------------------------------------|    Apply
 
     @short(shapeAxisRemap='sar',
-           shapeScale='ss')
+           shapeScale='ss',
+           preserveVisInput='pvi',
+           preserveOverride='po')
     def apply(self,
               key:str,
               transform,
               shapeScale=None,
               add=False,
-              shapeAxisRemap=None):
-        """
-        :param key: the shape entry name
-        :param transform: the transform to apply the entry shapes to
-        :param shapeScale: an optional scaling factor
-        :param add: don't replace existing curve shapes under *transform*;
-            defaults to False
-        :param shapeAxisRemap/sar: if provided, should be two or four letter
-            axes, defining pairwise remaps for the control shape; defaults to
-            None
-        :return: The generated shape(s).
-        """
-        transform = Elem(transform)
-        if not add:
-            existing = transform.getShapes(intermediate=False)
-            for shape in existing:
-                m.delete(str(shape))
+              shapeAxisRemap=None,
+              preserveVisInput=False,
+              preserveOverride=False):
+
+        # Conform args
 
         entry = self[key]
+        transform = Elem(transform)
+
+        # Gather info
+
+        existingShapes = transform.getShapes(intermediate=False,
+                                             type=('locator',
+                                                   'nurbsCurve',
+                                                   'bezierCurve'))
+
+        info = {}
+
+        if preserveVisInput:
+            for shape in existingShapes:
+                visInputs = shape.attr('v').inputs(plugs=True)
+                if visInputs:
+                    info['v'] = visInputs[0]
+                    break
+
+        if preserveOverride:
+            for shape in existingShapes:
+                inputs = shape.attr('overrideEnabled').inputs(plugs=True)
+                if inputs:
+                    info['overrideEnabled'] = inputs[0]
+                else:
+                    value = shape.attr('overrideEnabled')()
+                    if value:
+                        info['overrideEnabled'] = True
+
+            for shape in existingShapes:
+                inputs = shape.attr('overrideColor').inputs(plugs=True)
+                if inputs:
+                    info['overrideColor'] = inputs[0]
+                else:
+                    value = shape.attr('overrideColor')()
+                    if value > 0:
+                        info['overrideColor'] = value
+
+        # Add new shapes
 
         if shapeAxisRemap is not None:
             num = len(shapeAxisRemap)
@@ -235,13 +263,33 @@ class ControlShapesLibrary(metaclass=SingletonMeta):
 
         for macro, shape in zip(entry, out):
             try:
-                overrideColor = macro['overrideColor']
+                info['overrideColor'] >> shape.attr('overrideColor')
+                hasColorOverride = True
             except KeyError:
-                continue
-            shape.attr('overrideEnabled').set(True)
-            shape.attr('overrideColor').set(overrideColor)
+                try:
+                    shape.attr('overrideColor').set(macro['overrideColor'])
+                    hasColorOverride = True
+                except KeyError:
+                    hasColorOverride = False
 
+            try:
+                info['overrideEnabled'] >> shape.attr('overrideEnabled')
+            except KeyError:
+                if hasColorOverride:
+                    shape.attr('overrideEnabled').set(True)
+
+            try:
+                info['v'] >> shape.attr('v')
+            except KeyError:
+                pass
+
+        if not add:
+            if existingShapes:
+                m.delete([str(x) for x in existingShapes])
+
+        transform.conformShapeNames()
         return out
+
 
     def test(self, *keys):
         """
