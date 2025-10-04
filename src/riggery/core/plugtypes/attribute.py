@@ -453,7 +453,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param outputs/o: disconnect outputs
         :return: self
         """
-        inputs = outputs = resolve_flags(inputs, outputs)
+        inputs, outputs = resolve_flags(inputs, outputs)
 
         if self.isMulti():
             thesePlugs = list(self)
