@@ -53,32 +53,6 @@ class Elem(metaclass=ElemMeta):
         inst.__init__()
         return inst
 
-    # #-----------------------------------------|    Authoring
-    #
-    # @classmethod
-    # def _createStubContent(cls):
-    #     raise NotImplementedError(
-    #         f"No stub content generation implemented for '{cls.__name__}'"
-    #     )
-    #
-    # @classmethod
-    # def _getStubFilePath(cls) -> str:
-    #     raise NotImplementedError
-    #
-    # @classmethod
-    # def createStub(cls) -> str:
-    #     """
-    #     Creates a starter module for this class at the appropriate location,
-    #     and returns the file path.
-    #     """
-    #     filepath = cls._getStubFilePath()
-    #     if os.path.isfile(filepath):
-    #         raise RuntimeError(f"File already exists: {filepath}")
-    #     content = cls._createStubContent()
-    #     with open(filepath, 'w') as f:
-    #         f.write(content)
-    #     return filepath
-
     #-----------------------------------------|    Repr stubs
 
     def __bool__(self):
