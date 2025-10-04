@@ -1225,9 +1225,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         return om.MFnDependencyNode(self.__apimobject__()).hasUniqueName()
 
-    def absoluteName(self) -> str:
+    def absoluteName(self, **kwargs) -> str:
         """
-        :return: The shortest unambiguous absolute name for this node.
+        :param \*\*kwargs: these are discarded and are here for parity with
+            the namesake method on ``DagNode``
+        :return: A full name for this node, including absolute namespace
+            information.
         """
         return om.MFnDependencyNode(self.__apimobject__()).absoluteName()
 
@@ -1271,9 +1274,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         :return: The namespace containing this node, in absolute form.
         """
-        return _ns.Namespace(
-            om.MFnDependencyNode(self.__apimobject__()).namespace
-        )
+        absName = self.absoluteName(short=True)
+        elems = absName.split(':')[:-1]
+        out = ':'.join(elems)
+        if not out:
+            out = ':'
+        return _ns.Namespace(out)
 
     def setNamespace(self, namespace):
         """
