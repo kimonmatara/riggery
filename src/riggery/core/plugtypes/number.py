@@ -196,7 +196,12 @@ class Number(__pool__['Math']):
 
         return NotImplemented
 
-    def __floordiv__(self, other):
+    def floorDiv(self, other):
+        """
+        Here as a method rather than as an override for `__floordiv__`, to
+        preserve parity with PyMEL, which uses `__floordiv__` for
+        disconnections.
+        """
         return (self / other).trunc()
 
     #-----------------------------------------|    Pow
