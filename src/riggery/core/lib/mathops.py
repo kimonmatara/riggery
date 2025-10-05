@@ -372,6 +372,114 @@ def getLengthFromPoints(points):
 
     return sum(lengths)
 
+def calcMatrixChainBaseVectors(
+        points,
+        refVector
+) -> tuple[list[tuple[list[float], list[float]]], bool]:
+    """
+    Returns bone vector, up vector pairs for a chain. The last member will be
+    a duplicate of the penultimate member.
+
+    :param points: the chain points, including tip
+    :param refVector: a reference curl vector; if the points are in-line, this
+        will be used wholesale; otherwise, it will be used to bias cross product
+        vectors
+
+    :raises ValueError: Need two or more points.
+    :return: A tuple comprising two members. The first member will be a list of
+        (bone vector, up vector) pairs, the last of which will be a duplicate.
+        The second member will be True if the chain was in-line, otherwise
+        False.
+    """
+    #---------------------|    Wrangle args
+
+    points = [data['Point'](point) for point in points]
+    refVector = data['Vector'](refVector)
+
+    #---------------------|    Prep
+
+    numPoints = len(points)
+
+    if numPoints < 2:
+        raise ValueError("need two or more points")
+
+    vectors = [(nextPoint-thisPoint)
+               for thisPoint, nextPoint in zip(points, points[1:])]
+    ratios = getLengthRatios(points)
+
+    #---------------------|    Calc cross product keys
+
+    perRatioCrosses = {}
+    lastCross = None
+
+    for i, (thisVector, nextVector) \
+        in enumerate(zip(vectors, vectors[1:])):
+        cross = thisVector.cross(nextVector)
+
+        mag = cross.length()
+
+        if mag < TOLERANCE:
+            continue
+
+        # Bias towards ref vec
+        cross = cross.flipIfCloserTo(refVector)
+
+        # Deflip
+        if lastCross is not None:
+            cross = cross.flipIfCloserTo(lastCross)
+
+        perRatioCrosses[ratios[i+1]] = lastCross = cross
+
+    #---------------------|    Resolve up vectors
+
+    inline = False
+
+    numCrosses = len(perRatioCrosses)
+
+    if numCrosses == 0:
+        upVectors = [refVector] * numPoints
+        inline = True
+
+    elif numCrosses < numPoints-2:
+        interp = Interpolator.fromDict(perRatioCrosses)
+        upVectors = [data['Vector'](interp[ratio])
+                     for ratio in ratios]
+
+    else:
+        upVectors = list(perRatioCrosses.values())
+        upVectors.insert(0, upVectors[0])
+        upVectors.append(upVectors[-1])
+
+    #---------------------|    Zip and return
+
+    vectors.append(vectors[-1]) # tip
+    return list(zip(vectors, upVectors)), inline
+
+def calcChainMatrices(
+        points:list[list[float]],
+        refVector:list[float],
+        boneAxis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+        curlAxis:Literal['x', 'y', 'z', '-x', '-y', '-z']
+) -> list[list[float]]:
+    """
+    :param points: the chain points, including tip
+    :param refVector: a reference curl vector; if the points are in-line, this
+        will be used wholesale; otherwise, it will be used to bias cross product
+        vectors
+    :raises ValueError: Need two or more points.
+    :return: A list of matrices suitable for drawing, say, joint chains.
+    """
+    boneVectors, upVectors = zip(
+        *calcMatrixChainBaseVectors(points, refVector)[0]
+    )
+    Matrix = data['Matrix']
+    return [Matrix.createOrtho(boneAxis, boneVector,
+                               curlAxis, upVector,
+                               w=point).pick(t=True, r=True)
+            for boneVector, upVector, point in zip(boneVectors,
+                                                   upVectors,
+                                                   points)]
+
 # Tangent length to get a quadrant of a unit circle
 BEZIER_CIRCLE_CONSTANT = 0.55228474983079
 

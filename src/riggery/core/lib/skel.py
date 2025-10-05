@@ -184,7 +184,7 @@ class Chain(list):
         """
         Point, Matrix = data['Point'], data['Matrix']
         points = list(map(Point, points))
-        baseVectors, isInline = cls._calcBaseVectors(points, upVector)
+        baseVectors, isInline = _mo.calcMatrixChainBaseVectors(points, upVector)
 
         matrices = [
             Matrix.createOrtho(
@@ -233,74 +233,6 @@ class Chain(list):
 
     #-------------------------------------------|    Orientation
 
-    @classmethod
-    def _calcBaseVectors(cls, points, refVector) -> tuple[list, bool]:
-        """
-        Internal. Checks / casting are not performed. Returns a tuple with
-        two members: A zipped list of down vector, up vector pairs, and a
-        bool which will be True if the chain is in-line (and therefore the
-        ref vector was used throughout).
-        """
-        #---------------------|    Prep
-
-        points = list(points)
-        numPoints = len(points)
-        if numPoints < 2:
-            raise NotImplementedError("need two or more points")
-
-        Point = data['Point']
-        Vector = data['Vector']
-
-        points = [Point(point) for point in points]
-        vectors = [(nextPoint-thisPoint) \
-                   for thisPoint, nextPoint in zip(points, points[1:])]
-        refVector = Vector(refVector)
-        ratios = _mo.getLengthRatios(points)
-
-        #---------------------|    Calc cross product keys
-
-        perRatioCrosses = {}
-        lastCross = None
-
-        for i, (thisVector, nextVector) \
-            in enumerate(zip(vectors, vectors[1:])):
-            cross = thisVector.cross(nextVector)
-
-            mag = cross.length()
-
-            if mag < _mo.TOLERANCE:
-                continue
-
-            # Bias towards ref vec
-            cross = cross.flipIfCloserTo(refVector)
-
-            # Deflip
-            if lastCross is not None:
-                cross = cross.flipIfCloserTo(lastCross)
-
-            perRatioCrosses[ratios[i+1]] = lastCross = cross
-
-        #---------------------|    Resolve up vectors
-
-        inline = False
-
-        numCrosses = len(perRatioCrosses)
-        if numCrosses == 0:
-            upVectors = [refVector] * numPoints
-            inline = True
-        elif numCrosses < numPoints-2:
-            interp = _mo.Interpolator.fromDict(perRatioCrosses)
-            upVectors = [Vector(interp[ratio]) for ratio in ratios]
-        else:
-            upVectors = list(perRatioCrosses.values())
-            upVectors.insert(0, upVectors[0])
-            upVectors.append(upVectors[-1])
-
-        #---------------------|    Zip and return
-
-        vectors.append(vectors[-1]) # tip
-        return list(zip(vectors, upVectors)), inline
-
     def orient(self, boneAxis, curlAxis, refVector, tipMatrix=None):
         """
         Orients this chain. If this chain has defined curvature, then any up
@@ -317,7 +249,8 @@ class Chain(list):
         num = len(self)
         if num < 2:
             raise RuntimeError("not enough joints")
-        baseVectors, isInline = self._calcBaseVectors(self.points, refVector)
+        baseVectors, isInline = _mo.calcMatrixChainBaseVectors(self.points,
+                                                               refVector)
         self.explode()
 
         Matrix = data['Matrix']
