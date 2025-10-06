@@ -107,6 +107,8 @@ class Vector(plugs['Tensor3Float']):
         node.attr('angle') >> node2.attr('inputAngle')
         return node2.attr('outputQuat')
 
+    rotateTo = quatTo
+
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asRotateMatrix()
 
