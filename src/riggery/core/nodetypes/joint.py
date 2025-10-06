@@ -145,10 +145,11 @@ class Joint(nodes['Transform']):
 
     #------------------------------------------|    Skel
 
-    def chainFromHere(self, end=None):
-        if end is None:
-            return _sk.Chain.fromStart(self)
-        return _sk.Chain.fromStartEnd(self, end)
+    def chainFromHere(self):
+        return _sk.Chain.fromStart(self)
+
+    def chainTo(self, endJoint):
+        return _sk.Chain.fromStartEnd(self, endJoint)
 
     def boneFromHere(self):
         children = list(self.iterChildren(type='joint'))
