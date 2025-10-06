@@ -276,9 +276,10 @@ class Chain(list):
         for joint in self:
             yield joint.worldPosition()
 
-    @property
-    def ratios(self) -> list[float]:
+    def getRatios(self) -> list[float]:
         return _mo.getLengthRatios(self.points)
+
+    ratios = property(fget=getRatios)
 
     def pointAtRatio(self, atRatio:float):
         """
@@ -622,6 +623,31 @@ class Chain(list):
     #                    splitsPerPair:Iterable[int]):
     #     raise NotImplementedError
 
+    def getClosestJointsOn(self, otherChain, indices:bool=False) -> list:
+        out = []
+
+        otherPoints = list(zip(otherChain,
+                               [x.worldPosition() for x in otherChain]))
+
+        for i, thisJoint in enumerate(self):
+            thisPoint = thisJoint.worldPosition()
+            bestMatch = None
+            bestDistance = None
+
+            for ii, (otherJoint, otherPoint) in enumerate(otherPoints):
+                vector = otherPoint - thisPoint
+                distance = vector.length()
+                if ii == 0 or distance < bestDistance:
+                    bestMatch = ii
+                    bestDistance = distance
+
+            out.append(bestMatch)
+
+        if indices:
+            return out
+
+        return [otherChain[i] for i in indices]
+
     #-------------------------------------------|    Transformations
 
     def reset(self):
@@ -708,13 +734,32 @@ class Chain(list):
                 del(joint.name)
         return self
 
+    #-------------------------------------------|    Instance copying
+
+    def copy(self):
+        return type(self)(self)
+
     #-------------------------------------------|    Instance access
+
+    def rebracket(self):
+        """
+        Updates this chain's matrices by tracing a path between its first and
+        last joints.
+        """
+        if len(self) > 1:
+            self[:] = self.fromStartEnd(self[0], self[-1])
+        return self
 
     def __getitem__(self, item):
         out = super().__getitem__(item)
         if isinstance(item, slice):
             return type(self)(out)
         return out
+
+    @property
+    def bones(self) -> Generator:
+        for thisJoint, nextJoint in zip(self, self[1:]):
+            yield Chain([thisJoint, nextJoint])
 
     #-------------------------------------------|    Instance editing
 
