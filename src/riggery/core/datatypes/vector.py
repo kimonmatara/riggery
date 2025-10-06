@@ -103,6 +103,8 @@ class Vector(__pool__['Tensor3']):
             self.api.rotateTo(om.MVector(otherVector))
         )
 
+    rotateTo = quatTo
+
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asMatrix()
 
