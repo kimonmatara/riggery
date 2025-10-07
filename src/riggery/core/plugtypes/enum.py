@@ -61,7 +61,20 @@ class Enum(__pool__['Int']):
         DagNode = nodes['DagNode']
 
         labels = list(labels)
-        groups = [[DagNode(x).attr('v') for x in group] for group in groups]
+
+        _groups = []
+        for group in groups:
+            _group = []
+            for item in group:
+                try:
+                    plug = DagNode(item).attr('v')
+                except:
+                    plug = __pool__['Attribute'](item)
+                _group.append(plug)
+            _groups.append(_group)
+        groups = _groups
+
+        # groups = [[DagNode(x).attr('v') for x in group] for group in groups]
 
         allPlugs = []
 
