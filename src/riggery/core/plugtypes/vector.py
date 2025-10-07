@@ -61,6 +61,61 @@ class Vector(plugs['Tensor3Float']):
 
     #-----------------------------------------|    Vector ops
 
+    def woundMiddle(self, other, normal):
+        """
+        Constructs a 360-range middle vector between *self* and *other*. The
+        output vector will be normalized. Good for things like elbows.
+
+        :param other: the other vector
+        :param normal: the winding clock normal
+        :return: The middle vector.
+        """
+
+        #---------------------------------|    Prep inputs
+
+        other = _mm.conform(other,
+                            (data['Vector'], plugs['Vector']),
+                            force=True)
+
+        normal = _mm.conform(normal,
+                             (data['Vector'], plugs['Vector']),
+                             force=True)
+
+        normal = normal.normal()
+
+        self = self.rejectFrom(normal).normal()
+        other = other.rejectFrom(normal).normal()
+
+        #---------------------------------|    Get alignment info
+
+        dot = self.dot(other)
+        dotIsNegative = dot < 0
+        absDot = dotIsNegative.ifElse(-dot, dot, plugs['Float'])
+        tolerance = 1e-6
+        absAligned = absDot > (1.0 - tolerance)
+        backAligned = absAligned & dotIsNegative
+
+        #---------------------------------|    Check if wind is flipped
+
+        safeSecondTerm = absAligned.ifElse(normal, other)
+        cross = self.cross(safeSecondTerm, normalize=True)
+        flippedWind = cross.dot(normal) < 0.0
+
+        #---------------------------------|    Cook alternative solutions
+
+        basicSolution = self + other
+        flippedSolution = -basicSolution
+        backAlignedSolution = normal.cross(self)
+
+        #---------------------------------|    Resolve
+
+        return backAligned.ifElse(
+            backAlignedSolution,
+            flippedWind.ifElse(flippedSolution,
+                               basicSolution),
+            plugs['Vector']
+        ).normal()
+
     def blend(self,
               other,
               weight=0.5,
