@@ -178,7 +178,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param force/f: replace any existing connection; defaults to False
         :return: self
         """
-        self._connect(Attribute(output), self, force)
+        self._connect(Attribute(input), self, force)
         return self
 
     def disconnectInput(self, input):
