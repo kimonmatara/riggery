@@ -1,4 +1,4 @@
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Optional
 import maya.api.OpenMaya as om
 
 from ..plugtypes import __pool__ as plugs
@@ -80,3 +80,26 @@ class NurbsSurface(plugs['Geometry']):
         self >> node.attr('inputSurface1')
         other >> node.attr('inputSurface2')
         return node.attr('outputSurface')
+
+    @short(keep='k')
+    def detach(self,
+               parameter,
+               direction=1,
+               keep:Optional[Iterable]=None) -> list:
+
+        node = nodes['DetachSurface'].createNode()
+        node.attr('direction').set(direction)
+        self >> node.attr('inputSurface')
+
+        for i, parameter in enumerate(expand_tuples_lists(parameter)):
+            parameter >> node.attr('parameter')[i]
+
+        node.attr('outputSurface').evaluate()
+
+        if keep is None:
+            return list(node.attr('outputSurface'))
+
+        if isinstance(keep, (tuple, list)):
+            return [node.attr('outputSurface')[i] for i in keep]
+
+        return node.attr('outputSurface')[keep]
