@@ -67,9 +67,9 @@ class Enum(__pool__['Int']):
             _group = []
             for item in group:
                 try:
-                    plug = DagNode(item).attr('v')
-                except:
                     plug = __pool__['Attribute'](item)
+                except:
+                    plug = DagNode(item).attr('v')
                 _group.append(plug)
             _groups.append(_group)
         groups = _groups
