@@ -268,13 +268,12 @@ class Chain(list):
 
     #-------------------------------------------|    Sampling
 
-    @property
-    def points(self) -> Generator:
-        """
-        Yields world-space joint positions.
-        """
+    @short(plug='p')
+    def getPoints(self, plug=False) -> Generator:
         for joint in self:
-            yield joint.worldPosition()
+            yield joint.worldPosition(plug=plug)
+
+    points = property(fget=getPoints)
 
     def getRatios(self) -> list[float]:
         return _mo.getLengthRatios(self.points)
