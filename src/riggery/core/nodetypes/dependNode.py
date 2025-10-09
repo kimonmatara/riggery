@@ -741,7 +741,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         Deletes the specified dynamic attribute from this node.
         """
-        m.deleteAttr(f"{self}.{attrName}")
+        try:
+            m.deleteAttr(f"{self}.{attrName}")
+        except ValueError as exc:
+            if 'No object matches name' in str(exc):
+                raise AttributeError(attrName)
+            raise exc
         return self
 
     def reorderAttrs(self, attrNames:list[str]) -> list['Attribute']:
