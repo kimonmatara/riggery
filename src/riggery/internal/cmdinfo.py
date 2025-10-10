@@ -27,7 +27,7 @@ def getFlagInfo(cmdName:str) -> list[dict]:
             elems = re.findall(pat, line)
 
             if elems:
-                elems = [re.match(r"^\-(.*)$", e).groups()[0] for e in elems]
+                elems = [re.match(r"^-(.*)$", e).groups()[0] for e in elems]
 
             num = len(elems)
             if num > 0:
