@@ -66,7 +66,7 @@ class ClassPool(metaclass=ClassPoolMeta):
 
     def _checkKey(self, key):
         if not key[0].isupper():
-            raise CpInvalidKeyError(f"Invalid class name: '{key}'")
+            raise CpInvalidKeyError(key)
 
     def _getClassModule(self, modname:str):
         try:
@@ -98,11 +98,10 @@ class ClassPool(metaclass=ClassPoolMeta):
         raise NotImplementedError
 
     def _getClass(self, key:str):
-        self._checkKey(key)
-
         try:
             cls = self._cache[key]
         except KeyError:
+            self._checkKey(key)
             cls = self._loadClass(key)
 
             if cls is None:
