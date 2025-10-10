@@ -19,7 +19,7 @@ from .nativeunits import nativeunits
 #-----------------------------------------|    BASELINE TOOLS
 #-----------------------------------------|
 
-def isSingleVector(item) -> bool:
+def isSingleVector(item:Any) -> bool:
     """
     :return: True if *item* represents a single vector value or plug.
     """
@@ -73,9 +73,9 @@ def getValue(item,
     return item
 
 @short(force='f')
-def valueAndPlug(item,
+def valueAndPlug(item:Any,
                  preferredTypes:Union[None, type, tuple[type], list[type]]=None,
-                 force:bool=False):
+                 force:bool=False) -> tuple[Any, Optional['_nodes.Attribute']]:
     """
     :param item: the item to examine
     :param preferredTypes: one or more preferred plug or data types to cast to;
