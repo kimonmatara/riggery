@@ -126,8 +126,13 @@ class ClassPool(metaclass=ClassPoolMeta):
         access attempts.
         """
         modsFromClasses = [cls.__module__ for cls in self._cache.values()]
-        modsToDelete = [mod for mod in modsFromClasses
-                        if mod.startswith(self.__pool_package__)]
+        modsToDelete = set([mod for mod in modsFromClasses
+                        if mod.startswith(self.__pool_package__)])
+
+        for modName in sys.modules:
+            if modName.startswith(self.__pool_package__) \
+                    and modName != self.__pool_package__:
+                modsToDelete.add(modName)
 
         for mod in modsToDelete:
             try:
