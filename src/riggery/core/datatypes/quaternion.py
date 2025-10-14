@@ -156,7 +156,7 @@ class Quaternion(__pool__['Tensor4']):
         """
         :return: An inverted copy of this quaternion.
         """
-        return Quaternion(self.inverse())
+        return Quaternion(self.api.inverse())
 
     def invertIt(self):
         """
