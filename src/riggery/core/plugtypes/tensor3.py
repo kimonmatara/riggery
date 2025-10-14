@@ -46,7 +46,7 @@ class Tensor3(__pool__['Tensor']):
             node.attr('operation').set(2)
             self >> node.attr('input3D')[0]
             node.attr('input3D')[1].put(other, isPlug)
-            return node.attr('output3D').asType(type(self))
+            return node.attr('output3D').asType(__pool__['Vector'])
 
         return NotImplemented
 
@@ -58,7 +58,7 @@ class Tensor3(__pool__['Tensor']):
             node.attr('operation').set(2)
             self >> node.attr('input3D')[1]
             node.attr('input3D')[0].put(other, isPlug)
-            return node.attr('output3D').asType(type(self))
+            return node.attr('output3D').asType(__pool__['Vector'])
 
         return NotImplemented
 
