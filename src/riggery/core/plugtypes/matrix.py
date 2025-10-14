@@ -166,6 +166,18 @@ class Matrix(plugs['Tensor']):
 
     def __mul__(self, other):
         other, shape, isPlug = _mm.info(other)
+
+        if shape == 4:
+            node = nodes.ComposeMatrix.createNode()
+            node.attr('useEulerRotation').set(False)
+            node.attr('inputQuat').put(other, isPlug)
+            otherMatrix = node.attr('outputMatrix')
+
+            node = nodes.MultMatrix.createNode()
+            self >> node.attr('matrixIn')[0]
+            otherMatrix >> node.attr('matrixIn')[1]
+            return node.attr('matrixSum')
+
         if shape == 16:
             node = nodes.MultMatrix.createNode()
             self >> node.attr('matrixIn')[0]
