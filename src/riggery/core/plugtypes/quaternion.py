@@ -14,6 +14,19 @@ class Quaternion(__pool__['Tensor4']):
 
     __datacls__ = _data['Quaternion']
 
+    #-----------------------------------------|    Constructors
+
+    @classmethod
+    def createFromAxisAngle(cls, axis, angle):
+        """
+        :return: A quaternion output composed using the given axis vector and
+            angle.
+        """
+        node = nodes['AxisAngleToQuat'].createNode()
+        axis >> node.attr('inputAxis')
+        angle >> node.attr('inputAngle')
+        return node.attr('outputQuat')
+
     #-----------------------------------------|    Test
 
     @short(name='n', inheritsTransform='it')
