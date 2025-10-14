@@ -66,27 +66,25 @@ class BoundingBox(data['Tensor']):
             purposes. The transform is returned.
         """
         leftBottomBack, rightBottomBack, rightBottomFront, \
-        leftBottomFront, leftTopFront, leftTopBack, rightTopBack, \
-        rightTopFront = self.corners
+            leftBottomFront, leftTopFront, leftTopBack, rightTopBack, \
+            rightTopFront = self.corners
 
-        points = [
-            leftBottomBack,
-            rightBottomBack,
-            rightBottomFront,
-            leftBottomFront,
-            leftBottomBack,
-            leftTopBack,
-            leftTopFront,
-            leftBottomFront,
-            leftTopFront,
-            rightTopFront,
-            rightBottomFront,
-            rightTopFront,
-            rightTopBack,
-            rightBottomBack,
-            rightTopBack,
-            leftTopBack
-        ]
+        points = [leftBottomBack,
+                  rightBottomBack,
+                  rightBottomFront,
+                  leftBottomFront,
+                  leftBottomBack,
+                  leftTopBack,
+                  leftTopFront,
+                  leftBottomFront,
+                  leftTopFront,
+                  rightTopFront,
+                  rightBottomFront,
+                  rightTopFront,
+                  rightTopBack,
+                  rightBottomBack,
+                  rightTopBack,
+                  leftTopBack]
 
         kwargs = {'point': points,
                   'knot': list(range(len(points))),
