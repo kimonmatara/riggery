@@ -1333,11 +1333,10 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     @cached_property
     def aaInfo(self) -> dict:
-        return parseAddAttrCmd(
-            om.MFnAttribute(
-                self.__apiobjects__['MPlug'].attribute()
-            ).getAddAttrCmd(True)
-        )
+        st = om.MFnAttribute(
+            self.__apiobjects__['MPlug'].attribute()
+        ).getAddAttrCmd(True)
+        return parseAddAttrCmd(st)
 
     def getAddAttrCmdFlags(self) -> dict:
         """
