@@ -585,44 +585,6 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     defaultValue = dv = property(fget=_getDefaultValue, fset=_setDefaultValue)
 
-    # def getDefaultValue(self): # override this
-    #     """
-    #     :raise TypeError: This attribute doesn't support default values.
-    #     :return: This attribute's default value
-    #     """
-    #     if self.isMulti():
-    #         self = self[0]
-    #     return self.__apimfn__().default
-    #
-    # def setDefaultValue(self, value, apply:bool=False): # override this
-    #     """
-    #     :param value: the new default value
-    #     :param apply: set the current value too; defaults to False
-    #     :raise TypeError: The default value can't be changed (e.g. non-dynamic
-    #         attribute).
-    #     :return: self
-    #     """
-    #     mplug = self.__apimplug__()
-    #     if mplug.isDynamic:
-    #         if mplug.isArray:
-    #             mplug = mplug.elementByLogicalIndex(0)
-    #         mobj = mplug.attribute()
-    #         mfnType = self.__apimfntype__()
-    #         fn = _mfm.fallbackInst(mobj, mfnType)[0]
-    #         fn.default = value
-    #         if apply:
-    #             self.setValue(value)
-    #         return self
-    #     raise TypeError("Default value can't be changed")
-    #
-    # def _getDefaultValue(self):
-    #     return self.getDefaultValue()
-    #
-    # def _setDefaultValue(self, value):
-    #     self.setDefaultValue(value)
-    #
-    # defaultValue = dv = property(_getDefaultValue, _setDefaultValue)
-
     def resetValue(self, *, quiet:bool=False):
         """
         Resets this value to its defaults.
