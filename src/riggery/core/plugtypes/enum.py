@@ -170,7 +170,7 @@ class Enum(__pool__['Int']):
     @property
     @cache_dg_output
     def axisPickerVectorOutput(self):
-        enumNames = self.enumNames()
+        enumNames = self.enumNames
 
         with _nm.Name('axis_as_vec'):
             nw = nodes['Network'].createNode()
@@ -224,7 +224,7 @@ class Enum(__pool__['Int']):
 
     def setDefaultValue(self, value:Union[int, str]):
         if isinstance(value, str):
-            value = self.enumNames().index(value)
+            value = self.enumNames.index(value)
         return super().setDefaultValue(value)
 
     #-----------------------------------------|    Get
@@ -257,29 +257,34 @@ class Enum(__pool__['Int']):
 
     #-----------------------------------------|    Enum methods
 
-    def enumValues(self) -> list[int]:
-        """
-        :return: The enum values in this attribute, in a list.
-        """
-        fn = om.MFnEnumAttribute(self.__apimobject__())
-        min = fn.getMin()
-        max = fn.getMax()
-        return list(range(min, max+1))
+    def isEmpty(self) -> bool:
+        fn = self.__apimfn__()
+        return fn.getMin() == 1000 and fn.getMax() == -1
 
-    def enumNames(self) -> list[str]:
-        """
-        :return: The enum names in this attribute, in a list.
-        """
-        fn = om.MFnEnumAttribute(self.__apimobject__())
-        min = fn.getMin()
-        max = fn.getMax()
-        return [fn.fieldName(i) for i in range(min, max+1)]
+    def getEnumNames(self) -> list[str]:
+        if self.isEmpty():
+            return []
+        return m.addAttr(str(self), q=True, enumName=True).split(':')
 
-    def enums(self) -> list[tuple]:
-        """
-        :return: Pairs of *enum name, enum value*.
-        """
-        return list(zip(self.enumNames(), self.enumValues()))
+    def clearEnumNames(self):
+        if not self.isEmpty():
+            m.addAttr(str(self), e=True, enumName='')
+        return self
+
+    def setEnumNames(self, names:Union[list[str], tuple[str]]):
+        if names:
+            if self.isEmpty():
+                fn = self.__apimfn__()
+
+                for i, name in enumerate(names):
+                    fn.addField(name, i)
+            else:
+                m.addAttr(str(self), e=True, enumName=':'.join(names))
+        else:
+            self.clearEnumNames()
+        return self
+
+    enumNames = property(getEnumNames, setEnumNames, clearEnumNames)
 
     #-----------------------------------------|    Sections
 
@@ -288,7 +293,7 @@ class Enum(__pool__['Int']):
         :return: ``True`` if this looks like a 'section' enum attribute.
         """
         if self.isLocked():
-            enumNames = self.enumNames()
+            enumNames = self.enumNames
             if len(enumNames) == 1 and enumNames[0] == ' ':
                 return True
         return False
