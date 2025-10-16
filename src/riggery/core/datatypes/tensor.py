@@ -114,6 +114,15 @@ class Tensor(__pool__['Data'], list, metaclass=TensorMeta):
 
     #-------------------------------------|    Basic methods
 
+    def blend(self, other, weight:float=0.5):
+        """
+        No plug support on this base method. *Other* must be an iterable of the
+        same length as this tensor.
+        """
+        return type(self)([
+            c0 + ((c1-c0) * weight) for c0, c1 in zip(self, other, strict=True)
+        ])
+
     def average(self, *others):
         """
         :return: The average of [*self*] + others.
