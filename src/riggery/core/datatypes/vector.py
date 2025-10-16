@@ -367,57 +367,6 @@ class Vector(__pool__['Tensor3']):
             out = out.normal() * self.length()
         return out
 
-    # @short(perpendicularize='per',
-    #        shortest='sho',
-    #        blendLengths='bl')
-    # def blend(self,
-    #           otherVector,
-    #           weight=0.5, *,
-    #           normal=None,
-    #           shortest:bool=False,
-    #           perpendularize:bool=False,
-    #           blendLengths:bool=False):
-    #     """
-    #     Blends this vector towards *otherVector* by the specified weight. No
-    #     guarding is performed; errors will be issued if either vector is zero-
-    #     length.
-    #
-    #     :param otherVector: the vector towards which to blend
-    #     :param weight: the blend weight
-    #     :param normal: the clock normal; if omitted, 180-only calculations will
-    #         be performed
-    #     :param perpendicularize/per: if *normal* is provided, force the input
-    #         vectors to be perpendicular to the normal; defaults to False
-    #     :param shortest/sho: blends along the closest circle side; defaults to
-    #         False
-    #     :param blendLengths/bl: blend the vector lengths too; defaults to False
-    #     :return: The blended vector
-    #     """
-    #     other, _, otherIsPlug = _mm.info(otherVector, Vector)
-    #     weight, _, weightIsPlug = _mm.info(weight)
-    #     hasPlugs = otherIsPlug or weightIsPlug
-    #
-    #     if normal is None:
-    #         angle = self.angleTo(other)
-    #         axis = self ^ other
-    #     else:
-    #         normal, _, normalIsPlug = _mm.info(normal, Vector)
-    #         if perpendularize:
-    #             self = self.rejectFrom(normal)
-    #             other = other.rejectFrom(normal)
-    #         angle = self.angleTo(other, normal, shortest=shortest)
-    #
-    #     angle *= weight
-    #     out = self.rotateByAxisAngle(normal, angle)
-    #
-    #     if blendLengths:
-    #         targetLength = _mm.blendScalars(self.length(),
-    #                                         other.length(),
-    #                                         weight)
-    #         out = out.withLength(targetLength)
-    #
-    #     return out
-
     #-----------------------------------------|    Multiply
 
     def __mul__(self, other):
