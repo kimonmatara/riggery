@@ -667,6 +667,17 @@ class Chain(list):
 
     #-------------------------------------------|    IK
 
+    def getDefaultPoleVector(self) -> 'r.data.Vector':
+        """
+        Returns a default pole vector value for this chain.
+        """
+        dup = self.duplicate()
+        tmpIkHandle = m.ikHandle(sj=self[0], ee=self[-1], sol='ikRPsolver')[0]
+        vector = m.getAttr(f"{tmpIkHandle}.poleVector")
+        m.delete(tmpIkHandle)
+        m.delete(dup[0])
+        return data.Vector(vector[0])
+
     def ikJitter(self,
                  jitterVector,
                  forcePlane=False, /,
@@ -756,7 +767,10 @@ class Chain(list):
         return out
 
     @property
-    def bones(self) -> Generator:
+    def bones(self) -> Generator['Chain', None, None]:
+        """
+        Returns non-overlapping :class:`Chain` pairwise segments.
+        """
         for thisJoint, nextJoint in zip(self, self[1:]):
             yield Chain([thisJoint, nextJoint])
 
