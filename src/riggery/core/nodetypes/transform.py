@@ -13,6 +13,7 @@ from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 from ..lib.evaluation import cache_dg_output
+from ..lib import controls as _c
 from ..lib import names as _n, controlshapes as _cs
 from ..lib import namespaces as _ns
 from riggery.internal import str2api as _s2a
@@ -767,6 +768,9 @@ class Transform(nodes['DagNode']):
             None
         :return: The generated shape(s).
         """
+        if shapeScale is None:
+            shapeScale = _c.ShapeScale.__scale_factor__
+
         out = _cs.CONTROLSHAPES.apply(libraryKey,
                                       self,
                                       shapeScale=shapeScale,
