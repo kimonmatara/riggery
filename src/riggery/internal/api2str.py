@@ -90,6 +90,7 @@ def fromComponentBundle(dagPath:om.MDagPath, mObject:om.MObject) -> str:
         (dagPath, mObject)
     ).getSelectionStrings()[0]
 
+
 def fromMPlug(mPlug:om.MPlug) -> str:
     """
     :param mPlug: a :class:`~maya.api.OpenMaya.MPlug` instance for the
