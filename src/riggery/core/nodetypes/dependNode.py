@@ -12,15 +12,12 @@ from riggery.internal import cmdinfo as _ci, \
     nodeinfo as _ni, \
     hashing as _hsh, \
     mfnmatches as _mfm
+import riggery.internal.plugutil.reorder as _reo
 import riggery.internal.str2api as _s2a
 import riggery.internal.api2str as _a2s
-from ..lib import reorderattrs as _roa
 from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists
-from ..lib import names as _n, \
-    namespaces as _ns, \
-    tags as _tags, \
-    reorderattrs as _ra
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from ..lib import names as _n, namespaces as _ns, tags as _tags
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem, ElemInstError
@@ -30,159 +27,165 @@ uncap = lambda x: x[0].lower()+x[1:]
 
 
 class Section:
+
+    #-------------------------------------|    Init
+
     def __init__(self, node, name:str):
         self._node = node
         self._name = name
 
-    def node(self):
-        """
-        :return: The node this section belongs to.
-        """
+    def create(self):
+        if not self.exists():
+            _reo.createSection(self._node.__apimobject__(), self._name)
+        return self
+
+    #-------------------------------------|    Inspections
+
+    def node(self) -> 'nodes.DependNode':
         return self._node
 
-    def attr(self):
-        """
-        :return: The section's label attribute.
-        """
-        return self.node().attr(self.name)
-
-    def getName(self) -> str:
-        """
-        Property: ``.name``
-
-        :return: The section's name.
-        """
+    @property
+    def name(self) -> str:
         return self._name
 
-    def setName(self, name):
-        """
-        Sets the section's name.
+    def exists(self) -> bool:
+        return _reo.hasSection(self._node.__apimobject__(), self._name)
 
-        Property: ``.name``
-        """
-        attr = self.attr()
-        attr.unlock()
-        m.renameAttr(str(attr), name)
-        attr.lock()
+    def attr(self, quiet:bool=False) -> Optional['plugs.Enum']:
+        try:
+            return self._node.attr(self._name)
+        except AttributeError as exc:
+            if quiet:
+                return None
+            raise exc
 
-    name = property(getName, setName)
+    #-------------------------------------|    Get members
 
-    #----------------------------------|    Get members
+    def __contains__(self, item:Union['plugs.Attribute', str]):
+        return self._conformToName(item) in self._memberNames()
+
+    def _memberNames(self) -> list[str]:
+        try:
+            return _reo.getSectionMembers(
+                self._node.__apimobject__(), self._name
+            )
+        except ValueError:
+            return []
 
     def __iter__(self):
-        return self.node().iterSectionMembers(self.name)
+        return ((self._node.attr(x) for x in self._memberNames()))
 
     def __len__(self):
-        return len(list(self.node().iterSectionMembers(self.name)))
+        return len(self._memberNames())
 
-    #----------------------------------|    Add members
+    #-------------------------------------|    Add members
 
-    def collect(self, *names):
-        """
-        :param \*names: the names of the attributes to collect, packed or unpacked
-        :return: The collected attributes.
-        """
-        return self.node().collectIntoSection(
-            expand_tuples_lists(*names),
-            self.name
-        )
+    def _conformToName(self, attrRef:Union[str, 'plugs.Attribute']) -> str:
+        if isinstance(attrRef, str):
+            return attrRef.split('.')[-1]
+        if isinstance(attrRef, plugs['Attribute']):
+            if attrRef.node() == self._node:
+                return attrRef.attrName()
+            raise RuntimeError(f"foreign attribute: {attrRef}")
+        raise TypeError(f"expected string or Attribute")
 
-    #----------------------------------|    Remove
+    def collect(self, *attrRefs, atTop:bool=False) -> list['plugs.Attribute']:
+        attrRefs = expand_tuples_lists(*attrRefs)
+        attrRefs = list(map(self._conformToName, attrRefs))
+        attrRefs = without_duplicates(attrRefs)
+        if attrRefs:
+            self.create()
+            out = _reo.collectIntoSection(
+                self._node.__apimobject__(),
+                self._name,
+                attrRefs,
+                atTop=atTop
+            )
+            return [plugs.Attribute.fromMPlug(x) for x in out]
+        return [self._node.attr(x) for x in attrRefs]
 
-    def exists(self) -> bool:
-        """
-        :return: True if this section exists.
-        """
-        return self.name in self.node().iterSectionNames()
+    #-------------------------------------|    Remove
 
-    def remove(self, includeMembers:bool=False) -> None:
-        """
-        :param includeMembers: remove the member attributes too; defaults to
-            False
-        :return: None
-        """
-        try:
-            sectionAttr = self.node().attr(self.name)
-        except AttributeError:
-            return
+    def remove(self):
+        if self.exists():
+            self.attr().unlock()
+            self._node.deleteAttr(self._name)
 
-        if includeMembers:
-            for attr in self:
-                attr.unlock()
-                m.deleteAttr(str(attr))
+    #-------------------------------------|    Repr
 
-        sectionAttr.unlock()
-        m.deleteAttr(str(sectionAttr))
-
-    #----------------------------------|    Repr
+    def __str__(self):
+        return str(self.attr())
 
     def __repr__(self):
-        return "{}.sections[{}]".format(
-            repr(self.node()),
-            repr(self.name)
-        )
-
+        return "{}.sections['{}']".format(repr(self._node), self._name)
 
 class Sections:
+
+    #-------------------------------------|    Init
 
     def __init__(self, node):
         self._node = node
 
-    def node(self):
-        return self._node
-
-    def __repr__(self):
-        return "{}.sections".format(repr(self.node()))
-
-    def names(self) -> Generator[str, None, None]:
-        """
-        Yields section names.
-        """
-        return self.node().iterSectionNames()
-
-    #----------------------------------|    Get sections
-
-    def __getitem__(self, item):
-        node = self.node()
-        if item in self.names():
-            return Section(node, item)
-        raise KeyError(item)
-
-    def __iter__(self):
-        node = self.node()
-        for name in self.names():
-            yield Section(node, name)
-
-    def __len__(self):
-        return len(list(self.node().iterSectionNames()))
-
-    #----------------------------------|    Remove sections
-
-    def __delitem__(self, key):
-        try:
-            inst = self[key]
-        except KeyError:
-            return
-        inst.remove()
-
-    #----------------------------------|    Add sections
+    #-------------------------------------|    Add sections
 
     def add(self, sectionName:str) -> Section:
-        """
-        Adds (or retrieves) and returns a section with the specified name.
-        :param sectionName: the name of the section
-        """
-        node = self.node()
-        node.addSectionAttr(sectionName)
-        return Section(node, sectionName)
+        node = self._node.__apimobject__()
+
+        if not _reo.hasSection(node, sectionName):
+            _reo.createSection(node, sectionName)
+
+        return Section(self._node, sectionName)
+
+    #-------------------------------------|    Remove sections
+
+    def remove(self, section:Union[str, Section]) -> None:
+        if isinstance(section, Section):
+            section = section._name
+        try:
+            _reo.removeSection(self._node.__apimobject__(), section)
+        except AttributeError:
+            raise ValueError("section doesn't exist")
+
+    #-------------------------------------|    Remove sections
+
+    def __delitem__(self, sectionName:str):
+        try:
+            _reo.removeSection(self._node.__apimobject__(), sectionName)
+        except AttributeError:
+            raise KeyError(sectionName)
+
+    #-------------------------------------|    Dict-like
+
+    def keys(self) -> list[str]:
+        return _reo.getSectionNames(self._node.__apimobject__())
+
+    def values(self) -> list[Section]:
+        return [self[k] for k in self.keys()]
+
+    def items(self) -> list[tuple[str, Section]]:
+        for k in self.keys():
+            yield k, self[k]
+
+    def __getitem__(self, sectionName:str):
+        return Section(self._node, sectionName)
+
+    def __len__(self):
+        return len(self.keys())
+
+    def __bool__(self):
+        return len(self) > 0
+
+    #-------------------------------------|    Repr
+
+    def __repr__(self):
+        return "{}.sections".format(repr(self._node))
+
 
 class SectionsGetter:
     def __get__(self, inst, instype):
         if inst is None:
             return self
-        obj = Sections(inst)
-        setattr(inst, 'sections', obj)
-        return obj
+        return Sections(inst)
 
 
 class DependNodeMeta(type(Elem)):
@@ -204,8 +207,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     __pool__ = nodes
     __typesuffix__ = None
 
-    sections = SectionsGetter()
     tags = _tags.TagsGetter()
+    sections = SectionsGetter()
 
     #-----------------------------------------|    Constructor(s)
 
@@ -718,19 +721,6 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             for item in result:
                 yield self.attr(item)
 
-    def iterReorderableAttrNames(self) -> Generator[str, None, None]:
-        """
-        Yields the local names of reorderable attributes on this node.
-        """
-        for inst in _roa.iterReorderableAttrs(self.__apimobject__()):
-            yield inst.attrName
-
-    def getReorderableAttrNames(self) -> Generator[str, None, None]:
-        """
-        Flat version of :meth:`iterReorderableAttrNames`.
-        """
-        return list(self.iterReorderableAttrNames())
-
     def listAttr(self, **kwargs):
         """
         Thin wrapper for :func:`~maya.cmds.listAttr`.
@@ -748,19 +738,6 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                 raise AttributeError(attrName)
             raise exc
         return self
-
-    def reorderAttrs(self, attrNames:list[str]) -> list['Attribute']:
-        """
-        This only works with dynamic, scalar attributes that are visible in
-        the Channel Box.
-
-        :param attrNames: the names of the attributes to reorder
-        :return: :class:`~riggery.core.plugtypes.attribute.Attribute` instances
-            for all reordered attributes.
-        """
-        conform = plugs['Attribute'].fromMPlug
-        result = _roa.reorderAttrs(self.__apimobject__(), attrNames)
-        return [conform(x) for x in result]
 
     @short(keyable='k', channelBox='cb')
     def maskAnimAttrs(self, keyable=None, channelBox=None):
@@ -814,167 +791,6 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             attr.unlock(recurse=True, force=True)
 
         return self
-
-    @classmethod
-    def _mPlugIsSectionAttr(cls, plug:om.MPlug) -> bool:
-        mobj = plug.attribute()
-        if mobj.hasFn(om.MFn.kEnumAttribute):
-            fn = om.MFnEnumAttribute(mobj)
-            min = fn.getMin()
-            max = fn.getMax()
-            return min == max \
-                and fn.fieldName(min) == ' ' \
-                and plug.isLocked
-        return False
-
-    def iterSectionAttrs(self) -> Generator:
-        """
-        Yields 'section' heading attributes.
-        """
-        for attr in self.iterAttr(ud=True, attributeType='enum'):
-            if attr.isSectionAttr():
-                yield attr
-
-    def addSectionAttr(self, sectionName:str):
-        """
-        Adds a 'section' heading attribute, if it doesn't already exist.
-        """
-        if sectionName in self.iterSectionNames():
-            return self.attr(sectionName)
-
-        return self.addAttr(sectionName,
-                            at='enum',
-                            enumName=' ',
-                            k=False, cb=True).lock()
-
-    def iterSectionNames(self) -> Generator:
-        """
-        Yields section names.
-        """
-        for sectionAttr in self.iterSectionAttrs():
-            yield sectionAttr.attrName()
-
-    def sectionExists(self, sectionName:str) -> bool:
-        """
-        :return: True if the named section exists.
-        """
-        return sectionName in self.iterSectionNames()
-
-    def iterSectionMembers(self, sectionName:str) -> Generator:
-        """
-        Yields members of the named section.
-        """
-        thing = _roa.iterReorderablePlugs(self.__apimobject__())
-        started = False
-
-        for plug in _roa.iterReorderablePlugs(
-                self.__apimobject__()
-        ):
-            if started:
-                if self._mPlugIsSectionAttr(plug):
-                    break
-                yield plugs['Attribute'].fromMPlug(plug)
-            else:
-                if self._mPlugIsSectionAttr(plug):
-                    n = plug.name().split('.', 1)[1]
-                    if n == sectionName:
-                        started = True
-
-    def sendSectionAbove(self, sectionName:str, attrName:str):
-        sectionBundle = [sectionName] + [attr.attrName() for attr \
-                            in self.iterSectionMembers(sectionName)]
-        reorderStack = sectionBundle + [attrName]
-        self.reorderAttrs(reorderStack)
-
-    def iterSectionGroups(self) -> Generator[tuple[str, tuple], None, None]:
-        """
-        Yields pairs of *sectionName*, tuple of section member attrs
-        """
-        currentSection = None
-        currentSectionMembers = []
-
-        for plug in _roa.iterReorderablePlugs(self.__apimobject__()):
-            if self._mPlugIsSectionAttr(plug):
-                if currentSection:
-                    yield currentSection, tuple(currentSectionMembers)
-                currentSection = plug.name().split('.', 1)[1]
-                currentSectionMembers = []
-            else:
-                if currentSection:
-                    currentSectionMembers.append(
-                        plugs['Attribute'].fromMPlug(plug)
-                    )
-        if currentSection:
-            yield currentSection, tuple(currentSectionMembers)
-
-    def collectIntoSection(self, attrNames:list[str], sectionName) -> list:
-        """
-        :param attrNames: the names of the attributes to move
-        :param sectionName: the name of the section
-        :param top: insert the attributes to the top of the section rather
-            than append to the bottom; defaults to False
-        :return: The moved attributes, in a list.
-        """
-        origRequest = list(attrNames)
-        node = self.__apimobject__()
-        existingMemberNames = [member.attrName() for member \
-                               in self.iterSectionMembers(sectionName)]
-        attrNames = [_roa.ReorderableAttr(node, name).attrName \
-                     for name in attrNames]
-        attrNames = [x for x in attrNames if x not in existingMemberNames]
-
-        if attrNames:
-            _roa.reorderAttrs(node,
-                              [sectionName] + existingMemberNames + attrNames)
-        return [self.attr(name) for name in origRequest]
-
-    def sendSectionAbove(self, sectionName:str, anchorAttrName:str):
-        """
-        :param sectionName: the name of the section to move
-        :param anchorAttrName: the name of the attribute relative to which the
-            section must be moved
-        """
-        node = self.__apimobject__()
-        anchorAttrName = _roa.ReorderableAttr(node, anchorAttrName).attrName
-        memberNames = [member.longName() for member \
-                       in self.iterSectionMembers(sectionName)]
-        if anchorAttrName in memberNames:
-            memberNames.remove(anchorAttrName)
-            chunk = [sectionName] + memberNames
-            _roa.reorderAttrs(node, chunk+[anchorAttrName])
-        else:
-            allNames = self.getReorderableAttrNames()
-            anchorIndex = allNames.index(anchorAttrName)
-
-            head = allNames[:anchorIndex]
-            mid = [sectionName] + memberNames
-            mid.append(anchorAttrName)
-            tail = [name for name in allNames if name not in head+mid]
-            _roa.reorderAttrs(node, mid+tail)
-
-    def sendSectionBelow(self, sectionName:str, anchorAttrName:str):
-        """
-        :param sectionName: the name of the section to move
-        :param anchorAttrName: the name of the attribute relative to which the
-            section must be moved
-        """
-        node = self.__apimobject__()
-        anchorAttrName = _roa.ReorderableAttr(node, anchorAttrName).attrName
-
-        memberNames = [member.longName() for member \
-                       in self.iterSectionMembers(sectionName)]
-
-        if anchorAttrName in memberNames:
-            memberNames.remove(anchorAttrName)
-            chunk = [sectionName] + memberNames
-            _roa.reorderAttrs(node, [anchorAttrName] + chunk)
-        else:
-            allNames = self.getReorderableAttrNames()
-            anchorIndex = allNames.index(anchorAttrName)
-            head = allNames[:anchorIndex+1]
-            mid = [sectionName] + memberNames
-            tail = [name for name in allNames if name not in head+mid]
-            _roa.reorderAttrs(node, mid+tail)
 
     #-----------------------------------------|    API
 

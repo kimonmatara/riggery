@@ -9,8 +9,8 @@ import riggery
 import riggery.internal.api2str as _a2s
 import riggery.internal.hashing as _hsh
 import riggery.internal.plugutil.plugroute as _pr
+import riggery.internal.plugutil.reorder as _reo
 import riggery.internal.str2api as _s2a
-import riggery.core.lib.reorderattrs as _roa
 from riggery.core.lib.nativeunits import NativeUnits
 import riggery.internal.mfnmatches as _mfm
 from riggery.general.functions import short, resolve_flags
@@ -1193,6 +1193,51 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     siblings = property(iterSiblings)
 
+    #-----------------------------------------|    Reordering
+
+    def sendBelow(self, other):
+        """
+        Moves this attribute above *other* in the Channel Box.
+
+        :param expandSections: treat attribute sections en-bloc; defaults to
+            True
+        """
+        other = str(other).split('.')[-1]
+        out = _reo.reorder(self.node().__apimobject__(),
+                           [other, self.attrName()],
+                           expandSections=True)
+        self.__apiobjects__ = {'MPlug': out[-1]}
+        return self
+
+    def sendAbove(self, other, expandSections:bool=True):
+        """
+        Moves this attribute below *other* in the Channel Box.
+
+        :param expandSections: treat attribute sections en-bloc; defaults to
+            True
+        """
+        other = str(other).split('.')[-1]
+        out = _reo.reorder(self.node().__apimobject__(),
+                           [self.attrName(), other],
+                           expandSections=True)
+        self.__apiobjects__ = {'MPlug': out[-1]}
+        return self
+
+    def shift(self, offset:int, roll:bool=False, expandSections:bool=True):
+        """
+        Shifts this attribute in the channel box by the specified offset.
+
+        :param expandSections: treat attribute sections en-bloc; defaults to
+            True
+        """
+        result = _reo.shiftMulti(self.node().__apimobject__(),
+                                 [self.attrName()],
+                                 offset,
+                                 expandSections=True,
+                                 roll=roll)[0]
+        self.__apiobjects__ = {'MPlug': result[0]}
+        return self
+
     #-----------------------------------------|    API
 
     def __apimplug__(self) -> om.MPlug:
@@ -1338,47 +1383,9 @@ class Attribute(Elem, metaclass=AttributeMeta):
             if re.match(r"^(float|double|long|short)[23]$", typ):
                 return True
 
-            return typ in set(['bool', 'long', 'short', 'enum', 'time',
-                               'float', 'double', 'doubleAngle',
-                               'doubleLinear'])
+            return typ in {'bool', 'long', 'short', 'enum', 'time', 'float',
+                           'double', 'doubleAngle', 'doubleLinear'}
         return False
-
-    #-----------------------------------------|    Reordering
-
-    def canBeReordered(self) -> bool:
-        """
-        :return: True if this attribute can be reordered. Reorderable
-            attributes are user-added scalars visible in the Channel Box.
-        """
-        try:
-            _roa.ReorderableAttr(self.__apimobject__(), self.attrName())
-            return True
-        except _roa.AttrReorderError:
-            return False
-
-    def sendAbove(self, otherAttr:str):
-        """
-        Sends this attribute above *otherAttr* in the Channel Box stack.
-
-        :param otherAttr: the local name of the other attribute
-        :return: self
-        """
-        node = self.__apimplug__().node()
-        result = _roa.reorderAttrs(node, [self.longName(), otherAttr])
-        self.__apiobjects__ = {'MPlug': result[0]}
-        return self
-
-    def sendBelow(self, otherAttr:str):
-        """
-        Sends this attribute above *otherAttr* in the Channel Box stack.
-
-        :param otherAttr: the local name of the other attribute
-        :return: self
-        """
-        node = self.__apimplug__().node()
-        result = _roa.reorderAttrs(node, [otherAttr, self.longName()])
-        self.__apiobjects__ = {'MPlug': result[1]}
-        return self
 
     #-----------------------------------------|    Authoring
 
@@ -1402,14 +1409,6 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
         filename = f"{uncap(cls.__name__)}.py"
         return os.path.join(pdir, filename)
-
-    #-----------------------------------------|    Sections
-
-    def isSectionAttr(self) -> bool:
-        """
-        :return: ``True`` if this looks like a 'section' enum attribute.
-        """
-        return False
 
     #-----------------------------------------|    Proxy attributes
 
@@ -1473,11 +1472,28 @@ class Attribute(Elem, metaclass=AttributeMeta):
             return self.inputs(plugs=True)[0]
         return self
 
-    def createProxy(self, node, **kwargs):
+    @short(longName='ln',
+           shortName='sn',
+           section='s')
+    def createProxy(self,
+                    node=None, /,
+                    longName=None,
+                    shortName=None,
+                    section=None):
         """
-        Atomic version of :meth:`createProxies`.
+        Creates a proxy for this attribute on the specified node.
+
+        :param node: if omitted, defaults to this node
+        :param longName/ln: an optional override for the attribute long name
+        :param shortName/sn: an optional override for the attribute short name
+        :return: The generated proxy attribute.
         """
-        return self.createProxies([node], **kwargs)[0]
+        if node is None:
+            node = self
+        return self.createProxies([node],
+                                  longName=longName,
+                                  shortName=shortName,
+                                  section=section)[0]
 
     @short(longName='ln', shortName='sn', section='s')
     def createProxies(self,
