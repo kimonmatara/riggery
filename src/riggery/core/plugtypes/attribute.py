@@ -1238,6 +1238,15 @@ class Attribute(Elem, metaclass=AttributeMeta):
         self.__apiobjects__ = {'MPlug': result[0]}
         return self
 
+    #-----------------------------------------|    Sections
+
+    def isSectionAttr(self) -> bool:
+        """
+        :return: True if this is a locked enum meant to represent an attribute
+            section in the Channel Box.
+        """
+        return _reo.plugIsSection(self.__apimplug__())
+
     #-----------------------------------------|    API
 
     def __apimplug__(self) -> om.MPlug:
@@ -1534,6 +1543,9 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
         kwargs['proxy'] = str(self)
 
+        channelBox = self.getFlag('channelBox')
+        locked = self.getFlag('l')
+
         out = []
 
         for node in nodes:
@@ -1543,6 +1555,10 @@ class Attribute(Elem, metaclass=AttributeMeta):
             if section is not None:
                 sectionInst = node.sections.add(section)
                 inst = sectionInst.collect(accessName)[0]
+            if channelBox:
+                inst.setFlag('channelBox', True)
+            if locked:
+                inst.setFlag('l', True)
             out.append(inst)
         return out
 
