@@ -39,6 +39,20 @@ class Section:
             _reo.createSection(self._node.__apimobject__(), self._name)
         return self
 
+    #-------------------------------------|    Reordering
+
+    def sendToTop(self):
+        """
+        If this section exists, moves it, along with its members, to the top of
+        the Channel Box.
+        """
+        if self.exists():
+            _reo.sendToTop(self._node.__apimobject__(),
+                           [self._name],
+                           expandSections=True,
+                           test=True)
+        return self
+
     #-------------------------------------|    Inspections
 
     def node(self) -> 'nodes.DependNode':
@@ -155,6 +169,9 @@ class Sections:
             raise KeyError(sectionName)
 
     #-------------------------------------|    Dict-like
+
+    def __contains__(self, item):
+        return str(item).split('.')[-1] in self.keys()
 
     def keys(self) -> list[str]:
         return _reo.getSectionNames(self._node.__apimobject__())
@@ -726,6 +743,14 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         Thin wrapper for :func:`~maya.cmds.listAttr`.
         """
         return list(self.iterAttr(**kwargs))
+
+    def iterReorderableAttrs(self) -> Generator['plugs.Attribute', None, None]:
+        for attr in self.iterAttr(ud=True):
+            if _reo.plugIsReorderable(attr.__apimplug__()):
+                yield attr
+
+    def getReorderableAttrs(self) -> list['plugs.Attribute']:
+        return list(self.iterReorderableAttrs())
 
     def deleteAttr(self, attrName:str):
         """
