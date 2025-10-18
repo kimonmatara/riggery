@@ -1,5 +1,6 @@
 """MPlug analysis."""
 import re
+from typing import Optional, Union
 
 from .parseaac import parseAddAttrCmd
 from .descmtype import DATA as DESCS
@@ -91,3 +92,14 @@ def describeMPlug(plug:om.MPlug) -> dict:
         out.update(DESCS.get(attrType, {}))
 
     return out
+
+def mPlugExists(mplug:om.MPlug) -> bool:
+    """
+    :return: True if the plug exists.
+    """
+    if mplug.isNull:
+        return False
+    mobj = mplug.attribute()
+    if mobj.isNull:
+        return False
+    return om.MObjectHandle(mobj).isValid()
