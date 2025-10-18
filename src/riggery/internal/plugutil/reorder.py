@@ -263,7 +263,7 @@ def collectIntoSection(node:om.MObject,
             rebuildList = [sectionName] + _newMembers + existingMembers
         else:
             rebuildList = [sectionName] + existingMembers + _newMembers
-        reorder(node, rebuildList)
+        reorder(node, rebuildList, expandSections=True)
     return [om.MFnDependencyNode(node).findPlug(x, False) for x in newMembers]
 
 #-----------------------------------------|    Reorder
@@ -343,9 +343,14 @@ def recreatePlug(macro:dict) -> om.MPlug:
 
     _plug = _a2s.fromMPlug(plug)
 
-    m.setAttr(_plug,
-              keyable=macro['isKeyable'],
-              channelBox=macro['isChannelBox'])
+    m.setAttr(_plug, keyable=False)
+    m.setAttr(_plug, channelBox=False)
+
+    if macro['isKeyable']:
+        m.setAttr(_plug, keyable=True)
+
+    elif macro['isChannelBox']:
+        m.setAttr(_plug, channelBox=True)
 
     if macro['isLocked']:
         m.setAttr(_plug, l=True)
@@ -388,7 +393,8 @@ def conformToLongNames(node:om.MObject, attrNames:list[str]) -> list[str]:
 
 def reorder(node:om.MObject,
             attrNames:list[str],
-            expandSections:bool=False) -> list[om.MPlug]:
+            expandSections:bool=False,
+            test=False) -> list[om.MPlug]:
     """
     Deletes and recreates the specified attributes, so that they appear in the
     requested order. Does nothing if the attributes are already in the specified
@@ -402,55 +408,63 @@ def reorder(node:om.MObject,
         defaults to False
     :return: The resolved plugs.
     """
-    nodeFn = om.MFnDependencyNode(node)
     attrNames = conformToLongNames(node, attrNames)
 
     if expandSections:
+        # If any sections are mentioned in the reorder list, remove their
+        # members from anyplace else, and expand the original mention
+
         _attrNames = []
+
+        sectionMap = getSectionMap(node)
+        mentionedSections = set(attrNames).intersection(set(sectionMap))
+
         for attrName in attrNames:
-            plug = nodeFn.findPlug(attrName, False)
-            if plugIsSection(plug):
-                memberNames = getSectionMembers(node, attrName)
-                memberNames.insert(0, attrName)
-                memberNames = [x for x in memberNames if x not in _attrNames]
-                _attrNames += memberNames
+            if attrName in sectionMap:
+                # If this is a section, expand it and add to list
+                _attrNames.append(attrName)
+                _attrNames += sectionMap[attrName]
             else:
-                try:
-                    _attrNames.remove(attrName)
-                except ValueError:
-                    pass
+                # Not a section. If it's a member of the mentioned sections,
+                # omit it; otherwise, include it
+
+                if any((attrName in sectionMap[k] for k in mentionedSections)):
+                    continue
                 _attrNames.append(attrName)
         attrNames = _attrNames
 
     reorderableKeys = list(getReorderablePlugs(node))
+    nodeFn = om.MFnDependencyNode(node)
 
     if issublist(attrNames, reorderableKeys):
         return [nodeFn.findPlug(x, False) for x in attrNames]
 
     plugsToDelete = [nodeFn.findPlug(x, False) for x in attrNames]
+
     macros = [deletePlug(x) for x in plugsToDelete]
-    return [recreatePlug(x) for x in macros]
+    out = [recreatePlug(x) for x in macros]
+    return out
 
-# def sendDirectlyBelow(node,
-#                       attrToMove:str,
-#                       refAttr:str,
-#                       expandSections:bool=False) -> om.MPlug:
-#     return reorder(node, [refAttr, attrToMove], expandSections=expandSections)
-#
-# def sendDirectlyAbove(node,
-#                       attrToMove:str,
-#                       refAttr:str,
-#                       expandSections:bool=False) -> om.MPlug:
-#     return reorder(node, [attrTomove, refAttr], expandSections=expandSections)
-
-def shifMulti(node:om.MObject,
+def shiftMulti(node:om.MObject,
                attrsToMove:list[str],
                offset:int, *,
                expandSections:bool=False,
                roll:bool=False) -> list[om.MPlug]:
+    """
+    Shifts multiple attributes up or down in the Channel Box.
+    """
     attrsToMove = conformToLongNames(node, attrsToMove)
     allNames = _Reorder(getReorderablePlugs(node))
     allNames.shift(attrsToMove, offset, roll)
     reorder(node, allNames, expandSections=expandSections)
     nodeFn = om.MFnDependencyNode(node)
     return [nodeFn.findPlug(x, False) for x in attrsToMove]
+
+def sendToTop(node:om.MObject, attrsToMove:list[str],
+              expandSections:bool=False,
+              test=False) -> list[om.MPlug]:
+    attrsToMove = conformToLongNames(node, attrsToMove)
+    allNames = [x for x in getReorderablePlugs(node)
+                if x not in attrsToMove]
+    reorderList = attrsToMove + allNames
+    reorder(node, reorderList, expandSections=expandSections,test=test)
