@@ -43,3 +43,22 @@ def crop_overlaps(groups):
     if len(groups) < 2:
         return list(groups)
     return [group[:-1] for group in groups[:-1]] + [groups[-1]]
+
+def issublist(sublist:list, containerlist:list) -> bool:
+    """
+    :return: True if *containerlist* contains *sublist* in the same sequence.
+    """
+    try:
+        startIndex = containerlist.index(sublist[0])
+    except ValueError:
+        return False
+
+    try:
+        endIndex = containerlist.index(sublist[-1])
+    except ValueError:
+        return False
+
+    contained_segment = containerlist[startIndex:endIndex+1]
+    if len(sublist) == len(contained_segment):
+        return all((x==y for x, y in zip(sublist, contained_segment)))
+    return False
