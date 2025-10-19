@@ -80,7 +80,7 @@ class Enum(__pool__['Int']):
 
         for group in groups:
             allPlugs += group
-        allPlugs = without_duplicates(allPlugs)
+        allPlugs = list(without_duplicates(allPlugs))
 
         if allLabel:
             labels.append(allLabel)

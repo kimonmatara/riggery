@@ -263,7 +263,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
             shapes to transforms; defaults to False
         """
         if type:
-            types = without_duplicates(expand_tuples_lists(type))
+            types = list(without_duplicates(expand_tuples_lists(type)))
         else:
             types = []
 
@@ -364,7 +364,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
             shapes to transforms; defaults to False
         """
         if type:
-            types = without_duplicates(expand_tuples_lists(type))
+            types = list(without_duplicates(expand_tuples_lists(type)))
         else:
             types = []
 

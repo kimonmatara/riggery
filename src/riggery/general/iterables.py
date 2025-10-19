@@ -1,6 +1,6 @@
 """General utilities for collections, iterables, lists etc."""
 
-from typing import Iterable
+from typing import Iterable, Any, Generator
 
 def expand_tuples_lists(*items) -> list:
     """
@@ -24,16 +24,16 @@ def pairiter(sequence):
     it = iter(sequence)
     return zip(it, it)
 
-def without_duplicates(items:Iterable) -> list:
+def without_duplicates(items:Iterable) -> Generator[Any, None, None]:
     """
-    Returns a list copy of *items* with duplicates removed and order
-    preserved.
+    Yields members of *items* only once, in order.
     """
-    out = []
+    out = set()
+
     for item in items:
         if item not in out:
-            out.append(item)
-    return out
+            out.add(item)
+            yield item
 
 def crop_overlaps(groups):
     """

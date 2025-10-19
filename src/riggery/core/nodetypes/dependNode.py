@@ -106,7 +106,7 @@ class Section:
     def collect(self, *attrRefs, atTop:bool=False) -> list['plugs.Attribute']:
         attrRefs = expand_tuples_lists(*attrRefs)
         attrRefs = list(map(self._conformToName, attrRefs))
-        attrRefs = without_duplicates(attrRefs)
+        attrRefs = list(without_duplicates(attrRefs))
         if attrRefs:
             self.create()
             out = _reo.collectIntoSection(

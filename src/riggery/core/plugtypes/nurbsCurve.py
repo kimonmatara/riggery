@@ -7,7 +7,7 @@ import maya.api.OpenMaya as om
 from riggery.core.lib.evaluation import cache_dg_output
 import riggery.core.lib.nurbsutil as _nut
 from riggery.general.functions import short, conform_multi_arg
-from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.iterables import expand_tuples_lists
 from riggery.general.numbers import floatrange
 from ..lib import geo as _geo
 from ..lib import mixedmode as _mm

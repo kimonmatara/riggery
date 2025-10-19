@@ -53,7 +53,7 @@ def conformNodes(*nodes): # -> list[Elem]
     """
     nodes = expand_tuples_lists(*nodes)
     nodes = list(map(Elem, nodes))
-    return without_duplicates(nodes)
+    return list(without_duplicates(nodes))
 
 def clean(namespace:str) -> str:
     """

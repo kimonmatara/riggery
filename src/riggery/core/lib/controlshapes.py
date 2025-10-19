@@ -149,7 +149,7 @@ class ControlShapesLibrary(metaclass=SingletonMeta):
 
         #-----------------------------|    Sort through *sources
 
-        sources = without_duplicates(map(Elem, expand_tuples_lists(*sources)))
+        sources = list(without_duplicates(map(Elem, expand_tuples_lists(*sources))))
         curveShapes = []
         for source in sources:
             if isinstance(source, nodes.Transform):
@@ -159,7 +159,7 @@ class ControlShapesLibrary(metaclass=SingletonMeta):
                 )
             elif isinstance(source, (nodes.NurbsCurve, nodes.BezierCurve)):
                 curveShapes.append(source)
-        curveShapes = without_duplicates(curveShapes)
+        curveShapes = list(without_duplicates(curveShapes))
 
         if not curveShapes:
             raise ValueError("no curve shapes specified")
@@ -297,7 +297,7 @@ class ControlShapesLibrary(metaclass=SingletonMeta):
             tested
         """
         if keys:
-            keys = without_duplicates(expand_tuples_lists(*keys))
+            keys = list(without_duplicates(expand_tuples_lists(*keys)))
         else:
             keys = list(self.keys())
 
