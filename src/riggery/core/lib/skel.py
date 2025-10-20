@@ -751,13 +751,21 @@ class Chain(list):
 
     #-------------------------------------------|    Instance access
 
-    def rebracket(self):
+    def rebracket(self, greedy:bool=False):
         """
-        Updates this chain's matrices by tracing a path between its first and
+        Updates this chain's membership by tracing a path between its first and
         last joints.
+
+        :param greedy: chase more joints beyond the last one; defaults to False
         """
-        if len(self) > 1:
-            self[:] = self.fromStartEnd(self[0], self[-1])
+        cls = type(self) # for clarity
+        newChain = cls.fromStartEnd(self[0], self[-1])
+
+        if greedy:
+            newChain = newChain[:-1] + cls.fromStart(self[-1])
+
+        self[:] = newChain
+
         return self
 
     def __getitem__(self, item):
