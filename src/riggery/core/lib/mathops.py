@@ -512,3 +512,26 @@ def bezierInterp(points, u):
         points = interpolated
 
     return points[0]
+
+def guessApproxBezierSegmentLength(p0, p1, p2, p3, steps:int=50) -> float:
+    """
+    :param steps: The number of measuring passes; this is Python, so bring this
+        down if you just want a very general approximation; defaults to 50
+    :return: The approximate length of the cubic bezier curve segment defined by
+    the specified four points. Does not create any Maya nodes.
+    """
+    totalLength = 0.0
+    prevPoint = p0
+
+    p0, p1, p2, p3 = map(data.Point, (p0, p1, p2, p3))
+
+    for i in range(1, steps + 1):
+        u = i / steps
+        currentPoint = bezierInterp((p0, p1, p2, p3), u)
+
+        # Add the length of the current segment
+        segmentLength = (currentPoint - prevPoint).length()
+        totalLength += segmentLength
+        prevPoint = currentPoint
+
+    return totalLength
