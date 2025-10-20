@@ -744,13 +744,11 @@ class Transform(nodes['DagNode']):
 
         return out
 
-    @short(applyColor='ac',
-           axisRemap='ar',
+    @short(axisRemap='ar',
            scale='s')
     def setControlShape(self,
                         libraryKey:str,
                         color:Optional[int]=None,
-                        applyColor:bool=True,
                         axisRemap:Optional[list[str]]=None,
                         scale:Optional[float]=None) -> list['nodes.NurbsCurve']:
         if scale is None:
@@ -759,7 +757,7 @@ class Transform(nodes['DagNode']):
         out = list(map(nodes['DagNode'],
                        _cs.ControlShapeLibrary()[libraryKey].apply(
                            str(self),
-                           applyColor=applyColor,
+                           applyColor=True,
                            axisRemap=axisRemap,
                            scale=scale
                        )))
