@@ -1,361 +1,807 @@
-"""Tools to manage control shapes."""
-
-from typing import Union, Optional, Iterable
-from copy import copy, deepcopy
 import os
+import re
+from copy import deepcopy
 import json
-
-from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists, without_duplicates
-from ..elem import Elem
-from riggery.internal.typeutil import SingletonMeta
-
-from ..nodetypes import __pool__ as nodes
-from ..datatypes import __pool__ as data
-
+from typing import Iterable, Optional, Generator, Union, Literal
 
 import maya.cmds as m
+import maya.api.OpenMaya as om
+from riggery.internal import str2api as _s2a
+from riggery.internal import api2str as _a2s
+from riggery.internal import apimath as _am
+from riggery.general.iterables import expand_tuples_lists, \
+    without_duplicates, \
+    fill_nones_with_chase
+from riggery.internal.typeutil import SingletonMeta
 
-FILEPATH = os.path.join(os.path.dirname(__file__), 'controlshapes.json')
-AUTO_SHAPE_SCALE_FACTOR = 0.01666
+#-----------------------------------------|
+#-----------------------------------------|    ERRORS
+#-----------------------------------------|
 
+class ControlShapeError(RuntimeError):
+    ...
 
-class ControlShapesLibrary(metaclass=SingletonMeta):
+class NoShapesError(ControlShapeError):
+    ...
 
-    __autodump__ = False
-    __instance__ = None
+class NoTargetsError(ControlShapeError):
+    ...
 
-    def __init__(self):
-        self._data = {}
-        self.load()
+#-----------------------------------------|
+#-----------------------------------------|    SCALE TRACKER
+#-----------------------------------------|
 
-    #-------------------------------------|    I/O
+class ShapeScale:
+    """
+    Context manager to track relative / nested shape scaling. For external use;
+    not used within this module at all.
+    """
+    __factor__ = None
 
-    def load(self):
-        """
-        Reads ``FILEPATH`` to populate internal data. If the file is missing, a
-        warning will be issued.
+    def __init__(self, factor:float, override:bool=False):
+        self._factor = factor
+        self._override = override
 
-        :return: self
-        """
+    def __enter__(self):
+        self._prev = ShapeScale.__factor__
+        if self._override:
+            ShapeScale.__factor__ = self._factor
+        else:
+            if self._prev is None:
+                ShapeScale.__factor__ = self._factor
+            else:
+                ShapeScale.__factor__ *= self._factor
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ShapeScale.__factor__ = self._prev
+        return False
+
+#-----------------------------------------|
+#-----------------------------------------|    LOW-LEVEL
+#-----------------------------------------|
+
+def iterShapesUnderTransform(
+        transform:str,
+        includeLocators:bool=False
+) -> Generator[str, None, None]:
+    types = ['nurbsCurve']
+    if includeLocators:
+        types.append('locator')
+    out = m.listRelatives(transform,
+                          noIntermediate=True,
+                          shapes=True,
+                          type=types,
+                          path=True)
+    if out:
+        for x in out:
+            yield x
+
+def iterShapesFromMixedSources(
+        *sources:Union[str, list[str]]
+) -> Generator[str, None, None]:
+    visited = set()
+
+    for source in without_duplicates(expand_tuples_lists(*sources)):
+        nt = m.nodeType(source)
+        if nt in ('transform', 'joint'):
+            for x in iterShapesUnderTransform(source):
+                if x in visited:
+                    continue
+                visited.add(x)
+                yield x
+        elif nt in ('nurbsCurve', 'bezierCurve'):
+            if source in visited:
+                continue
+            visited.add(source)
+            yield source
+
+def getCurveMacroFromShape(curveShape:str,
+                           captureColor:bool=True,
+                           captureVisInput:bool=True) -> dict:
+    out = {}
+
+    obj = _s2a.getNodeMObject(curveShape)
+    fn = om.MFnNurbsCurve(obj)
+    out['points'] = points = [list(point)[:3]
+                              for point in fn.cvPositions(om.MSpace.kObject)]
+    out['knots'] = list(fn.knots())
+    out['degree'] = fn.degree
+    out['form'] = fn.form
+    out['is2D'] = all([point[2] == 0.0 for point in points])
+    rational = False
+
+    for i in range(fn.numCVs):
+        if m.getAttr(f"{curveShape}.weights[{i}]") != 1.0:
+            rational = True
+            break
+    out['rational'] = rational
+    out['lineWidth'] = m.getAttr(f"{curveShape}.lineWidth")
+
+    if m.nodeType(curveShape) == 'bezierCurve':
+        out['isBezier'] = True
+
+    if captureColor:
+        if m.getAttr(f"{curveShape}.overrideEnabled"):
+            col = m.getAttr(f"{curveShape}.overrideColor")
+            if col > 0:
+                out['overrideColor'] = col
+
+    if captureVisInput:
+        inp = m.connectionInfo(f"{curveShape}.v", sfd=True)
+        if inp:
+            out['visInput'] = inp
+
+    return out
+
+def iterCurveMacrosFromTransform(
+        transform:str,
+        captureColor:bool=True,
+        captureVisInput:bool=True
+) -> Generator[dict, None, None]:
+    for shape in iterShapesUnderTransform(transform):
+        yield getCurveMacroFromShape(shape,
+                                     captureColor=captureColor,
+                                     captureVisInput=captureVisInput)
+
+def iterCurveMacrosFromMixedSources(
+        *sources:Union[str, list[str]],
+        captureColor:bool=True,
+        captureVisInput:bool=True
+) -> Generator[dict, None, None]:
+    for shape in iterShapesFromMixedSources(*sources):
+        yield getCurveMacroFromShape(shape,
+                                     captureColor=captureColor,
+                                     captureVisInput=captureVisInput)
+
+def clearShapesUnderTransform(transform):
+    shapes = list(iterShapesUnderTransform(transform, includeLocators=True))
+    for shape in shapes:
         try:
-            with open(FILEPATH, 'r') as f:
-                self._data = json.load(f)
-        except FileNotFoundError:
-            m.warning(f"Missing shape library: {FILEPATH}")
-        return self
+            m.delete(shape)
+        except:
+            continue
 
-    def dump(self):
-        """
-        Dumps internal data to ``FILEPATH``.
+def createShapeFromCurveMacro(
+        macro:dict,
+        parent:str,
+        applyColor:bool=True,
+        applyVisInput:bool=True
+) -> str:
+    parentMObject = _s2a.getNodeMObject(parent)
+    args = [macro[k] for k in ('points',
+                               'knots',
+                               'degree',
+                               'form',
+                               'is2D',
+                               'rational')]
+    kwargs = {'parent': parentMObject}
+    shapeMObject = om.MFnNurbsCurve().create(*args, **kwargs)
+    shape = _a2s.fromNodeMObject(shapeMObject, isDagNode=True)
 
-        :return: self
-        """
-        with open(FILEPATH, 'w') as f:
-            json.dump(self._data, f, indent=4)
-        return self
+    if macro.get('isBezier', False):
+        m.select(shape)
+        shape = m.nurbsCurveToBezier()[0]
 
-    #-------------------------------------|    Get members
-
-    def keys(self):
-        """
-        Yields entry names.
-        """
-        for key in self._data.keys():
-            yield key
-
-    def values(self):
-        """
-        Yields deep copies of entry dictionaries.
-        """
-        for value in self._data.values():
-            yield deepcopy(value)
-
-    def items(self):
-        """
-        Yields pairs of (entry name, deep copy of entry dict)
-        """
-        for key, value in self._data.items():
-            yield key, deepcopy(value)
-
-    def __getitem__(self, key):
-        return deepcopy(self._data[key])
-
-    def __contains__(self, key):
-        return key in self.keys()
-
-    def __len__(self):
-        return len(self._data)
-
-    def __bool__(self):
-        return bool(self._data)
-
-    #-------------------------------------|    Add members
-
-    def __setitem__(self, key, value):
-        self._data[key] = deepcopy(value)
-
-    @classmethod
-    def _normalize(cls, entry:list) -> None:
-        allPoints = []
-
-        for macro in entry:
-            allPoints += macro['points']
-
-        bbox = data.BoundingBox.createFromPoints(allPoints)
-        mag = bbox.diagonal.length()
-
-        if mag:
-            correction = 1.7320508075688772 / bbox.diagonal.length()
-            for macro in entry:
-                macro['points'][:] = [
-                    [point[0] * correction,
-                     point[1] * correction,
-                     point[2] * correction] \
-                    for point in macro['points']
-                ]
-
-    @short(normalize='n',
-           tags='t',
-           dump='d',
-           captureOverrideColor='cc',
-           force='f')
-    def add(self,
-            key:str,
-            *sources,
-            normalize:bool=True,
-            tags:Union[str, list, None]=None,
-            dump:bool=None,
-            captureOverrideColor:bool=False,
-            force:bool=False):
-        """
-        :param key: the entry name
-        :param *sources: transforms or shapes from which to extract curve
-            shapes
-        :param normalize/n: normalize overall shape scale; defaults to True
-        :param dump/d: dump immediately to ``FILEPATH``; if omitted, defaults to
-            ``True`` if the class ``__autodump__`` attribute is to ``True``,
-            otherwise ``False``
-        :param captureOverrideColor/cc: capture color overrides; defaults to
-            False
-        :param force/f: if *key* already exists, suppress :class:`KeyError`
-            overwrite the entry; defaults to False
-        :raises KeyError: A namesake entry already exists.
-        :raises ValueError: No curve shapes were specified.
-        :return: self
-        """
-        if (not force) and key in self:
-            raise KeyError(f"key already exists: {key}")
-
-        #-----------------------------|    Sort through *sources
-
-        sources = list(without_duplicates(map(Elem, expand_tuples_lists(*sources))))
-        curveShapes = []
-        for source in sources:
-            if isinstance(source, nodes.Transform):
-                curveShapes += source.getShapes(
-                    type=['nurbsCurve', 'bezierCurve'],
-                    intermediate=False
-                )
-            elif isinstance(source, (nodes.NurbsCurve, nodes.BezierCurve)):
-                curveShapes.append(source)
-        curveShapes = list(without_duplicates(curveShapes))
-
-        if not curveShapes:
-            raise ValueError("no curve shapes specified")
-
-        entry = [curveShape.macro(captureOverrideColor=captureOverrideColor) \
-                 for curveShape in curveShapes]
-
-        if normalize:
-            self._normalize(entry)
-
-        self[key] = entry
-
-        if dump is None:
-            dump = self.__autodump__
-
-        if dump:
-            self.dump()
-
-        return self
-
-    #-------------------------------------|    Apply
-
-    @short(shapeAxisRemap='sar',
-           shapeScale='ss',
-           preserveVisInput='pvi',
-           preserveOverride='po')
-    def apply(self,
-              key:str,
-              transform,
-              shapeScale=None,
-              add=False,
-              shapeAxisRemap=None,
-              preserveVisInput=False,
-              preserveOverride=False):
-
-        # Conform args
-
-        entry = self[key]
-        transform = Elem(transform)
-
-        # Gather info
-
-        existingShapes = transform.getShapes(intermediate=False,
-                                             type=('locator',
-                                                   'nurbsCurve',
-                                                   'bezierCurve'))
-
-        info = {}
-
-        if preserveVisInput:
-            for shape in existingShapes:
-                visInputs = shape.attr('v').inputs(plugs=True)
-                if visInputs:
-                    info['v'] = visInputs[0]
-                    break
-
-        if preserveOverride:
-            for shape in existingShapes:
-                inputs = shape.attr('overrideEnabled').inputs(plugs=True)
-                if inputs:
-                    info['overrideEnabled'] = inputs[0]
-                else:
-                    value = shape.attr('overrideEnabled')()
-                    if value:
-                        info['overrideEnabled'] = True
-
-            for shape in existingShapes:
-                inputs = shape.attr('overrideColor').inputs(plugs=True)
-                if inputs:
-                    info['overrideColor'] = inputs[0]
-                else:
-                    value = shape.attr('overrideColor')()
-                    if value > 0:
-                        info['overrideColor'] = value
-
-        # Add new shapes
-
-        if shapeAxisRemap is not None:
-            num = len(shapeAxisRemap)
-            if num == 2:
-                thirdAxis = [ax for ax in 'xyz' \
-                             if ax not in (shapeAxisRemap[0].strip('-'),
-                                           shapeAxisRemap[1].strip('-'))][0]
-                shapeAxisRemap = list(shapeAxisRemap) + [thirdAxis, thirdAxis]
-
-            vecs = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1],
-                    '-x': [-1, 0, 0], '-y': [0, -1, 0], '-z': [0, 0, -1]}
-
-            remapMatrix = data.Matrix.createOrtho(
-                shapeAxisRemap[0], vecs[shapeAxisRemap[1]],
-                shapeAxisRemap[2], vecs[shapeAxisRemap[3]]
-            )
-
-            for macro in entry:
-                macro['points'] = [data.Point(point) ^ remapMatrix \
-                                   for point in macro['points']]
-
-        out = nodes.NurbsCurve.createFromMacros(entry,
-                                                parent=transform,
-                                                rescale=shapeScale)
-
-        for macro, shape in zip(entry, out):
+    if applyVisInput:
+        visInput = macro.get('visInput')
+        if visInput:
             try:
-                info['overrideColor'] >> shape.attr('overrideColor')
-                hasColorOverride = True
-            except KeyError:
-                try:
-                    shape.attr('overrideColor').set(macro['overrideColor'])
-                    hasColorOverride = True
-                except KeyError:
-                    hasColorOverride = False
-
-            try:
-                info['overrideEnabled'] >> shape.attr('overrideEnabled')
-            except KeyError:
-                if hasColorOverride:
-                    shape.attr('overrideEnabled').set(True)
-
-            try:
-                info['v'] >> shape.attr('v')
-            except KeyError:
+                m.connectAttr(visInput, f"{shape}.v")
+            except:
                 pass
 
-        if not add:
-            if existingShapes:
-                m.delete([str(x) for x in existingShapes])
+    if applyColor:
+        overrideColor = macro.get('overrideColor')
+        if overrideColor:
+            m.setAttr(f"{shape}.overrideEnabled", True)
+            m.setAttr(f"{shape}.overrideColor", overrideColor)
 
-        transform.conformShapeNames()
+    m.setAttr(f"{shape}.lineWidth", macro['lineWidth'])
+    return shape
+
+def conformShapeNames(transform:str) -> list[str]:
+    """
+    Fixes wonky shape names under a transform node.
+    """
+    shapes = m.listRelatives(transform, shapes=True, path=True)
+
+    if shapes:
+        transformShortName = transform.split('|')[-1]
+
+        numShapes = len(shapes)
+        newNames = [f'_gibberish_{x}' for x in range(numShapes)]
+        shapes = [m.rename(shape, x) for shape, x in zip(shapes, newNames)]
+
+        mt = re.match(r"^(.*?)([0-9]+)$", transformShortName)
+
+        if mt:
+            basename, startingIndex = mt.groups()
+            startingIndex = int(startingIndex)
+            newNames = [f'{basename}Shape{x}'
+                        for x in range(startingIndex, numShapes+startingIndex)]
+        else:
+            newNames = ['{}Shape{}'.format(transformShortName,
+                                           '' if x == 0 else x)
+                        for x in range(numShapes)]
+        shapes = [m.rename(shape, x) for shape, x in zip(shapes, newNames)]
+        return shapes
+
+    return []
+
+def iterSceneSourceTransforms(*userProvided) -> Generator[str, None, None]:
+    visited = set()
+
+    for x in expand_tuples_lists(*userProvided):
+        if m.nodeType(x) not in ('transform', 'joint'):
+            raise TypeError("expected a transform node")
+
+        if x in visited:
+            continue
+        visited.add(x)
+        yield x
+
+    if not visited:
+        allCurves = m.ls(type='nurbsCurve')
+        if allCurves:
+            for curve in allCurves:
+                if m.getAttr(f"{curve}.intermediateObject"):
+                    continue
+                parent = m.listRelatives(curve, parent=True, path=True)[0]
+                if parent in visited:
+                    continue
+                visited.add(parent)
+                yield parent
+
+#-----------------------------------------|
+#-----------------------------------------|    CONTROL SHAPE CLASS
+#-----------------------------------------|
+
+class ControlShape:
+
+    #---------------------------------|    Init
+
+    def __init__(self, curveMacros:Iterable[dict]):
+        self.curveMacros = list(curveMacros)
+
+    #---------------------------------|    Capture
+
+    @classmethod
+    def capture(cls,
+                *sources,
+                captureColor:bool=True,
+                captureVisInput:bool=True,
+                normalizePoints:bool=False) -> 'ControlShape':
+        """
+        :raises NoShapesError
+        """
+        macros = list(
+            iterCurveMacrosFromMixedSources(
+                *sources,
+                captureColor=captureColor,
+                captureVisInput=captureVisInput
+            )
+        )
+        if macros:
+            inst = cls(macros)
+            if normalizePoints:
+                inst.normalizePoints()
+            return inst
+        raise NoShapesError
+
+    #---------------------------------|    Apply
+
+    def apply(self,
+              *transforms,
+              applyColor:bool=True,
+              applyVisInput:bool=True,
+              replace:bool=True,
+
+              translate:Optional[list[float]]=None,
+              rotate:Optional[list[float]]=None,
+              scale:Optional[list[float]]=None,
+              axisRemap:Optional[list[str]]=None) -> list[str]:
+        out = []
+
+        edits = {}
+
+        for name, state in zip(
+                ('scale', 'axisRemap', 'rotate', 'translate'),
+                (scale, axisRemap, rotate, translate)
+        ):
+            if state is not None:
+                edits[name] = state
+
+        if edits:
+            self = self.copy()
+            for k, v in edits.items():
+                getattr(self, k)(v)
+
+        for transform in without_duplicates(expand_tuples_lists(*transforms)):
+            if replace:
+                clearShapesUnderTransform(transform)
+
+            shapeMObjects = []
+
+            for curveMacro in self.curveMacros:
+                shape = createShapeFromCurveMacro(curveMacro,
+                                                  transform,
+                                                  applyColor=applyColor,
+                                                  applyVisInput=applyVisInput)
+                shapeMObjects.append(_s2a.getNodeMObject(shape))
+
+            conformShapeNames(transform)
+            out += [_a2s.fromNodeMObject(x,
+                                         isDagNode=True) for x in shapeMObjects]
+
         return out
 
+    #---------------------------------|    Transformations
 
-    def test(self, *keys):
-        """
-        :param keys (optional): the keys to test; if omitted, all keys are
-            tested
-        """
-        if keys:
-            keys = list(without_duplicates(expand_tuples_lists(*keys)))
-        else:
-            keys = list(self.keys())
+    def iterPoints(self) -> Generator[list[float], None, None]:
+        for curveMacro in self.curveMacros:
+            for point in curveMacro['points']:
+                yield point
 
-        for i, key in enumerate(keys):
-            parent = self._test(key)
-            parent.attr('tx').set(1.25 * i)
+    def transform(self, matrix:Union[list[float], om.MMatrix]):
+        for curveMacro in self.curveMacros:
+            curveMacro['points'][:] = _am.PointWrangler(
+                curveMacro['points']
+            ).applyMatrix(matrix).simple()
+        return self
 
-    def _test(self, key:str):
-        try:
-            parent = nodes.Transform.createNode(name=key)
-            self.apply(key, parent)
-        except KeyError as exc:
-            m.delete(str(parent))
-            raise exc
-        return parent
+    def translate(self, translate:list[list[float]]):
+        for curveMacro in self.curveMacros:
+            curveMacro['points'][:] = _am.PointWrangler(
+                curveMacro['points']
+            ).translate(translate).simple()
+        return self
 
-    #-------------------------------------|    Repr
+    def rotate(self, rotate:list[list[float]]):
+        for curveMacro in self.curveMacros:
+            curveMacro['points'][:] = _am.PointWrangler(
+                curveMacro['points']
+            ).rotate(rotate).simple()
+        return self
+
+    def scale(self, scale:list[list[float]]):
+        for curveMacro in self.curveMacros:
+            curveMacro['points'][:] = _am.PointWrangler(
+                curveMacro['points']
+            ).scale(scale).simple()
+        return self
+
+    def axisRemap(self, *axes:str):
+        for curveMacro in self.curveMacros:
+            curveMacro['points'][:] = _am.PointWrangler(
+                curveMacro['points']
+            ).axisRemap(*axes).simple()
+        return self
+
+    def normalizePoints(self):
+        allPoints = []
+        for curveMacro in self.curveMacros:
+            allPoints += curveMacro['points']
+
+        allPoints = _am.PointWrangler(allPoints).normalizeBoundingBox().simple()
+        lastLength = 0
+
+        for i, curveMacro in enumerate(self.curveMacros):
+            thisLength = len(curveMacro['points']) + lastLength
+            curveMacro['points'][:] = allPoints[lastLength:thisLength]
+            lastLength = thisLength
+        return self
+
+    #---------------------------------|    Serialization
+
+    def copy(self) -> 'ControlShape':
+        return type(self)(deepcopy(self.curveMacros))
+
+    def __copy__(self):
+        return self.copy()
+
+    def macro(self) -> dict:
+        return {'curveMacros': deepcopy(self.curveMacros)}
+
+    def json(self) -> str:
+        return json.dumps(self.macro())
+
+    @classmethod
+    def createFromMacro(cls, macro:dict) -> 'ControlShape':
+        return cls(macro['curveMacros'])
+
+    @classmethod
+    def createFromJson(cls, data:str) -> 'ControlShape':
+        return cls.createFromMacro(json.loads(data))
+
+    #---------------------------------|    Repr
 
     def __repr__(self):
-        return "<control shapes library>"
+        num = len(self.curveMacros)
+        if num == 0:
+            return '<empty control shape entry>'
+        elif num == 1:
+            return '<control shape entry with 1 curve>'
+        return f'<control shape entry with {num} curves>'
 
+#-----------------------------------------|
+#-----------------------------------------|    FUNCTIONAL / INTERACTIVE
+#-----------------------------------------|
 
-CONTROLSHAPES = ControlShapesLibrary()
-
-CONTROLCOLORS = {'red': 13,
-                 'green': 14,
-                 'yellow': 17,
-                 'blue': 6,
-                 'black': 1,
-                 'white': 16,
-
-                 # Rig 'roles'
-                 'left': 6,
-                 'left1': 23,
-                 'right': 13,
-                 'right1': 12,
-                 'center': 14,
-                 'center1': 23,
-                 'options': 16,
-                 'options1': 2,
-                 'options3': 1}
-
-def deriveShapeScaleFromPoints(points:Iterable, factor=None) -> float:
+def transformControlShapes(*controls:Union[str, list[str]],
+                           translate:Optional[list[list[float]]]=None,
+                           rotate:Optional[list[list[float]]]=None,
+                           scale:Optional[list[list[float]]]=None,
+                           axisRemap:Optional[list[str]]=None) -> None:
     """
-    Used to improvise shape scales for chains etc. Uses the cumulative vector
-    length.
+    Transforms control shapes, in local space, across the specified controls.
     """
-    if factor is None:
-        factor = AUTO_SHAPE_SCALE_FACTOR
-    points = list(map(data['Point'], points))
-    vectors = ((p2-p1) for p1, p2 in zip(points, points[1:]))
-    length = sum((vector.length() for vector in vectors))
-    return length * factor
+    for control in without_duplicates(expand_tuples_lists(*controls)):
+        for curveShape in iterShapesUnderTransform(control):
+            fn = om.MFnNurbsCurve(_s2a.getNodeMObject(curveShape))
+            points = list(fn.cvPositions(space=om.MSpace.kObject))
+            wrangler = _am.PointWrangler(points)
 
-def showcase():
+            if scale is not None:
+                wrangler.scale(scale)
+            if axisRemap is not None:
+                wrangler.axisRemap(axisRemap)
+            if rotate is not None:
+                wrangler.rotate(rotate)
+            if translate is not None:
+                wrangler.translate(translate)
+
+            for i, point in enumerate(wrangler):
+                m.move(point[0], point[1], point[2],
+                       f"{curveShape}.cv[{i}]",
+                       a=True, objectSpace=True)
+
+def copyControlShapes(srcControl:str,
+                      *destControls:Union[str, list[str]],
+                      copyColor:bool=True,
+                      copyVisInput:bool=False,
+
+                      translate:Optional[list[float]]=None,
+                      rotate:Optional[list[float]]=None,
+                      scale:Optional[Union[float, list[float]]]=None,
+
+                      worldSpace=False,
+                      worldMirrorAxis:Optional[Literal['x', 'y', 'z']]=None,
+
+                      replace:bool=True) -> list[str]:
+    destControls = list(without_duplicates(expand_tuples_lists(*destControls)))
+
+    if not destControls:
+        raise NoTargetsError
+
+    worldSpace = worldSpace or worldMirrorAxis
+
+    entry = ControlShape.capture(srcControl,
+                                 captureVisInput=copyVisInput,
+                                 captureColor=copyColor)
+    edits = {}
+
+    for name, state in zip(('scale', 'rotate', 'translate'),
+                           (scale, rotate, translate)):
+        if state is not None:
+            edits[name] = state
+
+    if edits:
+        for k, v in edits.items():
+            getattr(entry, k)(v)
+
+    if worldSpace:
+        out = []
+        origMatrix = m.xform(srcControl, q=True, matrix=True, worldSpace=True)
+        entry.transform(origMatrix)
+
+        if worldMirrorAxis:
+            row, col = {'x': (0, 0), 'y': (1, 1), 'z': (2, 2)}[worldMirrorAxis]
+            flipperMatrix = om.MMatrix()
+            flipperMatrix.setElement(row, col,
+                                     flipperMatrix.getElement(row, col) * -1)
+            entry.transform(flipperMatrix)
+
+        for destControl in destControls:
+            thisEntry = entry.copy()
+            thisEntry.transform(
+                om.MMatrix(
+                    m.xform(destControl, q=True, matrix=True, worldSpace=True)
+                ).inverse()
+            )
+
+            out += thisEntry.apply(destControl, replace=replace)
+        return out
+    return entry.apply(destControls, replace=replace)
+
+def setControlColor(color:int, *destControls:Union[str, list[str]]) -> None:
+    doReset = color in (0, None)
+
+    visited = False
+
+    for ct in without_duplicates(expand_tuples_lists(*destControls)):
+        visited = True
+        for shape in iterShapesUnderTransform(ct, includeLocators=True):
+            try:
+                if doReset:
+                    m.setAttr(f"{shape}.overrideEnabled", False)
+                    m.setAttr(f"{shape}.overrideColor", 0)
+                else:
+                    m.setAttr(f"{shape}.overrideEnabled", True)
+                    m.setAttr(f"{shape}.overrideColor", color)
+            except RuntimeError:
+                continue
+
+    if not visited:
+        raise NoTargetsError
+
+def copyControlColor(srcControl:str,
+                     *destControls:Union[str, list[str]]):
+    colors = []
+
+    destControls = without_duplicates(expand_tuples_lists(*destControls))
+    if not destControls:
+        raise NoTargetsError
+
+    for shape in iterShapesUnderTransform(srcControl, includeLocators=True):
+        if m.getAttr(f"{shape}.overrideEnabled"):
+            _color = m.getAttr(f"{shape}.overrideColor")
+            if _color > 0:
+                colors.append(_color)
+                continue
+            else:
+                colors.append(None)
+        else:
+            colors.append(None)
+
+    fill_nones_with_chase(colors)
+    numAvailCols = len(colors)
+
+    if numAvailCols == colors.count(None):
+        return
+
+    for destControl in destControls:
+        theseShapes = list(iterShapesUnderTransform(destControl,
+                                                    includeLocators=True))
+        thisColList = colors[:]
+        diff = len(theseShapes) - numAvailCols
+
+        if diff > 0:
+            thisColList += [thisColList[-1]] * diff
+
+        for col, shape in zip(thisColList, theseShapes):
+            try:
+                m.setAttr(f"{shape}.overrideEnabled", True)
+                m.setAttr(f"{shape}.overrideColor", col)
+            except:
+                continue
+
+#-----------------------------------------|
+#-----------------------------------------|    ARCHIVE CLASS
+#-----------------------------------------|
+
+class ControlShapeArchive:
+
+    #---------------------------------|    Init
+
+    def __init__(self, entries:Optional[dict[str, ControlShape]]=None, /):
+        if entries is None:
+            entries = {}
+        self._entries = entries
+
+    #---------------------------------|    Get members
+
+    def __len__(self):
+        return len(self._entries)
+
+    def __contains__(self, key:str):
+        return key in self._entries
+
+    def keys(self):
+        return self._entries.keys()
+
+    def values(self):
+        return self._entries.values()
+
+    def items(self):
+        return self._entries.items()
+
+    def __getitem__(self, key:str) -> ControlShape:
+        return self._entries[key]
+
+    def __iter__(self):
+        return self._entries.__iter__()
+
+    #---------------------------------|    Add members
+
+    def capture(self,
+                key:str,
+                *sources,
+                captureColor:bool=True,
+                captureVisInput:bool=False,
+                force:bool=False,
+                normalizePoints:bool=True) -> 'ControlShape':
+        if (not force) and key in self:
+            raise KeyError("key taken: {}".format(key))
+
+        newEntry = ControlShape.capture(*sources,
+                                        captureColor=captureColor,
+                                        captureVisInput=captureVisInput,
+                                        normalizePoints=normalizePoints)
+        self._entries[key] = newEntry
+        return out
+
+    def _captureFromScene(self,
+                          *sourceTransforms,
+                          normalizePoints:bool,
+                          captureColor:bool,
+                          captureVisInput:bool) -> list[ControlShape]:
+        out = []
+
+        for transform in iterSceneSourceTransforms(*sourceTransforms):
+            try:
+                entry = ControlShape.capture(transform,
+                                             captureColor=captureColor,
+                                             captureVisInput=captureVisInput)
+            except NoShapesError:
+                continue
+            key = transform.split('|')[-1]
+            self._entries[key] = entry
+            out.append(entry)
+
+        return out
+
+    def captureSceneArchive(self, *sourceTransforms):
+        """
+        Use this for rig builds / scene templating.
+        """
+        return self._captureFromScene(*sourceTransforms,
+                                      normalizePoints=False,
+                                      captureColor=True,
+                                      captureVisInput=True)
+
+    def applySceneArchive(self,
+                          applyColor:bool=True,
+                          applyVisInput:bool=True) -> list[str]:
+        out = []
+
+        for k, v in self._entries.items():
+            matches = m.ls(k, type='transform')
+            if matches:
+                for match in matches:
+                    out += v.apply(match,
+                                   applyColor=applyColor,
+                                   applyVisInput=applyVisInput,
+                                   replace=True)
+        return out
+
+    def createShowcaseScene(self,
+                            force:bool=False,
+                            spacing:float=0.5) -> list[str]:
+        """
+        Creates a new scene and dumps all shapes in the archive into it for
+        visual inspections.
+
+        :param spacing: the margin, along X, between each 'rendered' shape;
+            defaults to 0.5
+        :return: The list of generated shape nodes.
+        """
+        m.file(newFile=True, force=True)
+
+        groups = [m.group(name=k, empty=True) for k in self]
+
+        out = self.applySceneArchive()
+
+        for i, thisGroup in enumerate(groups[1:], start=1):
+            lastGroup = groups[i-1]
+            lastBBox = m.exactWorldBoundingBox(lastGroup,
+                                               calculateExactly=True)
+            thisBBox = m.exactWorldBoundingBox(thisGroup,
+                                               calculateExactly=True)
+
+            startingX = lastBBox[3] + spacing
+
+            distanceToPivot = m.xform(thisGroup,
+                                      q=True,
+                                      rp=True,
+                                      ws=True)[0] - thisBBox[0]
+
+            thisX = startingX + distanceToPivot
+            m.setAttr(f"{thisGroup}.tx", thisX)
+
+        return out
+
+    def recaptureFromShowcaseScene(self):
+        curves = m.ls(type='nurbsCurve')
+        if curves:
+            curves = [x for x in curves
+                      if not m.getAttr(f"{x}.intermediateObject")]
+            curveXForms = list(
+                without_duplicates(
+                    [m.listRelatives(x, path=True, parent=True)[0]
+                     for x in curves]
+                )
+            )
+            if curveXForms:
+                curveXForms = [x for x in curveXForms
+                               if not m.listRelatives(x, parent=True)]
+                if curveXForms:
+                    self._captureFromScene(curveXForms,
+                                           captureVisInput=False,
+                                           captureColor=True,
+                                           normalizePoints=True)
+        return self
+
+    #---------------------------------|    Serialization
+
+    def macro(self) -> dict:
+        return {'entries': {k: v.macro() for k, v in self._entries.items()}}
+
+    def json(self) -> str:
+        return json.dumps(self.macro())
+
+    @classmethod
+    def createFromMacro(cls, macro:dict) -> 'ControlShapeArchive':
+        return cls().setToMacro(macro)
+
+    @classmethod
+    def createFromJson(cls, data:str) -> 'ControlShapeArchive':
+        return cls.createFromMacro(json.loads(data))
+
+    def setToMacro(self, macro:dict):
+        entries = {k: ControlShape.createFromMacro(v)
+                   for k, v in macro['entries'].items()}
+        self._entries.clear()
+        self._entries.update(entries)
+        return self
+
+    def setToJson(self, data:str):
+        return self.setToMacro(json.loads(data))
+
+    #---------------------------------|    Repr
+
+    def __repr__(self):
+        num = len(self._entries)
+        if num == 0:
+            return "<empty control shape archive>"
+        elif num == 1:
+            return "<control shape archive with 1 shape>"
+        return f"<control shape archive with {num} shapes>"
+
+
+class ControlShapeLibrary(ControlShapeArchive, metaclass=SingletonMeta):
     """
-    Starts a new scene and generates all the current control shapes for
-    inspection.
+    Singleton variant of :class:`ControlShapeArchive` that keeps track of an
+    adjacent json file named after this module, and implements :meth:`load`
+    and :meth:`dump` convenience methods. Syncing is not persistent.
     """
-    m.file(newFile=True, force=True)
-    CONTROLSHAPES.test()
+    #---------------------------------|    Init
+
+    def __init__(self):
+        super().__init__()
+        self._filepath = os.path.join(
+            os.path.dirname(__file__),
+            "{}.json".format(__name__.split('.')[-1])
+        )
+        self.load()
+
+    #---------------------------------|    I/O
+
+    @property
+    def filepath(self) -> str:
+        return self._filepath
+
+    def load(self, *_):
+        try:
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                data = f.read()
+            self.setToJson(data)
+        except IOError:
+            self._entries = {}
+
+    def dump(self, *_):
+        data = self.json()
+        with open(self.filepath, 'w') as f:
+            f.write(data)
+        print("Dumped {} control shape(s) into: {}".format(len(self),
+                                                           self.filepath))

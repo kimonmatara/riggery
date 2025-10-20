@@ -1,5 +1,5 @@
 import re
-from typing import Generator, Optional, Union
+from typing import Generator, Optional, Union, Literal
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
@@ -22,7 +22,7 @@ from riggery.internal import str2api as _s2a
 class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Constructor(s)
-    
+
     @classmethod
     @short(name='n',
            matrix='m',
@@ -744,107 +744,56 @@ class Transform(nodes['DagNode']):
 
         return out
 
-    @short(shapeScale='ss',
-           shapeColor='sc',
-           shapeAxisRemap='sar',
-           preserveVisInput='pvi',
-           preserveOverride='po')
+    @short(applyColor='ac',
+           axisRemap='ar',
+           scale='s')
     def setControlShape(self,
-                        libraryKey:str, *,
-                        shapeScale=None,
-                        shapeColor:Union[None, int, str]=None,
-                        shapeAxisRemap=None,
-                        preserveVisInput:bool=False,
-                        preserveOverride:bool=False):
-        """
-        :param libraryKey: the name of the shape library entry
-        :param shapeScale/ss: an optional scaling factor for the control shape;
-            defaults to 1.0
-        :param shapeColor/sc: an optional color index for the control shape; if
-            string, must be one of the keys returned by
-            :meth:`getControlColorKeys`; defaults to None
-        :param shapeAxisRemap/sar: if provided, should be two or four letter
-            axes, defining pairwise remaps for the control shape; defaults to
-            None
-        :return: The generated shape(s).
-        """
-        if shapeScale is None:
-            shapeScale = _c.ShapeScale.__scale_factor__
+                        libraryKey:str,
+                        color:Optional[int]=None,
+                        applyColor:bool=True,
+                        axisRemap:Optional[list[str]]=None,
+                        scale:Optional[float]=None) -> list['nodes.NurbsCurve']:
+        if scale is None:
+            scale = _cs.ShapeScale.__factor__
 
-        out = _cs.CONTROLSHAPES.apply(libraryKey,
-                                      self,
-                                      shapeScale=shapeScale,
-                                      shapeAxisRemap=shapeAxisRemap,
-                                      preserveOverride=preserveOverride,
-                                      preserveVisInput=preserveVisInput)
-        if shapeColor is not None:
-            self.controlColor = shapeColor
+        out = list(map(nodes['DagNode'],
+                       _cs.ControlShapeLibrary()[libraryKey].apply(
+                           str(self),
+                           applyColor=applyColor,
+                           axisRemap=axisRemap,
+                           scale=scale
+                       )))
+        if color is not None:
+            self.setControlColor(color)
         return out
 
-    def autoControlColor(self):
-        """
-        Inspects this node's position and / or name to determine which side it
-        belongs to, and colors it according to side.
-        """
-        self.controlColor = {0: 'center',
-                             1: 'left',
-                             -1: 'right'}[self.guessSide()]
+    def setControlColor(self, color):
+        _cs.setControlColor(color, self)
         return self
 
-    def getControlColor(self) -> Optional[int]:
-        """
-        :return: The first defined control colour amongst this transform's
-            curve or locator shapes (non-intermediate only).
-        """
-        for shape in self.iterShapes(intermediate=False):
-            if shape.attr('overrideEnabled')():
-                col = shape.attr('overrideColor')()
-                if col > 0:
-                    return col
-
-    def setControlColor(self, color:Union[int, str]):
-        """
-        :param color: the color to apply to this transform's non-intermediate
-            curve or locator shapes; if passing in as a string, consult
-            :meth:`getControlColorKeys` for a reference
-        :return: self
-        """
-        if isinstance(color, str):
-            color = _cs.CONTROLCOLORS[color]
-
-        for shape in self.iterShapes(intermediate=False,
-                                     type=['locator', 'nurbsCurve']):
-            shape.attr('overrideEnabled').set(True)
-            shape.attr('overrideColor').set(color)
-
-        return self
-
-    def clearControlColor(self):
-        """
-        Clears color overrides on this control.
-        """
-        for shape in self.iterShapes(intermediate=False,
-                                     type=['locator', 'nurbsCurve']):
-            shape.attr('overrideColor').set(0)
-            shape.attr('overrideEnabled').set(False)
-        return self
-
-    controlColor = property(getControlColor, setControlColor, clearControlColor)
-
-    @classmethod
-    def getControlColorKeys(cls) -> list[str]:
-        """
-        :return: The color names available for use with
-            :meth:`setControlColor` and :meth:`setControlShape`.
-        """
-        return list(sorted(_cs.CONTROLCOLORS.keys()))
-
-    @classmethod
-    def getControlShapeKeys(cls) -> list[str]:
-        """
-        :return: The shape names available for use with :meth:`setControlShape`.
-        """
-        return list(sorted(_cs.CONTROLSHAPES.keys()))
+    @short(applyColor='ac',
+           axisRemap='ar',
+           scale='s',
+           worldSpace='ws',
+           worldMirrorAxis='wma')
+    def copyControlShapeTo(
+            self,
+            *destControls,
+            copyColor:bool=True,
+            copyVisInput:bool=False,
+            scale=None,
+            worldSpace:bool=False,
+            worldMirrorAxis:Optional[Literal['x', 'y', 'z']]=None
+    ) -> list['nodes.NurbsCurve']:
+        out =_cs.copyControlShapes(
+            str(self),
+            list(map(str, expand_tuples_lists(*destControls))),
+            copyColor=copyColor,
+            copyVisInput=copyVisInput,
+            worldMirrorAxis=worldMirrorAxis,
+            scale=scale
+        )
+        return list(map(nodes['DagNode'], out))
 
     #-----------------------------------------|    Layout utilities
 

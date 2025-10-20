@@ -2,89 +2,49 @@
 Base tools for creating controls.
 """
 
-from typing import Optional
+from typing import Optional, Union
 from contextlib import nullcontext
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 from riggery.general.strings import int_to_letter
+from ..lib.controlshapes import ShapeScale
 from ..lib import names as _nm
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 
 GLOBAL_SHAPE_SCALE = 8.0
 
-@short(matrix='m',
-       worldSpace='ws',
-       parent='p',
+@short(worldSpace='ws',
        keyable='k',
        channelBox='cb',
+       axisRemap='ar',
        pickWalkParent='pwp',
        zeroChannels='zc',
+       rotateOrder='ro',
        offsetGroups='og',
-       shape='sh',
-       shapeScale='ss',
-       shapeColor='sc',
-       shapeAxisRemap='sar',
-       displayHandle='dh',
-       asControl='ac',
-       uniformScale='us',
-       detailedReturn='det')
-def createControl(*,
-                  matrix=None,
-                  worldSpace:bool=False,
-                  parent=None,
-                  keyable=None,
-                  channelBox=None,
-                  shapeScale:float=1.0,
-                  shape=None,
-                  shapeColor=None,
-                  shapeAxisRemap=None,
-                  pickWalkParent=None,
-                  zeroChannels:bool=True,
-                  rotateOrder=0,
-                  offsetGroups=None,
-                  asControl:bool=True,
-                  displayHandle=None,
-                  uniformScale:bool=False,
-                  detailedReturn:bool=False):
-    """
-    Creates and returns a single control.
+       asControl='ac')
+def createControl(
+        *,
+        matrix:Optional[list[float]]=None,
+        worldSpace:bool=False,
+        parent:Optional[Union[str, 'r.nodes.Transform']]=None,
+        keyable:Optional[Union[str, list[str]]]=None,
+        channelBox:Optional[Union[str, list[str]]]=None,
 
-    :param matrix: the control matrix; defaults to identity
-    :param worldSpace: apply the matrix in world-space (ignoring the parent);
-        defaults to False
-    :param parent/p: the destination parent
-    :param keyable/k: a list of keyable channels; if both this and *channelBox*
-        are omitted, *keyable* defaults to ``['t', 'r', 'ro']``
-    :param channelBox/cb: a list of settable channels; defaults to None
-    :param uniformScale/us: creates a ``uniformScale`` attribute to drive all
-        scale channels; ignored if 'scale' or 's' are not in *keyable* or
-        *channelBox*; defaults to False
-    :param shape/sh: a library control shape; defaults to None
-    :param shapeScale/ss: a scaling factor for the library control shape;
-        defaults to 1.0
-    :param shapeColor/sc: either a string lookup (like 'red') or a color index
-        for the shape color; defaults to None
-    :param shapeAxisRemap/sar: two or four letter axes, defining pairwise remaps
-        for the control shape; defaults to None
-    :param pickWalkParent/pwp: a pick-walk parent for the control; defaults to
-        None
-    :param zeroChannels/zc: ignored if *offsetGroups* is defined; forces zeroing
-        by editing the control's ``offsetParentMatrix`` attribute; defaults to
-        True
-    :param rotateOrder/ro: the control's rotate order on build; defaults to 0
-        ('xyz')
-    :param offsetGroups/og: one or more suffixes for offset groups; defaults to
-        None
-    :param asControl/ac: if this is True, features like controller tagging,
-        shapes etc. will be omitted; defaults to False
-    :param displayHandle/dh: display a simple crosshair for selection; defaults
-        to True if *asControl* is True and *shape* is None
-    :return: The main control transform.
-    """
+        shape:Optional[str]=None,
+        color:Optional[Union[str, int]]=None,
+        axisRemap:Optional[list[str]]=None,
+
+        pickWalkParent:Optional[Union[str, 'r.nodes.DependNode']]=None,
+        zeroChannels:bool=True,
+        rotateOrder:Union[int, str]=0,
+        offsetGroups:Optional[Union[str, list[str]]]=None,
+        asControl:bool=True,
+        displayHandle:Optional[bool]=None,
+        uniformScale:bool=False,
+        detailReturn:bool=False
+):
     details = {}
-
-    shapeScale = shapeScale * ShapeScale.__scale_factor__ * GLOBAL_SHAPE_SCALE
 
     if keyable:
         keyable = expand_tuples_lists(keyable)
@@ -126,10 +86,7 @@ def createControl(*,
             xf.pickWalkParent = pickWalkParent
 
         if shape:
-            xf.setControlShape(shape,
-                               shapeScale=shapeScale,
-                               shapeColor=shapeColor,
-                               shapeAxisRemap=shapeAxisRemap)
+            xf.setControlShape(shape, color=color, axisRemap=axisRemap)
 
         if displayHandle:
             xf.attr('displayHandle').set(True)
@@ -154,7 +111,8 @@ def createControl(*,
                 target = xf.attr(f's{chan}')
                 driver >> target
                 target.disable()
-    return details if detailedReturn else xf
+
+    return details if detailReturn else xf
 
 @short(matrix='m',
        worldSpace='ws',
@@ -165,41 +123,28 @@ def createControl(*,
        pickWalkStack='pws',
        zeroChannels='zc',
        offsetGroups='og',
-       shape='sh',
-       shapeScale='ss',
-       shapeColor='sc',
-       shapeAxisRemap='sar',
+       axisRemap='ar',
        insetScalingFactor='isf',
        asControl='ac')
-def createControlStack(numControls:int, *,
-                       matrix=None,
-                       worldSpace:bool=False,
-                       parent=None,
-                       keyable=None,
-                       channelBox=None,
-                       shapeScale:float=1.0,
-                       shape=None,
-                       shapeColor=None,
-                       insetScalingFactor:float=0.75,
-                       shapeAxisRemap=None,
-                       pickWalkParent=None,
-                       pickWalkStack=True,
-                       zeroChannels:bool=True,
-                       rotateOrder=0,
-                       offsetGroups=None,
-                       displayHandle=None,
-                       asControl:bool=True):
-    """
-    Creates a stack of inset controls. Options like *offsetGroups* only apply to
-    the root control. See :func:`createControl` for full parameter information.
-
-    :param numControls: the overall number of controls to create, including
-        insets
-    :param insetScalingFactor: a shape scaling factor for each inset control;
-        defaults to 0.75
-    :return: All the controls, in a list. The outermost (top) control will be
-        first on the list (index 0). The innermost control will be last.
-    """
+def createControlStack(
+        numControls:int, *,
+        matrix:Optional[list[float]]=None,
+        worldSpace:bool=False,
+        parent:Optional[Union[str, 'nodes.Transform']]=None,
+        keyable:Optional[Union[str, list[str]]]=None,
+        channelBox:Optional[Union[str, list[str]]]=None,
+        shape:Optional[str]=None,
+        color:Optional[Union[str, int]]=None,
+        insetScalingFactor:float=0.75,
+        axisRemap:Optional[list[str]]=None,
+        pickWalkParent:Optional[Union[str, 'nodes.DependNode']]=None,
+        pickWalkStack:bool=True,
+        zeroChannels:bool=True,
+        rotateOrder:Union[str, int]=0,
+        offsetGroups:Optional[Union[str, list[str]]]=None,
+        displayHandle:Optional[bool]=None,
+        asControl:bool=True
+):
     controls = []
 
     for i in range(numControls):
@@ -209,12 +154,12 @@ def createControlStack(numControls:int, *,
             ctx = _nm.Name(int_to_letter(i))
 
         with ctx:
+
             kwargs = {'keyable': keyable,
                       'channelBox': channelBox,
                       'shape': shape,
-                      'shapeColor': shapeColor,
-                      'shapeAxisRemap': shapeAxisRemap,
-                      'shapeScale': shapeScale * (insetScalingFactor ** i),
+                      'color': color,
+                      'axisRemap': axisRemap,
                       'rotateOrder': rotateOrder,
                       'displayHandle': displayHandle,
                       'asControl': asControl}
@@ -234,7 +179,8 @@ def createControlStack(numControls:int, *,
                 if pickWalkStack:
                     kwargs['pickWalkParent'] = prev
 
-            control = createControl(**kwargs)
+            with ShapeScale(insetScalingFactor ** i):
+                control = createControl(**kwargs)
 
             if not isRoot:
                 sw = prev.addAttr('showInset', at='bool', cb=True, dv=False)
@@ -244,19 +190,3 @@ def createControlStack(numControls:int, *,
         controls.append(control)
 
     return controls
-
-
-class ShapeScale:
-    __scale_factor__ = 1.0
-
-    def __init__(self, scale:float):
-        self._scale = scale
-
-    def __enter__(self):
-        self._prev = ShapeScale.__scale_factor__
-        ShapeScale.__scale_factor__ *= self._scale
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        ShapeScale.__scale_factor__ = self._prev
-        return False
