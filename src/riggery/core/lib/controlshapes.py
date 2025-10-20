@@ -253,6 +253,19 @@ def iterSceneSourceTransforms(*userProvided) -> Generator[str, None, None]:
                 visited.add(parent)
                 yield parent
 
+def getFirstVisInputUnderControl(control:str) -> Optional[str]:
+    for shape in iterShapesUnderTransform(control, includeLocators=True):
+        inp = m.connectionInfo(f"{shape}.v", sfd=True)
+        if inp:
+            return inp
+
+def getFirstOverrideColorUnderControl(control:str) -> Optional[int]:
+    for shape in iterShapesUnderTransform(control, includeLocators=True):
+        if m.getAttr(f"{shape}.overrideEnabled"):
+            col = m.getAttr(f"{shape}.overrideColor")
+            if col > 0:
+                return col
+
 #-----------------------------------------|
 #-----------------------------------------|    CONTROL SHAPE CLASS
 #-----------------------------------------|
@@ -301,6 +314,18 @@ class ControlShape:
               rotate:Optional[list[float]]=None,
               scale:Optional[list[float]]=None,
               axisRemap:Optional[list[str]]=None) -> list[str]:
+        """
+        Per transform:
+            Make a copy of this entry
+            Look for the first vis input under the control
+                If there is one, assign it to every macro in this entry, but
+                only if applyVisInput is False or the entry doesn't have a
+                defined vis input
+            Look for the first override color
+                If there is one, assign it to every macro in this entry, but
+                only if applyColor is False or the entry doesn't have a defined
+                vis input
+        """
         out = []
 
         edits = {}
@@ -318,12 +343,34 @@ class ControlShape:
                 getattr(self, k)(v)
 
         for transform in without_duplicates(expand_tuples_lists(*transforms)):
+            # Attempt to reuse existing user vis input / override col info
+            # where things are undefined
+
+            existingVisInput = getFirstVisInputUnderControl(transform)
+            existingOverrideColor = getFirstOverrideColorUnderControl(transform)
+
+            if existingVisInput or existingOverrideColor:
+                thisInst = self.copy()
+
+                for curveMacro in thisInst.curveMacros:
+                    if existingVisInput:
+                        if applyVisInput is False \
+                                or 'visInput' not in curveMacro:
+                            curveMacro['visInput'] = existingVisInput
+
+                    if existingOverrideColor:
+                        if applyColor is False \
+                                or 'overrideColor' not in curveMacro:
+                            curveMacro['overrideColor'] = existingOverrideColor
+            else:
+                thisInst = self
+
             if replace:
                 clearShapesUnderTransform(transform)
 
             shapeMObjects = []
 
-            for curveMacro in self.curveMacros:
+            for curveMacro in thisInst.curveMacros:
                 shape = createShapeFromCurveMacro(curveMacro,
                                                   transform,
                                                   applyColor=applyColor,
