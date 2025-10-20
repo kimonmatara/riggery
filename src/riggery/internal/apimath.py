@@ -158,9 +158,7 @@ class PointWrangler(list):
             bbox.expand(point)
         diagonalVector = bbox.max - bbox.min
         diagonalLength = diagonalVector.length()
-        print("The diagonal length is ", diagonalLength)
         correction = BBOX_UNIT_DIAGONAL / diagonalLength
-        print("The correction should be ", correction)
 
         factors = [correction] * 3
         return self.scale(factors)
