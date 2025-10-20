@@ -62,3 +62,31 @@ def issublist(sublist:list, containerlist:list) -> bool:
     if len(sublist) == len(contained_segment):
         return all((x==y for x, y in zip(sublist, contained_segment)))
     return False
+
+def fill_nones_with_chase(lst:list) -> None:
+    """
+    Replaces each None value in a list by re-using the last non-None value
+    preceding it or, failing that, the first non-None value following it.
+
+    This is an in-place operation. This function has no return.
+    """
+    out = []
+    last_not_none = None
+
+    for item in lst:
+        if item is None:
+            item = last_not_none
+        else:
+            last_not_none = item
+        out.append(item)
+
+    out.reverse()
+    out2 = []
+
+    for item in out:
+        if item is None:
+            item = last_not_none
+        else:
+            last_not_none = item
+        out2.append(item)
+    lst[:] = reversed(out2)
