@@ -1,4 +1,5 @@
 from typing import Optional, Literal, Union
+import maya.cmds as m
 import maya.api.OpenMaya as om
 from riggery.general.iterables import expand_tuples_lists
 
@@ -8,10 +9,10 @@ from riggery.general.iterables import expand_tuples_lists
 
 AXISVECS = {'x': om.MVector([1, 0, 0]),
             'y': om.MVector([0, 1, 0]),
-            'z': om.MVector([1, 0, 1]),
+            'z': om.MVector([0, 0, 1]),
             '-x': om.MVector([-1, 0, 0]),
             '-y': om.MVector([0, -1, 0]),
-            '-z': om.MVector([1, 0, -1])}
+            '-z': om.MVector([0, 0, -1])}
 
 BBOX_UNIT_DIAGONAL = 1.7320508075688772
 
@@ -31,6 +32,15 @@ def setMatrixAxis(matrix:om.MMatrix,
     row = 'xyzw'.index(axis)
     for col, value in zip(range(3), vector):
         matrix.setElement(row, col, value)
+
+def testMatrix(matrix:Union[list[float], om.MMatrix], name=None):
+    kwargs = {}
+    if name is not None:
+        kwargs['name'] = name
+    loc = m.spaceLocator(**kwargs)[0]
+    m.xform(loc, matrix=list(matrix))
+    m.setAttr(f"{loc}.displayLocalAxis", True)
+    return loc
 
 def createOrthoMatrix(
         aimAxis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
@@ -148,8 +158,8 @@ class PointWrangler(list):
                                        axes[1].strip('-'))][0]
             axes = list(axes) + [thirdAxis, thirdAxis]
 
-        remapMatrix = _am.createOrthoMatrix(axes[0], _am.AXISVECS[axes[1]],
-                                            axes[2], _am.AXISVECS[axes[3]])
+        remapMatrix = createOrthoMatrix(axes[0], AXISVECS[axes[1]],
+                                        axes[2], AXISVECS[axes[3]])
         return self.applyMatrix(remapMatrix)
 
     def normalizeBoundingBox(self):
