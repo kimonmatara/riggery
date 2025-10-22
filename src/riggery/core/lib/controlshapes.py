@@ -162,12 +162,11 @@ def clearShapesUnderTransform(transform):
         except:
             continue
 
-def createShapeFromCurveMacro(
-        macro:dict,
-        parent:str,
-        applyColor:bool=True,
-        applyVisInput:bool=True
-) -> str:
+def createShapeFromCurveMacro(macro:dict,
+                              parent:str,
+                              applyColor:bool=True,
+                              applyVisInput:bool=True,
+                              preserveBezier:bool=False) -> str:
     parentMObject = _s2a.getNodeMObject(parent)
     args = [macro[k] for k in ('points',
                                'knots',
@@ -179,7 +178,10 @@ def createShapeFromCurveMacro(
     shapeMObject = om.MFnNurbsCurve().create(*args, **kwargs)
     shape = _a2s.fromNodeMObject(shapeMObject, isDagNode=True)
 
-    if macro.get('isBezier', False):
+    if macro['degree'] == 3:
+        m.displaySmoothness(shape, pointsWire=16)
+
+    if preserveBezier and macro.get('isBezier', False):
         m.select(shape)
         shape = m.nurbsCurveToBezier()[0]
 
@@ -303,6 +305,14 @@ class ControlShape:
         raise NoShapesError
 
     #---------------------------------|    Apply
+
+    def test(self, name=None):
+        kwargs = {}
+        if name:
+            kwargs['name'] = name
+        group = m.group(empty=True, **kwargs)
+        self.apply(group)
+        return group
 
     def apply(self,
               *transforms,
@@ -550,12 +560,12 @@ def copyControlShapes(srcControl:str,
             entry.transform(flipperMatrix)
 
         for destControl in destControls:
+            thisMatrix = om.MMatrix(
+                m.xform(destControl, q=True, matrix=True, worldSpace=True)
+            ).inverse()
+
             thisEntry = entry.copy()
-            thisEntry.transform(
-                om.MMatrix(
-                    m.xform(destControl, q=True, matrix=True, worldSpace=True)
-                ).inverse()
-            )
+            thisEntry.transform(thisMatrix)
 
             out += thisEntry.apply(destControl, replace=replace)
         return out
@@ -676,7 +686,7 @@ class ControlShapeArchive:
                                         captureVisInput=captureVisInput,
                                         normalizePoints=normalizePoints)
         self._entries[key] = newEntry
-        return out
+        return newEntry
 
     def _captureFromScene(self,
                           *sourceTransforms,
@@ -778,6 +788,20 @@ class ControlShapeArchive:
                                            captureColor=True,
                                            normalizePoints=True)
         return self
+
+    def __setitem__(self, key:str, value:ControlShape):
+        if isinstance(value, ControlShape):
+            self._entries[key] = value
+        else:
+            raise TypeError("expected ControlShape")
+
+    #---------------------------------|    Remove members
+
+    def __delitem__(self, key):
+        del(self._entries[key])
+
+    def clear(self):
+        self._entries.clear()
 
     #---------------------------------|    Serialization
 
