@@ -789,6 +789,7 @@ class Transform(nodes['DagNode']):
             copyColor=copyColor,
             copyVisInput=copyVisInput,
             worldMirrorAxis=worldMirrorAxis,
+            worldSpace=worldSpace,
             scale=scale
         )
         return list(map(nodes['DagNode'], out))
