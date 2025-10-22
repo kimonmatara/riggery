@@ -413,7 +413,7 @@ def calcMatrixChainBaseVectors(
     lastCross = None
 
     for i, (thisVector, nextVector) \
-        in enumerate(zip(vectors, vectors[1:])):
+            in enumerate(zip(vectors, vectors[1:])):
         cross = thisVector.cross(nextVector)
 
         mag = cross.length()
@@ -535,3 +535,59 @@ def guessApproxBezierSegmentLength(p0, p1, p2, p3, steps:int=50) -> float:
         prevPoint = currentPoint
 
     return totalLength
+
+def closestPointOnLine(refPoint:Union[list[float], str, 'plugs.Point'],
+                       lineStart:Union[list[float], str, 'plugs.Point'],
+                       lineVector:Union[list[float], str, 'plugs.Vector'],
+                       clamp:bool=False) -> Union['data.Point', 'plugs.Point']:
+    """
+    :param: Keep the output point within the bounds of the line; defaults to
+        False
+    :return: The point on the line segment that falls closest to *refPoint*.
+    """
+    refPoint, _, refIsPlug = _mm.info(refPoint,
+                                      (data.Point, plugs.Point),
+                                      force=True)
+
+    lineStart, _, lineStartIsPlug = _mm.info(lineStart,
+                                             (data.Point, plugs.Point),
+                                             force=True)
+
+    lineVector, _, lineVectorIsPlug = _mm.info(lineVector,
+                                               (data.Vector, plugs.Vector),
+                                               force=True)
+
+    hasPlugs = any((refIsPlug, lineStartIsPlug, lineVectorIsPlug))
+
+    refVector = refPoint - lineStart
+    projectedVector = refVector.projectOnto(lineVector)
+
+    if clamp:
+        projectedLength = projectedVector.length()
+        lineLength = lineVector.length()
+        dot = lineVector.dot(projectedVector)
+
+        if hasPlugs:
+            projectedVector = (projectedLength > lineLength).ifElse(
+                lineVector,
+                projectedVector,
+                plugs.Vector
+            )
+
+            outPoint = lineStart + projectedVector
+
+            outPoint = (dot < 0.0).ifElse(lineStart,
+                                          outPoint,
+                                          plugs.Point)
+        else:
+            if projectedLength > lineLength:
+                projectedVector = lineVector
+
+            outPoint = lineStart + projectedVector
+
+            if dot < 0.0:
+                outPoint = lineStart
+    else:
+        outPoint = lineStart + projectedVector
+
+    return outPoint
