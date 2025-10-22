@@ -536,13 +536,46 @@ def guessApproxBezierSegmentLength(p0, p1, p2, p3, steps:int=50) -> float:
 
     return totalLength
 
+def vectorFromLineToPoint(
+        refPoint:Union[str, list[float], 'plugs.Point'],
+        lineStart:Union[str, list[float], 'plugs.Point'],
+        lineVector:Union[str, list[float], 'plugs.Vector']
+) -> Union['data.Vector', 'plugs.Vector']:
+    """
+    :param refPoint: the reference point
+    :param lineStart: the start point of the line
+    :param lineVector: the line vector
+    :return: The vector from the closest point on *lineStart* to reference
+        point *refPoint*.
+    """
+    pointOnLine = closestPointOnLine(refPoint, lineStart, lineVector)
+    refPoint = _mm.conform(refPoint, (plugs.Point, data.Point), force=True)
+    return refPoint - pointOnLine
+
+def distanceFromLine(
+        refPoint:Union[str, list[float], 'plugs.Point'],
+        lineStart:Union[str, list[float], 'plugs.Point'],
+        lineVector:Union[str, list[float], 'plugs.Vector']
+) -> Union[float, 'plugs.Float']:
+    """
+    :param refPoint: the reference point
+    :param lineStart: the start point of the line
+    :param lineVector: the line vector
+    :return: The distance between *refPoint* and the closest point on the line.
+        The calculation is *not* clamped to the line segment ends.
+    """
+    return vectorFromLineToPoint(refPoint, lineStart, lineVector).length()
+
 def closestPointOnLine(refPoint:Union[list[float], str, 'plugs.Point'],
                        lineStart:Union[list[float], str, 'plugs.Point'],
                        lineVector:Union[list[float], str, 'plugs.Vector'],
                        clamp:bool=False) -> Union['data.Point', 'plugs.Point']:
     """
-    :param: Keep the output point within the bounds of the line; defaults to
-        False
+    :param refPoint: the reference point
+    :param lineStart: the start point of the line
+    :param lineVector: the line vector
+    :param clamp: keep the output point within the bounds of the line; defaults
+        to False
     :return: The point on the line segment that falls closest to *refPoint*.
     """
     refPoint, _, refIsPlug = _mm.info(refPoint,
@@ -591,3 +624,73 @@ def closestPointOnLine(refPoint:Union[list[float], str, 'plugs.Point'],
         outPoint = lineStart + projectedVector
 
     return outPoint
+
+def getPoleVector(
+        chainPoints:list[Union[str, list[float], 'plugs.Point']]
+) -> Union['data.Vector', 'plugs.Vector']:
+    """
+    :return: A 'Maya-style' pole vector given the chain points. Works with plugs
+        or values. No in-line checking is performed; the pole vector may be of
+        zero-length.
+    """
+    pointInfos = [_mm.info(x, (data.Point, plugs.Point), force=True)
+                  for x in chainPoints]
+
+    num = len(pointInfos)
+
+    if num < 2:
+        raise ValueError("need at least 3 points")
+
+    points = [x[0] for x in pointInfos]
+    hasPlugs = any((x[2] for x in pointInfos))
+
+    startPoint = points[0]
+    endPoint = points[-1]
+
+    chordVector = endPoint - startPoint
+
+    if hasPlugs:
+        outDistance = None
+        outPoleVector = None
+
+        for innerPoint in points[1:-1]:
+            closestPoint = closestPointOnLine(innerPoint,
+                                              startPoint,
+                                              chordVector)
+            thisPoleVector = innerPoint - closestPoint
+            thisDistance = thisPoleVector.length()
+
+            if outPoleVector is None:
+                outPoleVector = thisPoleVector
+                outDistance = thisDistance
+            else:
+                thisIsGreater = thisDistance > outDistance
+
+                outPoleVector = thisIsGreater.ifElse(
+                    thisPoleVector,
+                    outPoleVector,
+                    plugs.Vector
+                )
+
+                outDistance = thisIsGreater.ifElse(
+                    thisDistance,
+                    outDistance,
+                    plugs.Number
+                )
+
+        return outPoleVector
+
+    bestDistance = None
+    bestPoleVector = None
+
+    for innerPoint in points[1:-1]:
+        thisPoleVector = vectorFromLineToPoint(innerPoint,
+                                               startPoint,
+                                               chordVector)
+        thisLength = thisPoleVector.length()
+
+        if bestDistance is None or thisLength > bestDistance:
+            bestDistance = thisLength
+            bestPoleVector = thisPoleVector
+
+    return bestPoleVector
