@@ -18,3 +18,4 @@ Submodules
    riggery.internal.plugutil.parseaac
    riggery.internal.plugutil.plugroute
    riggery.internal.plugutil.plugtree
+   riggery.internal.plugutil.reorder

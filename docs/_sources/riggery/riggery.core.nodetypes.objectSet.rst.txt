@@ -1,0 +1,7 @@
+riggery.core.nodetypes.objectSet module
+=======================================
+
+.. automodule:: riggery.core.nodetypes.objectSet
+   :members:
+   :undoc-members:
+   :show-inheritance:

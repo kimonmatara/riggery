@@ -24,7 +24,6 @@ Submodules
    riggery.core.lib.nativeunits
    riggery.core.lib.nodetracker
    riggery.core.lib.nurbsutil
-   riggery.core.lib.reorderattrs
    riggery.core.lib.skel
    riggery.core.lib.tags
    riggery.core.lib.triadutil

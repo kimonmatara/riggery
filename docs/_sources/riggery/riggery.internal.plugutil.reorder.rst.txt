@@ -1,0 +1,7 @@
+riggery.internal.plugutil.reorder module
+========================================
+
+.. automodule:: riggery.internal.plugutil.reorder
+   :members:
+   :undoc-members:
+   :show-inheritance:

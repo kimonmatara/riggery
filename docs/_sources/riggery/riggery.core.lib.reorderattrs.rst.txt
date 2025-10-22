@@ -1,7 +1,0 @@
-riggery.core.lib.reorderattrs module
-====================================
-
-.. automodule:: riggery.core.lib.reorderattrs
-   :members:
-   :undoc-members:
-   :show-inheritance:

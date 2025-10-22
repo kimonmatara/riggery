@@ -1,0 +1,7 @@
+riggery.core.nodetypes.geometryFilter module
+============================================
+
+.. automodule:: riggery.core.nodetypes.geometryFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:

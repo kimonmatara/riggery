@@ -18,13 +18,16 @@ Submodules
    riggery.core.nodetypes.deformableShape
    riggery.core.nodetypes.dependNode
    riggery.core.nodetypes.fourByFourMatrix
+   riggery.core.nodetypes.geometryFilter
    riggery.core.nodetypes.geometryShape
    riggery.core.nodetypes.ikHandle
    riggery.core.nodetypes.joint
    riggery.core.nodetypes.network
    riggery.core.nodetypes.nurbsCurve
+   riggery.core.nodetypes.objectSet
    riggery.core.nodetypes.remapValue
    riggery.core.nodetypes.shape
+   riggery.core.nodetypes.skinCluster
    riggery.core.nodetypes.subdiv
    riggery.core.nodetypes.surfaceShape
    riggery.core.nodetypes.transform

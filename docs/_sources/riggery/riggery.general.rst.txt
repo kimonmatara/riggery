@@ -16,4 +16,5 @@ Submodules
    riggery.general.functions
    riggery.general.iterables
    riggery.general.numbers
+   riggery.general.reorder
    riggery.general.strings

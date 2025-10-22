@@ -1,0 +1,7 @@
+riggery.core.nodetypes.skinCluster module
+=========================================
+
+.. automodule:: riggery.core.nodetypes.skinCluster
+   :members:
+   :undoc-members:
+   :show-inheritance:

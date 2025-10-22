@@ -1,0 +1,7 @@
+riggery.internal.apimath module
+===============================
+
+.. automodule:: riggery.internal.apimath
+   :members:
+   :undoc-members:
+   :show-inheritance:
