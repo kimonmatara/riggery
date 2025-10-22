@@ -42,9 +42,11 @@ class Vector(__pool__['Tensor3']):
                 node.attr('input3D')[i].put(other, isPlug=isPlug)
             return node.attr('output3D')
 
-        out = self
+        out = self.copy()
+
         for (other, _, _) in otherInfos:
             out += other
+
         return out
 
     def guessUpVector(self):
