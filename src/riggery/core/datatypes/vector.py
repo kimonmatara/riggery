@@ -32,7 +32,6 @@ class Vector(__pool__['Tensor3']):
     #-----------------------------------------|    Vector ops
 
     def sum(self, *others):
-        others = expand_tuples_lists(*others)
         otherInfos = [_mm.info(x) for x in others]
         hasPlugs = any((x[2] for x in otherInfos))
 
