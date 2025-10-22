@@ -10,6 +10,7 @@ from riggery.general.iterables import expand_tuples_lists
 from riggery.general.numbers import floatrange
 from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
+from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 
 import maya.cmds as m
@@ -264,16 +265,31 @@ class Chain(list):
             joint.makeIdentity(apply=True, rotate=True, jointOrient=False)
 
         self.compose()
+        self.displayLocalAxis()
+        
         return self
 
     #-------------------------------------------|    Sampling
 
     @short(plug='p')
-    def getPoints(self, plug=False) -> Generator:
+    def iterPoints(self, plug=False) -> Generator[
+        Union['data.Point', 'plugs.Points'
+        ], None, None]:
+        """
+        Yields world-space joint positions.
+        """
         for joint in self:
             yield joint.worldPosition(plug=plug)
 
-    points = property(fget=getPoints)
+    @short(plug='p')
+    def getPoints(self,
+                  plug:bool=False) -> list[Union['data.Point', 'plugs.Point']]:
+        """
+        Flat version of :meth:`iterPoints`.
+        """
+        return list(self.iterPoints(plug=plug))
+
+    points = property(fget=iterPoints)
 
     def getRatios(self) -> list[float]:
         return _mo.getLengthRatios(self.points)
@@ -293,39 +309,18 @@ class Chain(list):
             interp[ratio] = point
         return data['Point'](interp[atRatio])
 
-    @property
-    def vectors(self) -> Generator:
-        """
-        Yields world-space bone vectors.
-        """
-        points = list(self.points)
+    def iterVectors(self, plug=False):
+        points = list(self.iterPoints(plug=plug))
         for thisPoint, nextPoint in zip(points, points[1:]):
             yield nextPoint - thisPoint
+
+    vectors = property(fget=iterVectors)
 
     def length(self):
         """
         :return: the sum of all the bones' vectors.
         """
         return sum([vector.length() for vector in self.vectors])
-
-    def isInline(self) -> bool:
-        """
-        :raises ValueError: This chain has fewer than three joints.
-        :return: ``True`` if this chain is in-line.
-        """
-        tol = _mo.TOLERANCE * 0.5
-
-        if len(self) > 2:
-            vecs = list(self.vectors)
-            for i, (thisVec, nextVec) in enumerate(zip(vecs, vecs[1:])):
-                dot = abs(thisVec.dot(nextVec, normalize=True))
-                minSlack = 1.0 - tol
-                maxSlack = 1.0 + tol
-                inline = dot >= minSlack and dot <= maxSlack
-                if not inline:
-                    return False
-            return True
-        raise ValueError("not enough joints")
 
     def detectBoneAxis(self):
         """
@@ -439,6 +434,11 @@ class Chain(list):
         for thisJoint, nextJoint in zip(newStack, newStack[1:]):
             nextJoint.parent = thisJoint
         return Chain(newStack)
+
+    def displayLocalAxis(self):
+        for x in self:
+            x.attr('displayLocalAxis').set(True)
+        return self
 
     #-------------------------------------------|    DAG editing
 
@@ -667,16 +667,104 @@ class Chain(list):
 
     #-------------------------------------------|    IK
 
-    def getDefaultPoleVector(self) -> 'r.data.Vector':
+    def _test1(self):
+        # Basics
+
+        points = list(self.points)
+        start = points[0]
+        vectors = list(self.vectors)
+        chordVector = points[-1]-points[0]
+
+        crosses = [x.cross(y) for x, y in zip(vectors, vectors[1:])]
+        crosses = crosses[0].deflipSequence(*crosses[1:])
+        crosses = [cross.normal() for cross in crosses]
+
+        cross = crosses[0].sum(*crosses[1:])
+
+        poleVector = chordVector.cross(cross).normal()
+
+        (start + poleVector).loc()
+
+    def _test2(self):
+        # Basics
+
+        points = list(self.points)
+        start = points[0]
+        vectors = list(self.vectors)
+        chordVector = points[-1]-points[0]
+
+        sumVector = vectors[0].sum(vectors[1:])
+        cross = sumVector.cross(chordVector)
+
+        (start+cross.normal()).loc()
+
+    def _test3(self): # close but no cigar
+        # Basics
+
+        points = list(self.points)
+        start = points[0]
+        vectors = list(self.vectors)
+        chordVector = points[-1]-points[0]
+
+        peaks = [x - y for x, y in zip(points, points[1:])]
+        peaks = peaks[0].deflipSequence(*peaks[1:])
+        peaks = [peak.normal() for peak in peaks]
+
+        peak = peaks[0].sum(*peaks[1:])
+
+        out = chordVector.cross(peak)
+        (start+out.normal()).loc()
+
+    def _weightedDeflip(self, vectors):
+        out = [vectors[0]]
+        for v in vectors[1:]:
+            if out[-1].length() > v.length():
+                v = v.flipIfCloserTo(out[-1])
+            out.append(v)
+        return out
+
+    def _testZ(self):
+        points = list(self.points)
+        start = points[0]
+        vectors = list(self.vectors)
+        chordVector = points[-1]-points[0]
+
+        peaks = [x - y for x, y in zip(points, points[1:])]
+        peaks = self._weightedDeflip(peaks)
+        peaks = [peak.normal() for peak in peaks]
+
+        peak = peaks[0].sum(*peaks[1:])
+
+        out = chordVector.cross(peak)
+        (start+out.normal()).loc()
+
+    def isInline(self, tolerance=1e-4) -> bool:
         """
-        Returns a default pole vector value for this chain.
+        :param tolerance: the minimum cross product length; defaults to 1e-4,
+            which is around the point when Maya IK handles will fail
+        :raises ValueError: Need at least 3 joints.
+        :return: True if this chain is in-line.
         """
-        dup = self.duplicate()
-        tmpIkHandle = m.ikHandle(sj=self[0], ee=self[-1], sol='ikRPsolver')[0]
-        vector = m.getAttr(f"{tmpIkHandle}.poleVector")
-        m.delete(tmpIkHandle)
-        m.delete(dup[0])
-        return data.Vector(vector[0])
+        num = len(self)
+
+        if num < 3:
+            raise ValueError("need at least 3 joints")
+
+        vectors = [v.normal() for v in self.vectors]
+
+        for thisVector, nextVector in zip(vectors, vectors[1:]):
+            if thisVector.cross(nextVector).length() > tolerance:
+                return False
+
+        return True
+
+    def getPoleVector(self) -> 'data.Vector':
+        """
+        :return: The default pole vector for this chain, as Maya would calculate
+            it. No in-line checking is performed; the pole vector may be of zero
+            length.
+        """
+        return _mo.getPoleVector(list(self.points))
 
     def ikJitter(self,
                  jitterVector,
