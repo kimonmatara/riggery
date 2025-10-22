@@ -2,6 +2,7 @@ import math
 from ..lib import mixedmode as _mm
 import maya.api.OpenMaya as om
 from riggery.general.functions import short
+from riggery.general.iterables import expand_tuples_lists
 from ..datatypes import __pool__
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
@@ -29,6 +30,23 @@ class Vector(__pool__['Tensor3']):
         return loc
 
     #-----------------------------------------|    Vector ops
+
+    def sum(self, *others):
+        others = expand_tuples_lists(*others)
+        otherInfos = [_mm.info(x) for x in others]
+        hasPlugs = any((x[2] for x in otherInfos))
+
+        if hasPlugs:
+            node = nodes.PlusMinusAverage.createNode()
+            self >> node.attr('input3D')[0]
+            for i, (other, _, isPlug) in enumerate(otherInfos, start=1):
+                node.attr('input3D')[i].put(other, isPlug=isPlug)
+            return node.attr('output3D')
+
+        out = self
+        for (other, _, _) in otherInfos:
+            out += other
+        return out
 
     def guessUpVector(self):
         """
@@ -333,6 +351,20 @@ class Vector(__pool__['Tensor3']):
         inv = -self
         invDot = inv.dot(refVector, True)
         return self if thisDot > invDot else inv
+
+    def deflipSequence(self, *others) -> list:
+        """
+        At the moment this is a value-only implementation.
+
+        :return: A list of [self] + others, deflipped in sequence.
+        """
+        others = list(map(Vector, others))
+        out = [self]
+
+        for other in others:
+            other = other.flipIfCloserTo(out[-1])
+            out.append(other)
+        return out
 
     def blend(self,
               other,
