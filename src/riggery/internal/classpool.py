@@ -1,6 +1,8 @@
 """Base classes for class pools."""
 
-from typing import Optional, Iterable, Union
+import re
+from riggery.general.modules import filename_from_modname
+from typing import Optional, Iterable, Union, Iterator
 import importlib
 import os
 import sys
@@ -9,6 +11,7 @@ import sys
 #-----------------------------------------|    HELPERS
 #-----------------------------------------|
 
+cap = lambda x: x[0].upper()+x[1:]
 uncap = lambda x: x[0].lower()+x[1:]
 
 #-----------------------------------------|
@@ -38,9 +41,13 @@ class CpInvalidKeyError(ClassPoolError):
 class ClassPoolMeta(type):
 
     def __new__(meta, clsname, bases, dct):
-        if bases and dct.get('__pool_package__') is None:
-            raise TypeError('__pool_package__ must be defined')
+        if bases:
+            if dct.get('__pool_package__') is None:
+                raise TypeError('__pool_package__ must be defined')
 
+            dct['__package_dirname__'] = os.path.dirname(
+                filename_from_modname(dct['__pool_package__'])
+            )
         return super().__new__(meta, clsname, bases, dct)
 
 #-----------------------------------------|
@@ -49,7 +56,8 @@ class ClassPoolMeta(type):
 
 class ClassPool(metaclass=ClassPoolMeta):
 
-    __pool_package__:str
+    __pool_package__:str            # *Must* be defined by author
+    __package_dirname__:str         # Auto-completed by metaclass
     __can_invent__:bool = False
 
     #-----------------------------|    Init
@@ -115,6 +123,27 @@ class ClassPool(metaclass=ClassPoolMeta):
         return cls
 
     __getitem__ = __getattr__ = _getClass
+
+    #-----------------------------|    Preload
+
+    def preload(self) -> 'ClassPool':
+        """
+        Scans the class pool's directory and attempts to load any classes not
+        already in the cache.
+        """
+        for item in os.listdir(self.__package_dirname__):
+            mt = re.match(r"^(.*)\.py$", item)
+            if mt:
+                clsname = cap(mt.group(1))
+                if clsname not in self._cache:
+                    try:
+                        retrieved = self._loadClass(clsname)
+                    except:
+                        retrieved = None
+
+                    if retrieved is not None:
+                        self._cache[clsname] = retrieved
+        return self
 
     #-----------------------------|    Rehash
 
