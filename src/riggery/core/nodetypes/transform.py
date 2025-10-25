@@ -1,5 +1,5 @@
 import re
-from typing import Generator, Optional, Union, Literal
+from typing import Iterator, Optional, Union, Literal
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
@@ -484,7 +484,7 @@ class Transform(nodes['DagNode']):
     def iterShapes(self, *,
                    intermediate:Optional[bool]=None,
                    type=None,
-                   ranked=True) -> Generator:
+                   ranked=True) -> Iterator:
         """
         :param intermediate/i: if omitted, both intermediate and non-
             intermediate shapes will be returned; otherwise, if it's False,

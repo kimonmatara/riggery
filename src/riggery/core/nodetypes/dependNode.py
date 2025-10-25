@@ -1,6 +1,6 @@
 from functools import cached_property
 import re
-from typing import Union, Optional, Generator, Iterable, Literal
+from typing import Union, Optional, Iterator, Iterable, Literal
 from contextlib import contextmanager
 import os
 
@@ -231,9 +231,9 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     @classmethod
     @short(selection='sl')
-    def ls(cls, *patterns, selection:bool=False) -> Generator:
+    def ls(cls, *patterns, selection:bool=False) -> Iterator:
         """
-        Generator. Yields objects of this type in the scene.
+        Iterator. Yields objects of this type in the scene.
 
         :param \*patterns: name patterns to match
         :param \*selection/sl: selected objects only; defaults to False
@@ -729,7 +729,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                            'leaf',
                            'nodeName',
                            'shortNames'])
-    def iterAttr(self, **kwargs) -> Generator:
+    def iterAttr(self, **kwargs) -> Iterator:
         """
         Iterating wrapper for :func:`~maya.cmds.listAttr`.
         """
@@ -744,7 +744,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         return list(self.iterAttr(**kwargs))
 
-    def iterReorderableAttrs(self) -> Generator['plugs.Attribute', None, None]:
+    def iterReorderableAttrs(self) -> Iterator['plugs.Attribute']:
         for attr in self.iterAttr(ud=True):
             if _reo.plugIsReorderable(attr.__apimplug__()):
                 yield attr

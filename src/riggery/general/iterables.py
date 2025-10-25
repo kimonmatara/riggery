@@ -1,6 +1,6 @@
 """General utilities for collections, iterables, lists etc."""
 
-from typing import Iterable, Any, Generator
+from typing import Iterable, Any, Iterator
 
 def expand_tuples_lists(*items) -> list:
     """
@@ -24,7 +24,7 @@ def pairiter(sequence):
     it = iter(sequence)
     return zip(it, it)
 
-def without_duplicates(items:Iterable) -> Generator[Any, None, None]:
+def without_duplicates(items:Iterable) -> Iterator[Any]:
     """
     Yields members of *items* only once, in order.
     """

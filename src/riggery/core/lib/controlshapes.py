@@ -2,7 +2,7 @@ import os
 import re
 from copy import deepcopy
 import json
-from typing import Iterable, Optional, Generator, Union, Literal
+from typing import Iterable, Optional, Iterator, Union, Literal
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
@@ -64,7 +64,7 @@ class ShapeScale:
 def iterShapesUnderTransform(
         transform:str,
         includeLocators:bool=False
-) -> Generator[str, None, None]:
+) -> Iterator[str]:
     types = ['nurbsCurve']
     if includeLocators:
         types.append('locator')
@@ -79,7 +79,7 @@ def iterShapesUnderTransform(
 
 def iterShapesFromMixedSources(
         *sources:Union[str, list[str]]
-) -> Generator[str, None, None]:
+) -> Iterator[str]:
     visited = set()
 
     for source in without_duplicates(expand_tuples_lists(*sources)):
@@ -138,7 +138,7 @@ def iterCurveMacrosFromTransform(
         transform:str,
         captureColor:bool=True,
         captureVisInput:bool=True
-) -> Generator[dict, None, None]:
+) -> Iterator[dict]:
     for shape in iterShapesUnderTransform(transform):
         yield getCurveMacroFromShape(shape,
                                      captureColor=captureColor,
@@ -148,7 +148,7 @@ def iterCurveMacrosFromMixedSources(
         *sources:Union[str, list[str]],
         captureColor:bool=True,
         captureVisInput:bool=True
-) -> Generator[dict, None, None]:
+) -> Iterator[dict]:
     for shape in iterShapesFromMixedSources(*sources):
         yield getCurveMacroFromShape(shape,
                                      captureColor=captureColor,
@@ -231,7 +231,7 @@ def conformShapeNames(transform:str) -> list[str]:
 
     return []
 
-def iterSceneSourceTransforms(*userProvided) -> Generator[str, None, None]:
+def iterSceneSourceTransforms(*userProvided) -> Iterator[str]:
     visited = set()
 
     for x in expand_tuples_lists(*userProvided):
@@ -395,7 +395,7 @@ class ControlShape:
 
     #---------------------------------|    Transformations
 
-    def iterPoints(self) -> Generator[list[float], None, None]:
+    def iterPoints(self) -> Iterator[list[float]]:
         for curveMacro in self.curveMacros:
             for point in curveMacro['points']:
                 yield point

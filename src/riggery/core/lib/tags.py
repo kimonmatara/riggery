@@ -1,6 +1,6 @@
 """Various tagging tools."""
 
-from typing import Generator
+from typing import Iterator
 import re
 from ..elem import Elem
 from ..nodetypes import __pool__ as nodes
@@ -132,7 +132,7 @@ class TagsInterface:
 
     #------------------------------------|    Get
 
-    def keys(self) -> Generator[str, None, None]:
+    def keys(self) -> Iterator[str]:
         """
         Yields tag names.
         """

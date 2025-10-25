@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Iterator
 from ..nodetypes import __pool__ as nodes
 DependNode = nodes['DependNode']
 
@@ -10,7 +10,7 @@ class GeometryFilter(DependNode):
     #-------------------------------------|    Retrievals
 
     @classmethod
-    def fromGeo(cls, geo) -> Generator:
+    def fromGeo(cls, geo) -> Iterator:
         """
         Yields deformers of this type in the specified geometry's history. Use
         next([...], None) to get the first result or None.

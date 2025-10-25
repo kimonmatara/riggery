@@ -5,7 +5,7 @@ Maya commands such as :func:`~maya.cmds.addAttr`.
 The list can be accessed via the global ``DATA`` constant.
 """
 
-from typing import Generator
+from typing import Iterator
 import re
 import os
 import json
@@ -37,7 +37,7 @@ ADDITIONS = [
     'IntArray'
 ]
 
-def _fromOnlineHelp(version:str='2025') -> Generator[str, None, None]:
+def _fromOnlineHelp(version:str='2025') -> Iterator[str]:
     """
     Yields Maya attribute type strings scraped from the online Maya help.
     """
@@ -77,7 +77,7 @@ def _fromOnlineHelp(version:str='2025') -> Generator[str, None, None]:
                 yield item
                 yielded.append(item)
 
-def _fromMFn() -> Generator[str, None, None]:
+def _fromMFn() -> Iterator[str]:
     """
     Yields Maya attribute type strings derived from
     :class:`~maya.api.OpenMaya.MFn`.
@@ -126,7 +126,7 @@ def _fromMFn() -> Generator[str, None, None]:
                                 yield mtype
                                 yielded.append(mtype)
 
-def _fromMFnNumericData() -> Generator[str, None, None]:
+def _fromMFnNumericData() -> Iterator[str]:
     """
     Yields Maya attribute type strings derived from
     :class:`~maya.api.OpenMaya.MFnNumericData`.
@@ -146,7 +146,7 @@ def _fromMFnNumericData() -> Generator[str, None, None]:
                     yield mtype
                     yielded.append(mtype)
 
-def _fromAttrInfo() -> Generator[str, None, None]:
+def _fromAttrInfo() -> Iterator[str]:
     """
     Yields Maya attribute type strings extracted using
     :func:`~maya.cmds.attributeQuery` and :func:`~maya.cmds.attributeInfo`.
@@ -170,7 +170,7 @@ def _fromAttrInfo() -> Generator[str, None, None]:
                 yielded.append(attrType)
 
 
-def _fromMFnData() -> Generator[str, None, None]:
+def _fromMFnData() -> Iterator[str]:
     """
     Yields Maya attribute type strings derived from
     :class:`~maya.api.OpenMaya.MFnData`.

@@ -1,5 +1,5 @@
 """NURBS utilities."""
-from typing import Literal, Union, Iterable, Generator
+from typing import Literal, Union, Iterable, Iterator
 from ..datatypes import __pool__ as _data
 from ..plugtypes import __pool__ as _plugs
 from . import mixedmode as _mm
@@ -121,7 +121,7 @@ def numAnchorsToNumCVs(numAnchors:int) -> int:
     """
     return ((numAnchors - 2) * 3) + 4
 
-def cvsToAnchorGroups(cvs:Iterable) -> Generator[dict, None, None]:
+def cvsToAnchorGroups(cvs:Iterable) -> Iterator[dict]:
     """
     Yields dictionaries, where each dictionary has two or more of these keys:
     'in', 'anchor', 'out'.
@@ -147,8 +147,7 @@ def cvsToAnchorGroups(cvs:Iterable) -> Generator[dict, None, None]:
     else:
         raise ValueError("invalid number of CVs")
 
-def anchorGroupsToCVs(anchorGroups:Iterable[dict]
-                      ) -> Generator[int, None, None]:
+def anchorGroupsToCVs(anchorGroups:Iterable[dict]) -> Iterator[int]:
     """
     Unpacks the type of dictionaries yielded by :func:`cvsToAnchorGroups`.
     """

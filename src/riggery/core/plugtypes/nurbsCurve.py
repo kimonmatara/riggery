@@ -1,6 +1,6 @@
 import math
 from functools import reduce
-from typing import Generator, Union, Optional, Iterable
+from typing import Iterator, Union, Optional, Iterable
 
 import maya.api.OpenMaya as om
 
@@ -58,7 +58,7 @@ class NurbsCurve(plugs['Geometry']):
         vector = endPoint - startPoint
         mag = vector.length()
 
-        #-----------------------|    Generator
+        #-----------------------|    Iterator
 
         node = nodes['MakeNurbsSquare'].createNode()
         numSpans >> node.attr('spansPerSide')
@@ -156,7 +156,7 @@ class NurbsCurve(plugs['Geometry']):
         return self.__datamfn__().length()
 
     @short(plug='p')
-    def iterCVPoints(self, plug:bool=True) -> Generator:
+    def iterCVPoints(self, plug:bool=True) -> Iterator:
         """
         Yields CV positions.
 

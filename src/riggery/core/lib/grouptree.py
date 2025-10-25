@@ -1,6 +1,6 @@
 """Contains utility classes for quick construction of DAG hierarchies."""
 
-from typing import Optional, Generator
+from typing import Optional, Iterator
 
 from ..elem import Elem
 from ..nodetypes import __pool__ as nodes
@@ -62,7 +62,7 @@ class GroupTree:
         return list(reversed(out))
 
     @property
-    def parents(self) -> Generator['GroupTree', None, None]:
+    def parents(self) -> Iterator['GroupTree']:
         current = self
         while True:
             current = current.parent

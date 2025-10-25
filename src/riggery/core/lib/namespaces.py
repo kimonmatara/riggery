@@ -1,7 +1,7 @@
 """Tools to manage Maya namespaces."""
 
 from fnmatch import fnmatch
-from typing import Generator, Optional, Union
+from typing import Iterator, Optional, Union
 import re
 
 import maya.cmds as m
@@ -343,7 +343,7 @@ class Namespace(str):
         if len(elems) > 1:
             return Namespace(':'.join(elems[:-1]))
 
-    def iterParents(self) -> Generator['Namespace', None, None]:
+    def iterParents(self) -> Iterator['Namespace']:
         """
         Iterates over this namespace's parents, up to and including the root
         namespace. If this is the root namespace, nothing will be yielded.
@@ -459,7 +459,7 @@ class Namespace(str):
     @short(recurse='r')
     def findNodes(self,
                   pattern:str,
-                  recurse:bool=False) -> Generator[Elem, None, None]:
+                  recurse:bool=False) -> Iterator[Elem]:
         """
         Yields ``Elem`` instances for any nodes in this namespace that match
             the specified pattern.

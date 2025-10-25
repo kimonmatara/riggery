@@ -1,6 +1,6 @@
 """Defines classes to manage skeletal chains."""
 import math
-from typing import Generator, Optional, Union, Iterable
+from typing import Iterator, Optional, Union, Iterable
 
 import riggery.core.lib.mathops as _mo
 import riggery.core.lib.mixedmode as _mm
@@ -272,9 +272,9 @@ class Chain(list):
     #-------------------------------------------|    Sampling
 
     @short(plug='p')
-    def iterPoints(self, plug=False) -> Generator[
-        Union['data.Point', 'plugs.Points'
-        ], None, None]:
+    def iterPoints(self, plug=False) -> Iterator[
+        Union['data.Point', 'plugs.Points']
+    ]:
         """
         Yields world-space joint positions.
         """
@@ -443,7 +443,7 @@ class Chain(list):
     #-------------------------------------------|    DAG editing
 
     @property
-    def roots(self) -> Generator:
+    def roots(self) -> Iterator:
         """
         Yields joints whose parent is not a member of this chain.
         """
@@ -863,7 +863,7 @@ class Chain(list):
         return out
 
     @property
-    def bones(self) -> Generator['Chain', None, None]:
+    def bones(self) -> Iterator['Chain']:
         """
         Returns non-overlapping :class:`Chain` pairwise segments.
         """

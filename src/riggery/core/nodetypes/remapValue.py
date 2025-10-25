@@ -1,5 +1,5 @@
 from contextlib import nullcontext
-from typing import Generator
+from typing import Iterator
 
 import maya.cmds as m
 
@@ -73,7 +73,7 @@ class RemapValue(nodes['DependNode']):
         except AttributeError:
             return 0
 
-    def iterClones(self) -> Generator:
+    def iterClones(self) -> Iterator:
         """
         Yields sampling clones driven by this one.
         """

@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Generator, Optional, Union, Iterable
+from typing import Iterator, Optional, Union, Iterable
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -179,7 +179,7 @@ class DagNode(nodes['DependNode']):
 
     #-----------------------------------------|    Hierarchy
 
-    def iterSiblings(self) -> Generator:
+    def iterSiblings(self) -> Iterator:
         """
         Yields other objects under this object's parent.
         """
@@ -204,7 +204,7 @@ class DagNode(nodes['DependNode']):
         """
         return list(self.iterSiblings())
 
-    def iterParents(self) -> Generator:
+    def iterParents(self) -> Iterator:
         """
         Yields this node's parents.
 
@@ -260,7 +260,7 @@ class DagNode(nodes['DependNode']):
     parent = property(getParent)
 
     @_ci.useCmdFlags('listRelatives', skip=['fullPath', 'path'])
-    def iterRelatives(self, **kwargs) -> Generator:
+    def iterRelatives(self, **kwargs) -> Iterator:
         """
         Thin generator wrapper for :func:`maya.cmds.listRelatives`.
 
@@ -282,7 +282,7 @@ class DagNode(nodes['DependNode']):
 
     def iterChildren(self, *,
                      type:Optional[Union[str, list[str]]]=None,
-                     recurse:bool=False) -> Generator:
+                     recurse:bool=False) -> Iterator:
         """
         Iterates over this node's children.
 
@@ -382,7 +382,7 @@ class DagNode(nodes['DependNode']):
                               setPickWalkParent,
                               clearPickWalkParent)
 
-    def iterPickWalkChildren(self) -> Generator:
+    def iterPickWalkChildren(self) -> Iterator:
         """
         Yields pick-walk children for this object, if it's a controller.
         """

@@ -1,6 +1,6 @@
 """Miscellaneous math operations."""
 
-from typing import Optional, Generator, Union, Literal, Iterable
+from typing import Optional, Iterator, Union, Literal, Iterable
 import math
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
@@ -162,21 +162,21 @@ class Interpolator:
                 return i
         raise IndexError
 
-    def keys(self) -> Generator[float, None, None]:
+    def keys(self) -> Iterator[float]:
         """
         :return: The keys (positions) of the interpolator.
         """
         for k, v in self._data:
             yield k
 
-    def values(self) -> Generator:
+    def values(self) -> Iterator:
         """
         :return: The defined values of the interpolator.
         """
         for k, v in self._data:
             yield v
 
-    def items(self) -> Generator[tuple, None, None]:
+    def items(self) -> Iterator[tuple]:
         """
         :return: Pairs of defined positions and values.
         """

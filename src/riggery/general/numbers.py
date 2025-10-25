@@ -1,6 +1,6 @@
 """General arithmetic utilities."""
 
-from typing import Union, Generator, Literal, Optional, Iterable
+from typing import Union, Iterator, Literal, Optional, Iterable
 
 def remap(value, oldMin, oldMax, newMin, newMax):
     oldSpan = oldMax - oldMin

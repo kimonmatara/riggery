@@ -1,4 +1,4 @@
-from typing import Optional, Union, Generator, Iterable
+from typing import Optional, Union, Iterator, Iterable
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -311,7 +311,7 @@ class NurbsCurve(nodes['CurveShape']):
     #----------------------------------------------|    Iterators
 
     @short(worldSpace='ws')
-    def iterCVPoints(self, worldSpace:bool=False) -> Generator:
+    def iterCVPoints(self, worldSpace:bool=False) -> Iterator:
         """
         Yields CV points.
 
@@ -335,7 +335,7 @@ class NurbsCurve(nodes['CurveShape']):
                 return True
         return False
 
-    def iterCVWeights(self) -> Generator[float, None, None]:
+    def iterCVWeights(self) -> Iterator[float]:
         """
         Iterates over the CV weights. These are retrieved via forced reads
         on the ``weights`` attribute.

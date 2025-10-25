@@ -1,7 +1,7 @@
 from functools import cached_property
 import re
 import os
-from typing import Union, Optional, Generator, Iterable, Any
+from typing import Union, Optional, Iterator, Iterable, Any
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -220,7 +220,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
     def _iterInputPlugs(
             self,
             skipConversionNodes:bool
-    ) -> Generator[om.MPlug, None, None]:
+    ) -> Iterator[om.MPlug]:
 
         thisPlug = self.__apimplug__()
 
@@ -251,7 +251,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
                    shapes:bool=False,
                    type:Optional[Union[str, Iterable[str]]]=None,
                    exactType:bool=False,
-                   skipConversionNodes:bool=False) -> Generator:
+                   skipConversionNodes:bool=False) -> Iterator:
         """
         :param plugs/p: return plugs rather than nodes; defaults to False
         :param skipConversionNodes/scn: skip over ``unitConversion`` nodes;
@@ -321,7 +321,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
     def _iterOutputPlugs(
             self,
             skipConversionNodes:bool
-    ) -> Generator[om.MPlug, None, None]:
+    ) -> Iterator[om.MPlug]:
 
         thisPlug = self.__apimplug__()
         if thisPlug.isArray:
@@ -352,7 +352,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
                     skipConversionNodes:bool=False,
                     type:Optional[Union[Iterable[str], str]]=None,
                     exactType:bool=False,
-                    shapes:bool=False) -> Generator:
+                    shapes:bool=False) -> Iterator:
         """
         :param plugs/p: return plugs rather than nodes; defaults to False
         :param skipConversionNodes/scn: skip over ``unitConversion`` nodes;
@@ -908,7 +908,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
             return len(self.indices())
         raise TypeError("not a multi")
 
-    def __iter__(self) -> Generator['Attribute', None, None]:
+    def __iter__(self) -> Iterator['Attribute']:
         plug = self.__apimplug__()
         if plug.isArray:
             indices = plug.getExistingArrayAttributeIndices()
@@ -1089,7 +1089,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         return self.__apimplug__().isChild
 
-    def iterChildren(self) -> Generator:
+    def iterChildren(self) -> Iterator:
         """
         Yields compound children.
 
@@ -1175,7 +1175,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     parent = property(getParent)
 
-    def iterSiblings(self) -> Generator['Attribute', None, None]:
+    def iterSiblings(self) -> Iterator['Attribute']:
         """
         This must be a child in a compound attribute.
 
@@ -1450,7 +1450,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
                 raise RuntimeError("Broken proxy link.")
             return out
 
-    def iterProxies(self) -> Generator:
+    def iterProxies(self) -> Iterator:
         """
         Yields proxies for this attribute elsewhere.
         """

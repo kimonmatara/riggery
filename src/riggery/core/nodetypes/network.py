@@ -1,6 +1,6 @@
 import maya.cmds as m
 
-from typing import Generator
+from typing import Iterator
 from ..nodetypes import __pool__ as nodes
 
 DependNode = nodes['DependNode']

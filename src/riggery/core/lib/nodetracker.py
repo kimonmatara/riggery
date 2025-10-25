@@ -1,6 +1,6 @@
 """Tools for automatic node capture / collection."""
 
-from typing import Generator, Union, Optional, Callable
+from typing import Iterator, Union, Optional, Callable
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -103,7 +103,7 @@ class NodeTracker:
 
     #-------------------------------------|    List interface
 
-    def ofType(self, type:Union[str, list[str]]) -> Generator:
+    def ofType(self, type:Union[str, list[str]]) -> Iterator:
         """
         In contrast to :meth:`__iter__`, only yields nodes that match the
         specified node type(s).

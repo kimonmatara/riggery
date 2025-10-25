@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Iterator
 from ..nodetypes import __pool__ as nodes
 DependNode = nodes['DependNode']
 
@@ -9,7 +9,7 @@ class ObjectSet(DependNode):
 
     #---------------------------------|    Member queries
 
-    def iterDagSetMembers(self) -> Generator:
+    def iterDagSetMembers(self) -> Iterator:
         """
         Yields objects that connect into the `dagSetMembers` multi-attribute.
         Useful for quick ordered queries.
