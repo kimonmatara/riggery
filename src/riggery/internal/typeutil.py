@@ -18,8 +18,9 @@ def get_subclasses_recursive(cls:type) -> list[type]:
 
 def collapse_ancestors(classes:Union[list[type], tuple[type]]) -> list[type]:
     """
-    Returns a list where any class in *classes* which is a parent of
-    another class in *classes* is omitted.
+    Returns a list where any class in *classes* which is a parent of another
+    class in *classes* is omitted.
+
     :param classes: a list or tuple of classes to process
     :return: A filtered list.
     """
