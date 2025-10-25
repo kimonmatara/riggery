@@ -2,6 +2,7 @@ import sys
 import os
 from typing import Optional
 from pathlib import Path
+import importlib.util
 
 def modname_from_filename(filename:str) -> Optional[str]:
     """
@@ -46,3 +47,13 @@ def modname_from_filename(filename:str) -> Optional[str]:
 
     return None
 
+def filename_from_modname(modname:str) -> Optional[str]:
+    try:
+        return sys.modules[modname].__file__
+    except KeyError:
+        spec = importlib.util.find_spec(module_name)
+
+        if spec is None:
+            return None
+
+        return spec.origin
