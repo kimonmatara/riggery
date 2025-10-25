@@ -1,6 +1,7 @@
 """Utilities for type wrangling."""
-
-from typing import Optional, Union, Generator
+import ast
+from typing import Optional, Union, Iterator, get_origin, get_args, \
+    ForwardRef, Annotated
 import inspect
 import re
 
@@ -48,17 +49,34 @@ class SingletonMeta(type):
             cls.__instance__ = super().__call__(*args, **kwargs)
         return cls.__instance__
 
+#-----------------------------------------|
+#-----------------------------------------|    SENTINELS
+#-----------------------------------------|
 
-class Undefined(metaclass=SingletonMeta):
-
+class Null(metaclass=SingletonMeta):
     def __bool__(self):
         return False
 
-    def __repr__(self):
-        return '<undefined>'
+NULL = Null()
+
+class Undefined(Null):
+    pass
 
 UNDEFINED = Undefined()
 
+class Empty(Null):
+    pass
+
+EMPTY = Empty()
+
+class Waiting(Null):
+    pass
+
+WAITING = Waiting()
+
+#-----------------------------------------|
+#-----------------------------------------|    TYPETREE
+#-----------------------------------------|
 
 class TTCycleError(RuntimeError):
     """
@@ -157,7 +175,7 @@ class TypeTree:
                 if cls is None:
                     break
 
-    def names(self) -> Generator[str, None, None]:
+    def names(self) -> Iterator[str]:
         """
         Yields names in the tree.
         """
@@ -263,3 +281,34 @@ class TypeTree:
             append_name(rootName)
 
         return '\n'.join(lines)
+
+# def unpack_type_hint(T) -> Iterator[Union[type, str], None, None]:
+#     """
+#     Pseudo:
+#         get origin
+#         if origin is Union:
+#             get args, unpack each of them
+#         elif origin is Forward Ref:
+#             yield .__foward_arg__
+#         elif is it's an old-style generic type like List, Dict etc:
+#             convert to the 'modern' formulation (e.g. `list[int]` rather than
+#             `List[int]`) and return the modern formulation;
+#             don't unpack the arguments themselves
+#         elif if it's Annotated:
+#             get the first arg, unpack it
+#     Unpacks Union, Annotated and Forward Ref. Strings extracted from Forward Ref
+#     will not be evaluated.
+#     """
+#     origin = get_origin(T)
+#
+#     if origin is not None:
+#         if origin in (Union, Annotated):
+#             for arg in get_args(T):
+#                 for x in unpack_type_hint(arg):
+#                     yield x
+#         else:
+#             yield T
+#     elif type(T) is ForwardRef:
+#         yield T.__forward_arg__
+#     else:
+#         yield T
