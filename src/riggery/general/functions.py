@@ -1,5 +1,5 @@
 """Utilities for functions."""
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 from functools import wraps
 from pathlib import Path
 import os
@@ -75,3 +75,36 @@ class short:
         wrapper.__shorthands__ = self.mapping
 
         return wrapper
+
+
+class lazy_property:
+    """
+    Alternative to property that works with name lookups, so that you don't have
+    to re-declare properties in subclasses every time you override one of their
+    getter / setter / deleter methods.
+    """
+    def __init__(self,
+                 fget:Optional[str]=None,
+                 fset:Optional[str]=None,
+                 fdel:Optional[str]=None):
+        self._fget = fget
+        self._fset = fset
+        self._fdel = fdel
+
+    def __get__(self, inst, instype):
+        if self._fget:
+            meth = getattr(inst, self._fget)
+            return meth()
+        raise AttributeError("can't get attribute")
+
+    def __set__(self, inst, value):
+        if self._fset:
+            meth = getattr(inst, self._fset)
+            return meth(value)
+        raise AttributeError("can't set attribute")
+
+    def __delete__(self, inst):
+        if self._fdel:
+            meth = getattr(inst, self._fdel)
+            return meth()
+        raise AttributeError("can't delete attribute")
