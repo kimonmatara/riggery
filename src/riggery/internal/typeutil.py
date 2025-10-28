@@ -54,26 +54,21 @@ class SingletonMeta(type):
 #-----------------------------------------|    SENTINELS
 #-----------------------------------------|
 
-class Null(metaclass=SingletonMeta):
+class NullType(metaclass=SingletonMeta):
     def __bool__(self):
         return False
 
-NULL = Null()
+NULL = NullType()
 
-class Undefined(Null):
+class UndefinedType(NullType):
     pass
 
-UNDEFINED = Undefined()
+UNDEFINED = UndefinedType()
 
-class Empty(Null):
+class EmptyType(NullType):
     pass
 
-EMPTY = Empty()
-
-class Waiting(Null):
-    pass
-
-WAITING = Waiting()
+EMPTY = EmptyType()
 
 #-----------------------------------------|
 #-----------------------------------------|    TYPETREE
@@ -212,7 +207,7 @@ class TypeTree:
     def get_path_to(
             self,
             clsname:str, *,
-            insert_under:Union[Undefined, None, str]=UNDEFINED
+            insert_under:Union[UndefinedType, None, str]=UNDEFINED
     ) -> list[str]:
         """
         :param clsname: the class for which to construct a path
@@ -283,33 +278,23 @@ class TypeTree:
 
         return '\n'.join(lines)
 
-# def unpack_type_hint(T) -> Iterator[Union[type, str], None, None]:
-#     """
-#     Pseudo:
-#         get origin
-#         if origin is Union:
-#             get args, unpack each of them
-#         elif origin is Forward Ref:
-#             yield .__foward_arg__
-#         elif is it's an old-style generic type like List, Dict etc:
-#             convert to the 'modern' formulation (e.g. `list[int]` rather than
-#             `List[int]`) and return the modern formulation;
-#             don't unpack the arguments themselves
-#         elif if it's Annotated:
-#             get the first arg, unpack it
-#     Unpacks Union, Annotated and Forward Ref. Strings extracted from Forward Ref
-#     will not be evaluated.
-#     """
-#     origin = get_origin(T)
-#
-#     if origin is not None:
-#         if origin in (Union, Annotated):
-#             for arg in get_args(T):
-#                 for x in unpack_type_hint(arg):
-#                     yield x
-#         else:
-#             yield T
-#     elif type(T) is ForwardRef:
-#         yield T.__forward_arg__
-#     else:
-#         yield T
+def concise_type_repr(T) -> str:
+    """
+    :return: A more concise representation of a type hint, suitable for tool
+        tips, documentation etc.
+    """
+    origin = get_origin(T)
+
+    if origin is None:
+        try:
+            return T.__name__
+        except AttributeError:
+            return repr(T)
+    try:
+        originName = origin.__name__
+    except AttributeError:
+        originName = repr(origin)
+
+    return "{}[{}]".format(originName,
+                           ', '.join((concise_type_repr(arg)
+                                      for arg in get_args(T))))
