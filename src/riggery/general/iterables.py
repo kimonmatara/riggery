@@ -90,3 +90,11 @@ def fill_nones_with_chase(lst:list) -> None:
             last_not_none = item
         out2.append(item)
     lst[:] = reversed(out2)
+
+def overlapping_pairs(iterable:Iterable) -> Iterator[tuple]:
+    """
+    Takes something like: [1, 2, 3, 4]
+    Returns something like: [[1, 2], [2, 3], [3, 4]]
+    """
+    elems = list(iterable)
+    return zip(elems, elems[1:])
