@@ -1,6 +1,6 @@
 """The main class pool for node types."""
 
-from riggery.internal.classpool2 import ClassPoolWithInvention
+from riggery.internal.classpool import ClassPoolWithInvention
 import riggery.internal.nodeinfo as _ni
 
 STUB_TEMPLATE = \

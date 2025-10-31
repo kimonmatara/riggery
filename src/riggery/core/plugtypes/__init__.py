@@ -1,6 +1,6 @@
 """The main class pool for plug types."""
 
-import riggery.internal.classpool2 as _cp
+import riggery.internal.classpool as _cp
 from riggery.internal.plugutil.plugtree import DATA as PLUG_TREE
 import riggery.internal.plugutil.plugroute as _pr
 
@@ -15,8 +15,7 @@ import maya.cmds as m
 
 class {}({}):
     
-    ...
-"""
+    ..."""
 
 
 class PlugPool(_cp.ClassPoolWithInvention):

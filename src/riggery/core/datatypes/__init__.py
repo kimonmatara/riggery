@@ -1,4 +1,4 @@
-import riggery.internal.classpool2 as _cp
+import riggery.internal.classpool as _cp
 import riggery.internal.datainfo as _di
 
 STUB_TEMPLATE = \
@@ -9,11 +9,10 @@ from ..datatypes import __pool__ as data
 
 class {}({}):
 
-    ...\
-"""
+    ..."""
 
 
-class DataPool(_cp.ClassPool):
+class DataPool(_cp.ClassPoolWithInvention):
 
     def _initStubContent(self, clsname:str):
         baseClsName = _di.getPathFromKey(clsname)[-2]
@@ -34,5 +33,6 @@ class DataPool(_cp.ClassPool):
         baseClsName = _di.getPathFromKey(clsname)[-2]
         baseCls = self[baseClsName]
         return type(baseCls)(clsname, (baseCls, ), {})
+
 
 __pool__ = DataPool()
