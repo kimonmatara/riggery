@@ -1,25 +1,26 @@
-"""Base classes for class pools."""
-
+from warnings import warn
+import inspect
 import re
-from riggery.general.modules import filename_from_modname
-from typing import Optional, Iterable, Union, Iterator
-import importlib
 import os
+import importlib
+from pathlib import Path
+from typing import Optional
+from types import ModuleType
+from abc import ABC, ABCMeta, abstractmethod
 import sys
 
-#-----------------------------------------|
-#-----------------------------------------|    HELPERS
-#-----------------------------------------|
+from riggery.general.strings import cap, uncap
 
-cap = lambda x: x[0].upper()+x[1:]
-uncap = lambda x: x[0].lower()+x[1:]
 
 #-----------------------------------------|
 #-----------------------------------------|    ERRORS
 #-----------------------------------------|
 
-class ClassPoolError(RuntimeError):
-    ...
+class ClassPoolError(Exception):
+    pass
+
+class CpInvalidKeyError(ClassPoolError):
+    """Disallowed pool key (class name)."""
 
 class CpMissingModuleError(ClassPoolError):
     """The class module could not be found."""
@@ -35,60 +36,76 @@ class CpInvalidKeyError(ClassPoolError):
     """Disallowed pool key (class name)."""
 
 #-----------------------------------------|
-#-----------------------------------------|    META
+#-----------------------------------------|    Constants
 #-----------------------------------------|
 
-class ClassPoolMeta(type):
+DEFAULT_STUB_TEMPLATE = \
+"""\
+class {}:
 
-    def __new__(meta, clsname, bases, dct):
-        if bases:
-            if dct.get('__pool_package__') is None:
-                raise TypeError('__pool_package__ must be defined')
-
-            dct['__package_dirname__'] = os.path.dirname(
-                filename_from_modname(dct['__pool_package__'])
-            )
-        return super().__new__(meta, clsname, bases, dct)
+    ...
+"""
 
 #-----------------------------------------|
-#-----------------------------------------|    CLASS
+#-----------------------------------------|    BASE CLASS
 #-----------------------------------------|
 
-class ClassPool(metaclass=ClassPoolMeta):
+class ClassPool:
 
-    __pool_package__:str            # *Must* be defined by author
-    __package_dirname__:str         # Auto-completed by metaclass
-    __can_invent__:bool = False
-
-    #-----------------------------|    Init
-
-    def __new__(cls):
-        if cls is ClassPool:
-            raise TypeError("The base ClassPool class can't be instantiated")
-        return object.__new__(cls)
+    #-----------------------------|    Instantiation
 
     def __init__(self):
+        frame = inspect.currentframe()
+        caller_globals = frame.f_back.f_globals
+
+        msg = (f"'{self.__class__.__name__}' must be instantiated inside a "
+               "package __init__.py")
+
+        modulename = caller_globals['__name__']
+
+        if modulename == '__main__':
+            raise TypeError(msg)
+
+        try:
+            filename = caller_globals['__file__']
+        except KeyError:
+            raise TypeError(msg)
+
+        filename = Path(filename)
+
+        if filename.name != '__init__.py':
+            raise TypeError(msg)
+
+        self.__package_dirname__ = str(filename.parent)
+        self.__pool_package__ = modulename
+
         self._cache = {}
 
     #-----------------------------|    Retrieval
 
-    def _checkKey(self, key):
+    def _checkKey(self, key:str) -> None:
+        """:raises CpInvalidKeyError:"""
         if not key[0].isupper():
             raise CpInvalidKeyError(key)
 
-    def _getClassModule(self, modname:str):
+    def _getClassModule(self, modname:str) -> ModuleType:
+        """:raises CpMissingModuleError:"""
         try:
             return sys.modules[modname]
         except KeyError:
             spec = importlib.util.find_spec(modname)
+
             if spec is None:
                 raise CpMissingModuleError(modname)
+
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             sys.modules[modname] = mod
+
             return mod
 
     def _loadClass(self, clsname:str) -> Optional[type]:
+        """:raises CpClassAccessError:"""
         modname = '{}.{}'.format(self.__pool_package__, uncap(clsname))
         try:
             mod = self._getClassModule(modname)
@@ -102,29 +119,33 @@ class ClassPool(metaclass=ClassPoolMeta):
                 f"Can't find '{clsname}' on module '{modname}'"
             )
 
-    def _inventClass(self, clsname:str):
-        raise NotImplementedError
-
-    def _getClass(self, key:str):
+    def _getClass(self, key:str) -> type:
+        """
+        :raises KeyError:
+        """
         try:
             cls = self._cache[key]
+
         except KeyError:
             self._checkKey(key)
             cls = self._loadClass(key)
 
             if cls is None:
-                try:
-                    cls = self._inventClass(key)
-                except NotImplementedError:
-                    raise KeyError(f"No class '{key}'")
+                raise KeyError(f"No class '{key}'")
 
             self._cache[key] = cls
 
         return cls
 
-    __getitem__ = __getattr__ = _getClass
+    __getitem__ = _getClass
 
-    #-----------------------------|    Preload
+    def __getattr__(self, key:str):
+        try:
+            return self._getClass(key)
+        except:
+            raise AttributeError(f"{key}")
+
+    #-----------------------------|    Caching
 
     def preload(self) -> 'ClassPool':
         """
@@ -145,17 +166,14 @@ class ClassPool(metaclass=ClassPoolMeta):
                         self._cache[clsname] = retrieved
         return self
 
-    #-----------------------------|    Rehash
+    def rehash(self) -> 'ClassPool':
+        """Clears the class cache and removes any associated modules from
+        ``sys.modules``, so that reloads will be triggered on subsequent access
+        attempts."""
 
-    def rehash(self):
-        """
-        Clears the class cache and removes any associated modules from
-        ``sys.modules``, so that reloads will be triggered on subsequent
-        access attempts.
-        """
         modsFromClasses = [cls.__module__ for cls in self._cache.values()]
         modsToDelete = set([mod for mod in modsFromClasses
-                        if mod.startswith(self.__pool_package__)])
+                            if mod.startswith(self.__pool_package__)])
 
         for modName in sys.modules:
             if modName.startswith(self.__pool_package__) \
@@ -169,47 +187,74 @@ class ClassPool(metaclass=ClassPoolMeta):
                 continue
 
         self._cache.clear()
+        return self
 
-    #-----------------------------|    Stubbing
+    #-----------------------------|    Authoring
 
-    @property
-    def packageDir(self):
+    def _initStubContent(self, clsname, **kwargs):
+        """This should be overriden in subclasses. The default implementation
+        produces a very basic class declaration which may not work for every
+        class pool."""
+
+        return DEFAULT_STUB_TEMPLATE.format(clsname)
+
+    def getStub(self, clsname:str, *, overwrite:bool=False, **kwargs
+                ) -> tuple[type, str]:
         """
-        :return: The class pool's root directory.
+        Creates a module for the named class if one doesn't already exist. If
+        *overwrite* is True, the file will be overwritten regardless.
+
+        Once the filename has been resolved, an attempt is made to load the
+        class; if that's unsuccessful (because the existing declaration or the
+        stub content bugs out), the second member of the return tuple will be
+        None.
+
+        :param clsname: the name of the class to initialize
+        :param overwrite: if the class file already exists, overwrite it;
+            defaults to False
+        :param \*\*kwargs: passed along to :meth:`_initStubContent` if you want
+            to do something with it (e.g. specify a parent class)
+
+        :return: Tuple of ``(filename:str, retrieved class:Optional[type])``
         """
-        return os.path.dirname(
-            importlib.util.find_spec(self.__pool_package__).origin
-        )
+        clsname = cap(clsname)
+        modname = f'{uncap(clsname)}.py'
+        filename = Path(self.__package_dirname__) / modname
 
-    def _getModBasenameFromClsName(self, clsname:str):
-        return clsname[0].lower()+clsname[1:]
+        if not (filename.is_file() and not overwrite):
+            content = self._initStubContent(clsname, **kwargs)
 
-    def _initStubFilePath(self, clsname:str):
-        filename = "{}.py".format(self._getModBasenameFromClsName(clsname))
-        return os.path.join(self.packageDir, filename)
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(content)
+        try:
+            cls = self[clsname]
+        except:
+            cls = None
 
-    def _initStubContent(self, clsname:str):
-        raise NotImplementedError(
-            "Stubbing is not supported for class pool {}".format(self)
-        )
+        return str(filename), cls
 
-    def initStub(self, clsname:str):
-        self._checkKey(clsname)
-        filepath = self._initStubFilePath(clsname)
 
-        if os.path.isfile(filepath):
-            raise RuntimeError(f"Stub file already exists: {filepath}")
+class ClassPoolWithInvention(ClassPool):
 
-        content = self._initStubContent(clsname)
+    __abstract__ = True
 
-        with open(filepath, 'w') as f:
-            f.write(content)
+    @abstractmethod
+    def _inventClass(self, clsname:str):
+        """Implement this for dynamic class construction."""
 
-        print(f"Created stub file: {filepath}")
-        return filepath
+    def _getClass(self, key:str) -> type:
+        """
+        :raises KeyError:
+        """
+        try:
+            cls = self._cache[key]
 
-    #-----------------------------|    Repr
+        except KeyError:
+            self._checkKey(key)
+            cls = self._loadClass(key)
 
-    def __repr__(self):
-        return "<'{}' pool at {}>".format(self.__class__.__name__,
-                                          self.__pool_package__)
+            if cls is None:
+                cls = self._inventClass
+            self._cache[key] = cls
+
+        return cls

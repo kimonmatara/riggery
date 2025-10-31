@@ -1,13 +1,25 @@
 """The main class pool for plug types."""
 
-import riggery.internal.classpool as _cp
+import riggery.internal.classpool2 as _cp
 from riggery.internal.plugutil.plugtree import DATA as PLUG_TREE
 import riggery.internal.plugutil.plugroute as _pr
 
 
-class PlugPool(_cp.ClassPool):
+STUB_TEMPLATE = \
+"""\
+from ..plugtypes import __pool__ as plugs
+{} = plugs['{}']
 
-    __pool_package__ = __name__
+import maya.cmds as m
+
+
+class {}({}):
+    
+    ...
+"""
+
+
+class PlugPool(_cp.ClassPoolWithInvention):
 
     #-------------------------------------|    Validation
 
@@ -31,19 +43,7 @@ class PlugPool(_cp.ClassPool):
             raise TypeError("Stubbing not supported for 'Attribute'")
 
         baseClsName = _pr.getPathFromKey(clsname)[-2]
-        tab = ' '*4
-
-        lines = [
-            "from ..plugtypes import __pool__ as plugs",
-            "{} = plugs['{}']".format(baseClsName, baseClsName),
-            '',
-            "import maya.cmds as m",
-            '', '',
-            "class {}({}):".format(clsname, baseClsName),
-            '',
-            f'{tab}...'
-        ]
-
-        return '\n'.join(lines)
+        return STUB_TEMPLATE.format(baseClsName, baseClsName, clsname,
+                                    baseClsName)
 
 __pool__ = PlugPool()

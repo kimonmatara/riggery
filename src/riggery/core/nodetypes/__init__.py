@@ -1,12 +1,22 @@
 """The main class pool for node types."""
 
-import riggery.internal.classpool as _cp
+from riggery.internal.classpool2 import ClassPoolWithInvention
 import riggery.internal.nodeinfo as _ni
 
+STUB_TEMPLATE = \
+"""\
+from ..nodetypes import __pool__ as nodes
+{} = nodes['{}']
 
-class NodePool(_cp.ClassPool):
+import maya.cmds as m
 
-    __pool_package__ = __name__
+
+class {}({}):
+    
+    ..."""
+
+
+class NodePool(ClassPoolWithInvention):
 
     #-------------------------------------|    Invention
 
@@ -28,17 +38,7 @@ class NodePool(_cp.ClassPool):
 
         baseClsName = _ni.getPathFromKey(clsname)[-2]
 
-        tab = ' '*4
-
-        lines = [
-            'from ..nodetypes import __pool__ as nodes',
-            "{} = nodes['{}']".format(baseClsName, baseClsName), '',
-            'import maya.cmds as m',
-            '', '',
-            "class {}({}):".format(clsname, baseClsName),
-            '', f'{tab}...'
-        ]
-
-        return '\n'.join(lines)
+        return STUB_TEMPLATE.format(baseClsName, baseClsName, clsname,
+                                    baseClsName)
 
 __pool__ = NodePool()

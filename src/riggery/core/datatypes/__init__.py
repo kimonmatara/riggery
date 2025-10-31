@@ -1,33 +1,28 @@
-import riggery.internal.classpool as _cp
+import riggery.internal.classpool2 as _cp
 import riggery.internal.datainfo as _di
+
+STUB_TEMPLATE = \
+"""\
+from ..datatypes import __pool__ as data
+{} = data['{}']
+
+
+class {}({}):
+
+    ...\
+"""
 
 
 class DataPool(_cp.ClassPool):
 
-    __pool_package__ = __name__
-
     def _initStubContent(self, clsname:str):
         baseClsName = _di.getPathFromKey(clsname)[-2]
-        tab = ' '*4
+        args = [baseClsName, baseClsName, clsname, baseClsName]
 
         if clsname == 'Tensor':
-            lines = [
-                'from ..datatypes import __pool__ as data',
-                "{} = data['{}']".format(baseClsName, baseClsName),
-                '', '',
-                "class {}({}, list):".format(clsname, baseClsName),
-                '', f'{tab}...'
-            ]
-        else:
-            lines = [
-                'from ..datatypes import __pool__ as data',
-                "{} = data['{}']".format(baseClsName, baseClsName),
-                '', '',
-                "class {}({}):".format(clsname, baseClsName),
-                '', f'{tab}...'
-            ]
+            args[3] = "{}, list".format(baseClsName)
 
-        return '\n'.join(lines)
+        return STUB_TEMPLATE.format(*args)
 
     def _checkKey(self, key):
         if key not in _di.DATA_TREE:
