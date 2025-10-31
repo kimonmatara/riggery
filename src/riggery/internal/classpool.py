@@ -199,14 +199,14 @@ class ClassPool:
         return DEFAULT_STUB_TEMPLATE.format(clsname)
 
     def getStub(self, clsname:str, *, overwrite:bool=False, **kwargs
-                ) -> tuple[type, str]:
+                ) -> tuple[str, type]:
         """
         Creates a module for the named class if one doesn't already exist. If
         *overwrite* is True, the file will be overwritten regardless.
 
         Once the filename has been resolved, an attempt is made to load the
         class; if that's unsuccessful (because the existing declaration or the
-        stub content bugs out), the second member of the return tuple will be
+        stub content bugs out), the first member of the return tuple will be
         None.
 
         :param clsname: the name of the class to initialize
@@ -215,9 +215,9 @@ class ClassPool:
         :param \*\*kwargs: passed along to :meth:`_initStubContent` if you want
             to do something with it (e.g. specify a parent class)
 
-        :return: Tuple of ``(filename:str, retrieved class:Optional[type])``
+        :return: Tuple of ``(retrieved class:Optional[type], filename:str)``
         """
-        clsname = cap(clsname)
+        self._checkKey(clsname)
         modname = f'{uncap(clsname)}.py'
         filename = Path(self.__package_dirname__) / modname
 
@@ -231,7 +231,7 @@ class ClassPool:
         except:
             cls = None
 
-        return str(filename), cls
+        return cls, str(filename)
 
 
 class ClassPoolWithInvention(ClassPool):
