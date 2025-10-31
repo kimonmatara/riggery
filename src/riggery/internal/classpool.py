@@ -125,7 +125,6 @@ class ClassPool:
         """
         try:
             cls = self._cache[key]
-
         except KeyError:
             self._checkKey(key)
             cls = self._loadClass(key)
@@ -137,7 +136,8 @@ class ClassPool:
 
         return cls
 
-    __getitem__ = _getClass
+    def __getitem__(self, key:str) -> type:
+        return self._getClass(key)
 
     def __getattr__(self, key:str):
         try:
@@ -236,8 +236,6 @@ class ClassPool:
 
 class ClassPoolWithInvention(ClassPool):
 
-    __abstract__ = True
-
     @abstractmethod
     def _inventClass(self, clsname:str):
         """Implement this for dynamic class construction."""
@@ -254,7 +252,7 @@ class ClassPoolWithInvention(ClassPool):
             cls = self._loadClass(key)
 
             if cls is None:
-                cls = self._inventClass
+                cls = self._inventClass(key)
             self._cache[key] = cls
 
         return cls
