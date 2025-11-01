@@ -40,11 +40,11 @@ class CpInvalidKeyError(ClassPoolError):
 #-----------------------------------------|
 
 DEFAULT_STUB_TEMPLATE = \
-"""\
-class {}:
-
-    ...
-"""
+    """\
+    class {}:
+    
+        ...
+    """
 
 #-----------------------------------------|
 #-----------------------------------------|    BASE CLASS
@@ -198,8 +198,8 @@ class ClassPool:
 
         return DEFAULT_STUB_TEMPLATE.format(clsname)
 
-    def getStub(self, clsname:str, *, overwrite:bool=False, **kwargs
-                ) -> tuple[str, type]:
+    def stub(self, clsname:str, *, overwrite:bool=False, **kwargs
+             ) -> tuple[str, type]:
         """
         Creates a module for the named class if one doesn't already exist. If
         *overwrite* is True, the file will be overwritten regardless.
