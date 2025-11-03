@@ -38,7 +38,7 @@ def int_to_letter(number:int, start:int=0) -> str:
     number -= start
     return ascii_uppercase[number % 26] * ((number // 26)+1)
 
-def split_camel(s):
+def split_camel(s:str):
     """
     Simple camelcase splitter. Ignores numbers.
 
