@@ -1,26 +1,35 @@
 """General arithmetic utilities."""
-
 from typing import Union, Iterator, Literal, Optional, Iterable
 
-def remap(value, oldMin, oldMax, newMin, newMax):
+def remap(value:Union[int, float],
+          oldMin:Union[int, float],
+          oldMax:Union[int, float],
+          newMin:Union[int, float],
+          newMax:Union[int, float]):
     oldSpan = oldMax - oldMin
     oldPartialSpan = value - oldMin
     ratio = oldPartialSpan / oldSpan
     newSpan = newMax - newMin
     return newMin + (newSpan * ratio)
 
-def linear_interp(start, end, ratio) -> float:
+def linear_interp(start:Union[int, float],
+                  end:Union[int, float],
+                  ratio:float) -> float:
     ratio = max(0, min(1.0, ratio))
     start, end, ratio = map(float, (start, end, ratio))
     return start + ((end-start) * ratio)
 
-def cubic_interp(start, end, ratio) -> float:
+def cubic_interp(start:Union[int, float],
+                 end:Union[int, float],
+                 ratio:float) -> float:
     ratio = max(0, min(1.0, ratio))
     start, end, ratio = map(float, (start, end, ratio))
     ratio = ratio * ratio * (3 - 2 * ratio)
     return start + ((end-start) * ratio)
 
-def quad_interp(start, end, ratio) -> float:
+def quad_interp(start:Union[int, float],
+                end:Union[int, float],
+                ratio:float) -> float:
     ratio = max(0, min(1.0, ratio))
 
     if ratio <= 0.5:
