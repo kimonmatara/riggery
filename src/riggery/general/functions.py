@@ -76,7 +76,6 @@ class short:
 
         return wrapper
 
-
 class lazy_property:
     """
     Alternative to property that works with name lookups, so that you don't have
