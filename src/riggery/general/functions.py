@@ -1,9 +1,39 @@
 """Utilities for functions."""
+from warnings import warn
 from typing import Callable, Any, Optional
 from functools import wraps
 from pathlib import Path
 import os
 import json
+
+class Callbacks:
+    def __init__(self):
+        self._callbacks = set()
+
+    def add(self, callback:Callable):
+        self._callbacks.add(callback)
+
+    def remove(self, callback:Callable):
+        self._callbacks.remove(callback)
+
+    def clear(self):
+        self._callbacks.clear()
+
+    def __bool__(self):
+        return len(self._callbacks) > 0
+
+    def __len__(self):
+        return len(self._callbacks)
+
+    def __iter__(self):
+        yield from self._callbacks
+
+    def __call__(self, *args, **kwargs):
+        for cb in self._callbacks:
+            try:
+                cb(*args, **kwargs)
+            except Exception as exc:
+                warn(f"Callback failed: {exc}")
 
 def resolve_flags(*flags) -> tuple:
     """
