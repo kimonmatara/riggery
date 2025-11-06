@@ -1,14 +1,17 @@
 """Utilities for functions."""
-from warnings import warn
-from typing import Callable, Any, Optional
 from functools import wraps
-from pathlib import Path
-import os
-import json
+from typing import Callable, Any, Optional, Literal
+from warnings import warn
+
 
 class Callbacks:
-    def __init__(self):
+    def __init__(self, errorLevel:Literal[0, 1, 2]=2):
+        """
+        :param errorLevel: if 0, completely hide errors; if 1, show a warning;
+            if 2, raise exceptions; defaults to 2
+        """
         self._callbacks = set()
+        self._errorLevel = errorLevel
 
     def add(self, callback:Callable):
         self._callbacks.add(callback)
@@ -33,7 +36,10 @@ class Callbacks:
             try:
                 cb(*args, **kwargs)
             except Exception as exc:
-                warn(f"Callback failed: {exc}")
+                if self._errorLevel == 2:
+                    raise exc
+                elif self._errorLevel == 1:
+                    warn(f"Callback failed: {exc}")
 
 def resolve_flags(*flags) -> tuple:
     """
