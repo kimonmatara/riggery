@@ -51,7 +51,7 @@ def filename_from_modname(modname:str) -> Optional[str]:
     try:
         return sys.modules[modname].__file__
     except KeyError:
-        spec = importlib.util.find_spec(module_name)
+        spec = importlib.util.find_spec(modname)
 
         if spec is None:
             return None
