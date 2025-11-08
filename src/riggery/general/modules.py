@@ -2,7 +2,7 @@ import sys
 import os
 from typing import Optional
 from pathlib import Path
-import importlib.util
+import importlib
 
 def modname_from_filename(filename:str) -> Optional[str]:
     """
@@ -57,3 +57,27 @@ def filename_from_modname(modname:str) -> Optional[str]:
             return None
 
         return spec.origin
+
+#-----------------------------------------|    Lazy module loading
+
+class LazyModuleModuleGetter:
+    def __get__(self, inst, instype):
+        if inst is None:
+            return self
+        module = importlib.import_module(inst._moduleName)
+        setattr(inst, '_module', module)
+        return module
+
+
+class LazyModule:
+
+    _module = LazyModuleModuleGetter()
+
+    def __init__(self, module:str):
+        self._moduleName = module
+
+    def __getattr__(self, name:str):
+        return getattr(self._module, name)
+
+    def __repr__(self):
+        return "{}('{}')".format(self.__class__.__name__, self._moduleName)
