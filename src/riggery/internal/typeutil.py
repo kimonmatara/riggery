@@ -295,6 +295,16 @@ def concise_type_repr(T) -> str:
     except AttributeError:
         originName = repr(origin)
 
-    return "{}[{}]".format(originName,
-                           ', '.join((concise_type_repr(arg)
-                                      for arg in get_args(T))))
+    args = get_args(T)
+
+    if args:
+        content = ', '.join((concise_type_repr(arg) for arg in args))
+        content = '[{}]'.format(content)
+    else:
+        content = ''
+
+    return "{}{}".format(originName, content)
+
+    # return "{}[{}]".format(originName,
+    #                        ', '.join((concise_type_repr(arg)
+    #                                   for arg in get_args(T))))
