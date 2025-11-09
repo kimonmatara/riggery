@@ -2,6 +2,7 @@
 
 import re
 from string import ascii_uppercase
+from typing import Callable, Union
 
 def cap(s:str) -> str:
     """
@@ -61,7 +62,7 @@ def split_camel(s:str):
 
     return s
 
-def split_multi(s, delims):
+def split_multi(s:str, delims:list[Union[str, Callable]]):
     """
     Recursively splits a string using multiple delimiters or callables.
 
