@@ -72,10 +72,23 @@ def _legaliseNsMember(member:str):
 
     return member
 
+def legaliseDAGPath(path:str, allowEmpty:bool=False) -> str:
+    path = path.strip()
+    leadingPipe = path.startswith('|')
+    members = filter(bool, (legalise(x, True) for x in path.split('|')))
+    out = '|'.join(members)
+    if leadingPipe:
+        out = '|' + out
+    return out
+
 @short(allowEmpty='ae')
 def legalise(name:str, allowEmpty:bool=False) -> str:
     """
-    Legalises a Maya node name.
+    Legalises a Maya node base name.
+
+    .. warning::
+
+        Does NOT deal with DAG paths.
 
     :param name: the name to legalise
     :param allowEmpty/ae: if, after legalisation, all that remains is an empty
@@ -83,12 +96,22 @@ def legalise(name:str, allowEmpty:bool=False) -> str:
     :return: The legalised Maya node name.
     """
     name = name.strip()
-    out = ':'.join(map(_legaliseNsMember, name.split(':')))
+    leadingColon = name.startswith(':')
+    members = filter(bool, map(_legaliseNsMember, name.split(':')))
+
+    out = ':'.join(members)
+    out = re.sub(r":+$", '', out)
+    out = re.sub(r"^:+", ':', out)
 
     if out == '':
         if allowEmpty:
             return out
-        return '_'
+        else:
+            out = '_'
+
+    if leadingColon:
+        out = ':' + out
+
     return out
 
 def conformElems(*elems, pad:Optional[int]=None) -> list[str]:
