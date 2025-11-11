@@ -56,6 +56,22 @@ CONTROLSUFFIX = 'CTRL'
 #--------------------------------------|    NAME CONSTRUCTION
 #--------------------------------------|
 
+def _legaliseNsMember(member:str):
+    # Strip white space and illegal characters from start and end
+    pat = r"((?<=^)[^a-zA-Z_0-9]+)|([^a-zA-Z_0-9]+(?=$))"
+    member = re.sub(pat, '', member)
+
+    # Replace all remaining illegal characters with merged underscores
+    pat = r"[^a-zA-Z_0-9]+"
+    member = re.sub(pat, '_', member)
+
+    # If leading digit, add underscore
+    pat = r"^[0-9].*$"
+    if re.match(pat, member):
+        member = '_'+member
+
+    return member
+
 @short(allowEmpty='ae')
 def legalise(name:str, allowEmpty:bool=False) -> str:
     """
@@ -66,25 +82,14 @@ def legalise(name:str, allowEmpty:bool=False) -> str:
         string, return it instead of defaulting to '_'; defaults to False
     :return: The legalised Maya node name.
     """
-    # Strip white space and illegal characters from start and end
-    pat = r"((?<=^)[^a-zA-Z_0-9]+)|([^a-zA-Z_0-9]+(?=$))"
-    name = re.sub(pat, '', name)
+    name = name.strip()
+    out = ':'.join(map(_legaliseNsMember, name.split(':')))
 
-    # Replace all remaining illegal characters with merged underscores
-    pat = r"[^a-zA-Z_0-9]+"
-    name = re.sub(pat, '_', name)
-
-    # If leading digit, add underscore
-    pat = r"^[0-9].*$"
-    if re.match(pat, name):
-        name = '_'+name
-
-    if name == '':
+    if out == '':
         if allowEmpty:
-            return name
+            return out
         return '_'
-
-    return name
+    return out
 
 def conformElems(*elems, pad:Optional[int]=None) -> list[str]:
     """
