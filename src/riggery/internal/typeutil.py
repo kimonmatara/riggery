@@ -305,6 +305,8 @@ def concise_type_repr(T) -> str:
 
     return "{}{}".format(originName, content)
 
-    # return "{}[{}]".format(originName,
-    #                        ', '.join((concise_type_repr(arg)
-    #                                   for arg in get_args(T))))
+def quiet_issubclass(cls1, cls2) -> bool:
+    try:
+        return issubclass(cls1, cls2)
+    except TypeError:
+        return False
