@@ -730,3 +730,8 @@ class Matrix(data['Tensor']):
         return self
 
     scale = property(fget=getScale, fset=setScale)
+
+    #-------------------------------------------|   Comparisons
+
+    def __eq__(self, other):
+        return om.MMatrix(self).isEquivalent(om.MMatrix(other))
