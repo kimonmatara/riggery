@@ -85,10 +85,15 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    Weights
 
+    @short(destShape='ds',
+           sourceShape='ss',
+           sourceUVSet='suv',
+           destUVSet='duv',
+           method='m')
     def copyWeightsFrom(
             self,
             sourceDeformer:Union[str, 'GeometryFilter'],
-            sourceShape:Optional[Union[str, 'nodes.DeformableShape']],
+            sourceShape:Optional[Union[str, 'nodes.DeformableShape']]=None,
             destShape:Optional[Union[str, 'nodes.DeformableShape']]=None,
             sourceUVSet:Optional[str]=None,
             destUVSet:Optional[str]=None,
