@@ -1,3 +1,5 @@
+from typing import Literal, Union, Iterator
+
 from ..nodetypes import __pool__ as nodes
 GeometryFilter = nodes['GeometryFilter']
 
@@ -12,7 +14,12 @@ class SkinCluster(GeometryFilter):
         """
         :return: The list of influences driving this skin cluster.
         """
+        return list(self.influences)
+
+    @property
+    def influences(self) -> Iterator['nodes.Joint']:
         out = m.skinCluster(str(self), q=True, influence=True)
+
         if out:
-            return list(map(nodes['DependNode'], out))
-        return []
+            for x in out:
+                yield nodes['DependNode'](x)
