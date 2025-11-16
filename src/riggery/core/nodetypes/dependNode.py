@@ -1206,6 +1206,17 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         return om.MObjectHandle(self.__apiobjects__['MObject']).isValid()
 
+    #-------------------------------------|    Serialization stubs
+
+    @classmethod
+    def createFromMacro(cls, macro:dict) -> 'DependNode':
+        raise NotImplementedError(f'not implemented for {cls.__name__}')
+
+    def macro(self) -> dict:
+        return {'__class__': self.__class__.__name__, 'name': str(self)}
+
+    #-------------------------------------|    Repr etc.
+
     def __str__(self):
         return self.getName()
 
