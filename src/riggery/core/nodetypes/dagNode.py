@@ -139,9 +139,8 @@ class DagNode(nodes['DependNode']):
             defaults to False
         :return:
         """
-        return self.__mfntype__(
-            self.__apimdagpath__() if dag else self.__apimobject__()
-        )
+        return self.__mfntype__(self.__apimdagpath__()
+                                if dag else self.__apimobject__())
 
     def __apimdagpath__(self) -> om.MDagPath:
         path = self.__apiobjects__['MDagPath']
