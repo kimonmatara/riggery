@@ -1,10 +1,14 @@
-from typing import Literal, Union, Iterator
+from pathlib import Path
+from typing import Literal, Union, Iterator, Optional
 
 from ..nodetypes import __pool__ as nodes
 GeometryFilter = nodes['GeometryFilter']
 
 import maya.cmds as m
+
 import riggery.core as r
+from riggery.general.iterables import expand_tuples_lists
+from riggery.general.functions import short
 
 
 class SkinCluster(GeometryFilter):
@@ -97,7 +101,7 @@ class SkinCluster(GeometryFilter):
 
         return macro
 
-    #-------------------------------------|    Influence management
+    #-------------------------------------|    Influences
 
     def getInfluence(self) -> list:
         """
@@ -112,3 +116,97 @@ class SkinCluster(GeometryFilter):
         if out:
             for x in out:
                 yield nodes['DependNode'](x)
+
+    #-------------------------------------|    Weights
+
+    def _padBlendWeights(self):
+        # Set any missing array indices on ``.blendWeights`` to 0.0. This is a
+        # workaround for the following bug:
+        #
+        # When the ``.blendWeights`` array is sparsely populated, dumping and
+        # reloading the attribute via :func:`deformerWeights` results in wrong
+        # index mapping.
+
+        plug = self.attr('blendWeights')
+        indices = plug.indices()
+        shape = next(self.shapes)
+        numVertices = shape.numVertices()
+
+        missingIndices = list(sorted(set(range(numVertices))-set(indices)))
+
+        _plug = str(plug)
+
+        for index in missingIndices:
+            m.setAttr('{}[{}]'.format(_plug, index), 0.0)
+
+        return missingIndices
+
+    @short(
+        remap='r',
+        vertexConnections='vc',
+        weightTolerance='wt',
+        weightPrecision='wp',
+        shape='sh',
+        attribute='at',
+        defaultValue='dv'
+    )
+    def dumpWeights(
+            self,
+            filepath:Union[str, Path],
+            shape:Optional[Union[
+                str,
+                list[str],
+                'nodes.DeformableShape',
+                list['nodes.DeformableShape']]]=None,
+            remap:Optional[str]=None,
+            vertexConnections:bool=False,
+            weightPrecision:int=3,
+            weightTolerance:float=0.001,
+            attribute:Optional[Union[
+                str,
+                list[str],
+                'plugs.Attribute',
+                list['plugs.Attribute']
+            ]]=None,
+            defaultValue:Optional[Union[int, float]]=None,
+            includeBlendWeights:bool=True):
+        """
+        Overrides
+        :meth:`riggery.core.nodetypes.geometryFilter.GeometryFilter.dumpWeights`
+        to include DQ blend weights by default, and to work around this bug:
+
+        When the ``.blendWeights`` array on a skinCluster is sparsely populated
+        (as is typically the case), dumping and reloading it via
+        ``deformerWeights(at='blendWeights')`` results in a wrongindex mapping.
+        """
+        kwargs = {}
+
+        if includeBlendWeights:
+            if attribute is None:
+                attribute = []
+            else:
+                attribute = list(expand_tuples_lists(attribute))
+
+            attribute.append('blendWeights')
+            indicesToRemove = self._padBlendWeights()
+
+            kwargs['at'] = attribute
+
+        nodes['GeometryFilter'].dumpWeights(self,
+                                            filepath,
+                                            sh=shape,
+                                            r=remap,
+                                            vc=vertexConnections,
+                                            wp=weightPrecision,
+                                            wt=weightTolerance,
+                                            dv=defaultValue,
+                                            **kwargs)
+
+        if includeBlendWeights:
+            _plug = '{}.blendWeights'.format(self)
+
+            for index in indicesToRemove:
+                m.removeMultiInstance('{}[{}]'.format(_plug, index))
+
+        return self
+
