@@ -312,7 +312,7 @@
         "OpenMaya.MFnTransform"
     ],
     "121": [
-        "OpenMaya.MFnTransform"
+        "OpenMayaAnim.MFnIkJoint"
     ],
     "122": [
         "OpenMayaUI.MFnManip3D"
@@ -840,16 +840,16 @@
         "OpenMayaAnim.MFnGeometryFilter"
     ],
     "339": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "340": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "342": [
         "OpenMayaAnim.MFnGeometryFilter"
     ],
     "343": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "344": [
         "OpenMaya.MFnTransform"
@@ -858,34 +858,34 @@
         "OpenMayaAnim.MFnGeometryFilter"
     ],
     "346": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "347": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "348": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "349": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "350": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "351": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "352": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "353": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "354": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "355": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "356": [
         "OpenMaya.MFnDependencyNode"
@@ -1454,40 +1454,40 @@
         "OpenMaya.MFnMessageAttribute"
     ],
     "581": [
+        "OpenMaya.MFnAttribute"
+    ],
+    "582": [
         "OpenMaya.MFnPlugin"
     ],
-    "583": [
+    "584": [
         "OpenMaya.MFnComponentListData"
     ],
-    "584": [
+    "585": [
         "OpenMaya.MFnDoubleArrayData"
     ],
-    "585": [
+    "586": [
         "OpenMaya.MFnIntArrayData"
     ],
-    "586": [
+    "587": [
         "OpenMaya.MFnData"
     ],
-    "587": [
+    "588": [
         "OpenMaya.MFnGeometryData"
     ],
-    "588": [
+    "589": [
         "OpenMaya.MFnMatrixData"
     ],
-    "589": [
+    "590": [
         "OpenMaya.MFnMeshData",
         "OpenMaya.MFnMesh"
     ],
-    "590": [
+    "591": [
         "OpenMaya.MFnNurbsSurfaceData",
         "OpenMaya.MFnNurbsSurface"
     ],
-    "591": [
+    "592": [
         "OpenMaya.MFnNurbsCurveData",
         "OpenMaya.MFnNurbsCurve"
-    ],
-    "593": [
-        "OpenMaya.MFnNumericData"
     ],
     "594": [
         "OpenMaya.MFnNumericData"
@@ -1511,34 +1511,34 @@
         "OpenMaya.MFnNumericData"
     ],
     "601": [
-        "OpenMaya.MFnPluginData"
+        "OpenMaya.MFnNumericData"
     ],
     "602": [
-        "OpenMaya.MFnPointArrayData"
+        "OpenMaya.MFnPluginData"
     ],
     "603": [
-        "OpenMaya.MFnMatrixArrayData"
+        "OpenMaya.MFnPointArrayData"
     ],
     "604": [
-        "OpenMaya.MFnData"
+        "OpenMaya.MFnMatrixArrayData"
     ],
     "605": [
-        "OpenMaya.MFnStringData"
+        "OpenMaya.MFnData"
     ],
     "606": [
-        "OpenMaya.MFnStringArrayData"
+        "OpenMaya.MFnStringData"
     ],
     "607": [
+        "OpenMaya.MFnStringArrayData"
+    ],
+    "608": [
         "OpenMaya.MFnVectorArrayData"
     ],
-    "609": [
+    "610": [
         "OpenMaya.MFnDependencyNode"
-    ],
-    "615": [
-        "OpenMayaAnim.MFnGeometryFilter"
     ],
     "616": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "617": [
         "OpenMaya.MFnDependencyNode"
@@ -1559,10 +1559,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "623": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMaya.MFnDependencyNode"
     ],
     "624": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "625": [
         "OpenMaya.MFnDagNode"
@@ -1583,7 +1583,7 @@
         "OpenMaya.MFnDagNode"
     ],
     "631": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDagNode"
     ],
     "632": [
         "OpenMayaUI.MFnManip3D"
@@ -1604,10 +1604,10 @@
         "OpenMayaUI.MFnManip3D"
     ],
     "638": [
-        "OpenMayaUI.MFnDistanceManip"
+        "OpenMayaUI.MFnManip3D"
     ],
     "639": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnDistanceManip"
     ],
     "640": [
         "OpenMaya.MFnDependencyNode"
@@ -1628,7 +1628,7 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "646": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "647": [
         "OpenMayaUI.MFnManip3D"
@@ -1648,17 +1648,17 @@
     "652": [
         "OpenMayaUI.MFnManip3D"
     ],
-    "671": [
-        "OpenMaya.MFnDependencyNode"
-    ],
-    "674": [
+    "653": [
         "OpenMayaUI.MFnManip3D"
     ],
+    "672": [
+        "OpenMaya.MFnDependencyNode"
+    ],
     "675": [
-        "OpenMaya.MFnData"
+        "OpenMayaUI.MFnManip3D"
     ],
     "676": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnData"
     ],
     "677": [
         "OpenMaya.MFnDependencyNode"
@@ -1682,22 +1682,22 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "684": [
-        "OpenMaya.MFnDagNode"
-    ],
-    "685": [
         "OpenMaya.MFnDependencyNode"
     ],
+    "685": [
+        "OpenMaya.MFnDagNode"
+    ],
     "686": [
-        "OpenMayaAnim.MFnSkinCluster"
+        "OpenMaya.MFnDependencyNode"
     ],
     "687": [
-        "OpenMaya.MFnSet"
+        "OpenMayaAnim.MFnSkinCluster"
     ],
     "688": [
         "OpenMaya.MFnSet"
     ],
     "689": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnSet"
     ],
     "690": [
         "OpenMaya.MFnDependencyNode"
@@ -1712,7 +1712,7 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "694": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "695": [
         "OpenMayaUI.MFnManip3D"
@@ -1721,7 +1721,7 @@
         "OpenMayaUI.MFnManip3D"
     ],
     "697": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "698": [
         "OpenMaya.MFnDependencyNode"
@@ -1736,7 +1736,7 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "702": [
-        "OpenMaya.MFnComponent"
+        "OpenMaya.MFnDependencyNode"
     ],
     "703": [
         "OpenMaya.MFnComponent"
@@ -1745,7 +1745,7 @@
         "OpenMaya.MFnComponent"
     ],
     "705": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnComponent"
     ],
     "706": [
         "OpenMayaUI.MFnManip3D"
@@ -1757,28 +1757,28 @@
         "OpenMayaUI.MFnManip3D"
     ],
     "709": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "710": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "711": [
+        "OpenMayaUI.MFnManip3D"
+    ],
+    "712": [
         "OpenMaya.MFnDagNode"
     ],
-    "716": [
-        "OpenMayaUI.MFnManip3D"
-    ],
     "717": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "718": [
-        "OpenMayaUI.MFnManip3D"
-    ],
-    "719": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "721": [
+    "719": [
         "OpenMayaUI.MFnManip3D"
+    ],
+    "720": [
+        "OpenMaya.MFnDependencyNode"
     ],
     "722": [
         "OpenMayaUI.MFnManip3D"
@@ -1802,25 +1802,25 @@
         "OpenMayaUI.MFnManip3D"
     ],
     "729": [
-        "OpenMaya.MFnData"
+        "OpenMayaUI.MFnManip3D"
     ],
     "730": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnData"
     ],
     "731": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnTransform"
     ],
     "732": [
         "OpenMaya.MFnDagNode"
     ],
     "733": [
-        "OpenMayaAnim.MFnDisplayLayer"
+        "OpenMaya.MFnDagNode"
     ],
     "734": [
-        "OpenMayaAnim.MFnDisplayLayerManager"
+        "OpenMayaAnim.MFnDisplayLayer"
     ],
     "735": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnDisplayLayerManager"
     ],
     "736": [
         "OpenMaya.MFnDependencyNode"
@@ -1841,24 +1841,22 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "742": [
-        "OpenMaya.MFnData"
+        "OpenMaya.MFnDependencyNode"
     ],
     "743": [
         "OpenMaya.MFnData"
     ],
     "744": [
-        "OpenMayaAnim.MFnGeometryFilter"
-    ],
-    "745": [
-        "OpenMaya.MFnDoubleIndexedComponent"
-    ],
-    "746": [
         "OpenMaya.MFnData"
     ],
+    "745": [
+        "OpenMayaAnim.MFnGeometryFilter"
+    ],
+    "746": [
+        "OpenMaya.MFnDoubleIndexedComponent"
+    ],
     "747": [
-        "OpenMaya.MFnCompoundAttribute",
-        "OpenMaya.MFnGenericAttribute",
-        "OpenMaya.MFnNumericAttribute"
+        "OpenMaya.MFnData"
     ],
     "748": [
         "OpenMaya.MFnCompoundAttribute",
@@ -1896,10 +1894,12 @@
         "OpenMaya.MFnNumericAttribute"
     ],
     "755": [
-        "OpenMaya.MFnReference"
+        "OpenMaya.MFnCompoundAttribute",
+        "OpenMaya.MFnGenericAttribute",
+        "OpenMaya.MFnNumericAttribute"
     ],
-    "757": [
-        "OpenMaya.MFnDependencyNode"
+    "756": [
+        "OpenMaya.MFnReference"
     ],
     "758": [
         "OpenMaya.MFnDependencyNode"
@@ -1914,26 +1914,26 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "762": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "763": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnTransform"
     ],
     "764": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "765": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "766": [
         "OpenMaya.MFnDependencyNode"
     ],
     "767": [
-        "OpenMaya.MFnGeometryData",
-        "OpenMaya.MFnPluginData"
+        "OpenMaya.MFnDependencyNode"
     ],
     "768": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnGeometryData",
+        "OpenMaya.MFnPluginData"
     ],
     "769": [
         "OpenMaya.MFnDependencyNode"
@@ -1948,25 +1948,25 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "773": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "774": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "775": [
         "OpenMaya.MFnDependencyNode"
     ],
     "776": [
-        "OpenMayaUI.MFnPointOnSurfaceManip"
+        "OpenMaya.MFnDependencyNode"
     ],
     "777": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMayaUI.MFnPointOnSurfaceManip"
     ],
     "778": [
-        "OpenMaya.MFnDoubleIndexedComponent"
+        "OpenMayaUI.MFnManip3D"
     ],
     "779": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDoubleIndexedComponent"
     ],
     "780": [
         "OpenMaya.MFnDependencyNode"
@@ -2026,10 +2026,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "799": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "800": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "801": [
         "OpenMaya.MFnDependencyNode"
@@ -2062,36 +2062,36 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "811": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "812": [
         "OpenMaya.MFnGeometryData"
     ],
-    "813": [
+    "814": [
         "OpenMaya.MFnUInt64ArrayData"
     ],
-    "814": [
-        "OpenMaya.MFnIntArrayData"
-    ],
     "815": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnIntArrayData"
     ],
     "816": [
         "OpenMaya.MFnDependencyNode"
     ],
     "817": [
-        "OpenMaya.MFnSingleIndexedComponent"
-    ],
-    "820": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "836": [
+    "818": [
+        "OpenMaya.MFnSingleIndexedComponent"
+    ],
+    "821": [
         "OpenMaya.MFnDependencyNode"
     ],
     "837": [
-        "OpenMayaUI.MFnManip3D"
-    ],
-    "842": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "849": [
+    "838": [
+        "OpenMayaUI.MFnManip3D"
+    ],
+    "843": [
         "OpenMaya.MFnDependencyNode"
     ],
     "850": [
@@ -2109,29 +2109,29 @@
     "854": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "860": [
-        "OpenMaya.MFnSingleIndexedComponent"
+    "855": [
+        "OpenMaya.MFnDependencyNode"
     ],
     "861": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMaya.MFnSingleIndexedComponent"
     ],
     "862": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "863": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "866": [
-        "OpenMaya.MFnData"
+    "864": [
+        "OpenMaya.MFnDependencyNode"
     ],
     "867": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnData"
     ],
     "868": [
         "OpenMaya.MFnDagNode"
     ],
-    "870": [
-        "OpenMaya.MFnDependencyNode"
+    "869": [
+        "OpenMaya.MFnDagNode"
     ],
     "871": [
         "OpenMaya.MFnDependencyNode"
@@ -2154,31 +2154,31 @@
     "877": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "879": [
+    "878": [
         "OpenMaya.MFnDependencyNode"
     ],
     "880": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "881": [
         "OpenMaya.MFnCompoundAttribute",
         "OpenMaya.MFnGenericAttribute",
         "OpenMaya.MFnNumericAttribute"
     ],
-    "881": [
-        "OpenMaya.MFnNumericData"
-    ],
     "882": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnNumericData"
     ],
     "883": [
         "OpenMaya.MFnDependencyNode"
     ],
     "884": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "885": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "886": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "887": [
         "OpenMaya.MFnDependencyNode"
@@ -2202,19 +2202,19 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "894": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "895": [
         "OpenMaya.MFnDagNode"
     ],
     "896": [
-        "OpenMaya.MFnDependencyNode"
-    ],
-    "897": [
         "OpenMaya.MFnDagNode"
     ],
-    "898": [
+    "897": [
         "OpenMaya.MFnDependencyNode"
+    ],
+    "898": [
+        "OpenMaya.MFnDagNode"
     ],
     "899": [
         "OpenMaya.MFnDependencyNode"
@@ -2232,13 +2232,13 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "904": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "905": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDagNode"
     ],
     "906": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "907": [
         "OpenMaya.MFnDagNode"
@@ -2250,37 +2250,37 @@
         "OpenMaya.MFnDagNode"
     ],
     "910": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "911": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "913": [
-        "OpenMaya.MFnTransform"
+    "912": [
+        "OpenMaya.MFnDependencyNode"
     ],
     "914": [
-        "OpenMaya.MFnDagNode"
-    ],
-    "916": [
-        "OpenMaya.MFnGeometryData"
-    ],
-    "920": [
         "OpenMaya.MFnTransform"
     ],
-    "921": [
+    "915": [
         "OpenMaya.MFnDagNode"
     ],
+    "917": [
+        "OpenMaya.MFnGeometryData"
+    ],
+    "921": [
+        "OpenMaya.MFnTransform"
+    ],
     "922": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "923": [
         "OpenMaya.MFnDependencyNode"
     ],
     "924": [
-        "OpenMaya.MFnSet"
+        "OpenMaya.MFnDependencyNode"
     ],
     "925": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnSet"
     ],
     "926": [
         "OpenMaya.MFnDependencyNode"
@@ -2288,23 +2288,23 @@
     "927": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "931": [
+    "928": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "933": [
+    "932": [
         "OpenMaya.MFnDependencyNode"
     ],
     "934": [
         "OpenMaya.MFnDependencyNode"
     ],
     "935": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "936": [
         "OpenMaya.MFnDagNode"
     ],
     "937": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "938": [
         "OpenMaya.MFnDependencyNode"
@@ -2313,30 +2313,30 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "940": [
-        "OpenMaya.MFnDagNode"
-    ],
-    "941": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "943": [
+    "941": [
+        "OpenMaya.MFnDagNode"
+    ],
+    "942": [
         "OpenMaya.MFnDependencyNode"
     ],
     "944": [
         "OpenMaya.MFnDependencyNode"
     ],
     "945": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "946": [
         "OpenMaya.MFnDagNode"
     ],
     "947": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "948": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "958": [
+    "949": [
         "OpenMaya.MFnDependencyNode"
     ],
     "959": [
@@ -2346,7 +2346,7 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "961": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "962": [
         "OpenMaya.MFnTransform"
@@ -2355,19 +2355,19 @@
         "OpenMaya.MFnTransform"
     ],
     "964": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnIkJoint"
     ],
     "965": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "966": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "967": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "968": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "969": [
         "OpenMaya.MFnDependencyNode"
@@ -2376,10 +2376,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "971": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "972": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "973": [
         "OpenMaya.MFnDependencyNode"
@@ -2397,10 +2397,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "978": [
-        "OpenMaya.MFnDagNode"
-    ],
-    "980": [
         "OpenMaya.MFnDependencyNode"
+    ],
+    "979": [
+        "OpenMaya.MFnDagNode"
     ],
     "981": [
         "OpenMaya.MFnDependencyNode"
@@ -2409,25 +2409,25 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "983": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "984": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDagNode"
     ],
     "985": [
-        "OpenMaya.MFnData"
+        "OpenMaya.MFnTransform"
     ],
     "986": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnData"
     ],
     "987": [
         "OpenMaya.MFnDependencyNode"
     ],
     "988": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMaya.MFnDependencyNode"
     ],
     "989": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnGeometryFilter"
     ],
     "990": [
         "OpenMaya.MFnDependencyNode"
@@ -2436,40 +2436,40 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "992": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMaya.MFnDependencyNode"
     ],
     "993": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "994": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "995": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "997": [
-        "OpenMaya.MFnTransform"
-    ],
-    "998": [
-        "OpenMaya.MFnDagNode"
-    ],
-    "999": [
+    "996": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "1001": [
+    "998": [
+        "OpenMaya.MFnTransform"
+    ],
+    "999": [
+        "OpenMaya.MFnDagNode"
+    ],
+    "1000": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1002": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1003": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "1004": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "1006": [
-        "OpenMaya.MFnDagNode"
+    "1005": [
+        "OpenMaya.MFnDependencyNode"
     ],
     "1007": [
         "OpenMaya.MFnDagNode"
@@ -2481,34 +2481,34 @@
         "OpenMaya.MFnDagNode"
     ],
     "1010": [
-        "OpenMaya.MFnSet"
+        "OpenMaya.MFnDagNode"
     ],
     "1011": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnSet"
     ],
     "1012": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1013": [
-        "OpenMaya.MFnContainerNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1014": [
-        "OpenMaya.MFnVectorArrayData"
+        "OpenMaya.MFnContainerNode"
     ],
     "1015": [
+        "OpenMaya.MFnVectorArrayData"
+    ],
+    "1016": [
         "OpenMaya.MFnData"
     ],
-    "1017": [
+    "1018": [
         "OpenMaya.MFnTransform"
     ],
-    "1019": [
-        "OpenMaya.MFnDependencyNode"
-    ],
     "1020": [
-        "OpenMaya.MFnSet"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1021": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnSet"
     ],
     "1022": [
         "OpenMaya.MFnDependencyNode"
@@ -2547,31 +2547,31 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1034": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1035": [
-        "OpenMaya.MFnData"
+        "OpenMayaUI.MFnManip3D"
     ],
-    "1037": [
+    "1036": [
         "OpenMaya.MFnData"
     ],
     "1038": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnData"
     ],
     "1039": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
-    "1041": [
+    "1040": [
         "OpenMayaUI.MFnManip3D"
     ],
     "1042": [
         "OpenMayaUI.MFnManip3D"
     ],
-    "1048": [
-        "OpenMaya.MFnCamera"
+    "1043": [
+        "OpenMayaUI.MFnManip3D"
     ],
     "1049": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnCamera"
     ],
     "1050": [
         "OpenMaya.MFnDependencyNode"
@@ -2583,14 +2583,14 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1053": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1054": [
         "OpenMayaUI.MFnManip3D"
     ],
-    "1055": [
+    "1056": [
         "OpenMaya.MFnNurbsCurveData",
         "OpenMaya.MFnNurbsCurve"
-    ],
-    "1056": [
-        "OpenMaya.MFnDependencyNode"
     ],
     "1057": [
         "OpenMaya.MFnDependencyNode"
@@ -2602,19 +2602,19 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1060": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1061": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "1062": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1063": [
-        "OpenMayaUI.MFnManip3D"
-    ],
-    "1065": [
         "OpenMaya.MFnDependencyNode"
+    ],
+    "1064": [
+        "OpenMayaUI.MFnManip3D"
     ],
     "1066": [
         "OpenMaya.MFnDependencyNode"
@@ -2623,14 +2623,14 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1068": [
-        "OpenMaya.MFnContainerNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1069": [
-        "OpenMaya.MFnTransform",
         "OpenMaya.MFnContainerNode"
     ],
     "1070": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform",
+        "OpenMaya.MFnContainerNode"
     ],
     "1071": [
         "OpenMaya.MFnDependencyNode"
@@ -2641,7 +2641,7 @@
     "1073": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "1076": [
+    "1074": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1077": [
@@ -2657,15 +2657,15 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1081": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1082": [
         "OpenMaya.MFnAssembly",
         "OpenMaya.MFnTransform",
         "OpenMaya.MFnContainerNode"
     ],
-    "1082": [
-        "OpenMaya.MFnTransform"
-    ],
     "1083": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "1084": [
         "OpenMaya.MFnDependencyNode"
@@ -2674,34 +2674,34 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1086": [
-        "OpenMaya.MFnDagNode"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1087": [
         "OpenMaya.MFnDagNode"
     ],
     "1088": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "1089": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1090": [
-        "OpenMaya.MFnSet"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1091": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnSet"
     ],
     "1092": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1093": [
+        "OpenMaya.MFnTransform"
+    ],
+    "1094": [
         "OpenMayaUI.MFnManip3D"
     ],
-    "1096": [
-        "OpenMayaAnim.MFnGeometryFilter"
-    ],
     "1097": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnWeightGeometryFilter"
     ],
     "1098": [
         "OpenMaya.MFnDependencyNode"
@@ -2740,25 +2740,25 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1110": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1111": [
         "OpenMayaUI.MFnManip3D"
     ],
     "1112": [
-        "OpenMaya.MFnDagNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "1113": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnDagNode"
     ],
     "1114": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1115": [
-        "OpenMayaUI.MFnManip3D"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1116": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaUI.MFnManip3D"
     ],
     "1117": [
         "OpenMaya.MFnDependencyNode"
@@ -2767,16 +2767,16 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1119": [
-        "OpenMayaAnim.MFnSkinCluster"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1120": [
-        "OpenMayaAnim.MFnGeometryFilter"
+        "OpenMayaAnim.MFnSkinCluster"
     ],
     "1121": [
         "OpenMayaAnim.MFnGeometryFilter"
     ],
     "1122": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMayaAnim.MFnGeometryFilter"
     ],
     "1123": [
         "OpenMaya.MFnDependencyNode"
@@ -2787,7 +2787,7 @@
     "1125": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "1127": [
+    "1126": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1128": [
@@ -2796,7 +2796,7 @@
     "1129": [
         "OpenMaya.MFnDependencyNode"
     ],
-    "1131": [
+    "1130": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1132": [
@@ -2806,10 +2806,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1134": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1135": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "1136": [
         "OpenMaya.MFnDependencyNode"
@@ -2824,10 +2824,10 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1140": [
-        "OpenMaya.MFnTransform"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1141": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnTransform"
     ],
     "1142": [
         "OpenMaya.MFnDependencyNode"
@@ -2845,15 +2845,135 @@
         "OpenMaya.MFnDependencyNode"
     ],
     "1147": [
-        "OpenMaya.MFnData"
+        "OpenMaya.MFnDependencyNode"
     ],
     "1148": [
-        "OpenMaya.MFnDependencyNode"
+        "OpenMaya.MFnData"
     ],
     "1149": [
         "OpenMaya.MFnDependencyNode"
     ],
     "1150": [
-        "OpenMaya.MFnAttribute"
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1151": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1152": [
+        "OpenMaya.MFnDagNode"
+    ],
+    "1153": [
+        "OpenMayaUI.MFnManip3D"
+    ],
+    "1154": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1157": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1158": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1159": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1160": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1161": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1162": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1163": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1164": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1165": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1166": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1167": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1168": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1169": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1170": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1171": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1172": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1173": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1174": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1175": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1176": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1177": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1178": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1179": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1180": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1181": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1182": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1183": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1184": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1185": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1186": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1187": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1188": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1189": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1190": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1191": [
+        "OpenMaya.MFnDependencyNode"
+    ],
+    "1192": [
+        "OpenMaya.MFnDependencyNode"
     ]
 }
