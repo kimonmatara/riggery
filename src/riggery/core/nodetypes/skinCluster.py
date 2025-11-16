@@ -1,3 +1,7 @@
+import re
+import os
+import shutil
+from tempfile import gettempdir
 from pathlib import Path
 from typing import Literal, Union, Iterator, Optional
 import xml.etree.ElementTree as ET
@@ -8,11 +12,95 @@ GeometryFilter = nodes['GeometryFilter']
 import maya.cmds as m
 
 import riggery.core as r
+from riggery.core.lib import skinwtio as _sw
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
 
+def _getTempWeightsDir():
+    root = os.path.join(gettempdir())
+    number = 0
+    while True:
+        dirname = 'tmp_weights_dump'
+        if number > 0:
+            dirname += str(number)
+        fullpath = os.path.join(root, dirname)
+        if os.path.isdir(fullpath):
+            number +=1
+            continue
+        break
+    os.makedirs(fullpath)
+    return fullpath
+
 
 class SkinCluster(GeometryFilter):
+
+    #-------------------------------------|    Contructors
+
+    @classmethod
+    @short(bindMethod='bm',
+           maximumInfluences='mi',
+           falloff='fo')
+    def createAsGeomVoxel(cls,
+                          *args,
+                          maximumInfluences:Optional[int]=None,
+                          validateVoxelState:bool=True,
+                          resolution:int=256,
+                          falloff:float=0.2,
+                          rebuild:bool=False,
+                          **buildKwargs) -> 'SkinCluster':
+        """
+        A more controlled constructor for geom-voxel mode skinClusters.
+        """
+        skin = r.skinCluster(*args, bm=3, mi=maximumInfluences, **buildKwargs)
+        kwargs = {'fo': falloff, 'gvp': [resolution, validateVoxelState]}
+
+        if maximumInfluences is not None:
+            kwargs['mi'] = maximumInfluences
+
+        r.geomBind(skin, bm=3, **kwargs)
+
+        if rebuild:
+            skin = skin.rebuild()
+
+        return skin
+
+    #-------------------------------------|    Retrievals
+
+    @classmethod
+    def fromVerts(cls, *verts:Union[str, list[str]]) -> Iterator['SkinCluster']:
+        """
+        :return: Skin clusters driving the specified vertices.
+        """
+        verts = list(filter(
+            lambda x: re.match(r"^.*?\.vtx\[.*?]$", x),
+            without_duplicates(expand_tuples_lists(*verts))
+        ))
+
+        if verts:
+            visited = set()
+            sceneSkinClusters = m.ls(type='skinCluster')
+
+            if sceneSkinClusters:
+                out = []
+                skinMap = {}
+
+                for skinCluster in sceneSkinClusters:
+                    shape = m.skinCluster(skinCluster, q=True, geometry=True)
+
+                    if shape:
+                        shape = shape[0]
+
+                        if m.nodeType(shape) == 'mesh':
+                            skinMap.setdefault(skinCluster, []
+                                               ).append(shape+'.vtx[:]')
+
+                if skinMap:
+                    for vert in verts:
+                        for skinCluster, skinnedRange in skinMap.items():
+                            if vert in set(m.ls(skinnedRange, flatten=True)):
+                                if skinCluster not in visited:
+                                    visited.add(skinCluster)
+                                    yield nodes['DependNode'](skinCluster)
 
     #-------------------------------------|    Serialization
 
@@ -33,6 +121,10 @@ class SkinCluster(GeometryFilter):
             positionTolerance:Optional[Union[int, float]]=None,
             loadWeights:bool=True
     ):
+        """
+        Completely resurrects a skinCluster from an XML file. The XML file must
+        be atomic (i.e. one shape, one skinCluster).
+        """
         # Open the XML file
         tree = ET.parse(xmlfile)
         root = tree.getroot()
@@ -91,8 +183,7 @@ class SkinCluster(GeometryFilter):
             r.delete(existing)
 
         # Get influences
-        joints = [weightEntry.attrib['source'] \
-                  for weightEntry in weightEntries]
+        joints = [weightEntry.attrib['source'] for weightEntry in weightEntries]
 
         for joint in joints:
             if not m.objExists(joint):
@@ -100,16 +191,15 @@ class SkinCluster(GeometryFilter):
 
         # Create the deformer
         args = joints + [shape]
-        kwargs = {
-            'tsb': True,
-            'n': deformerNames[0],
-            'bm': 0,
-            'dr': 4.5,
-            'nw': 1,
-            'omi': False,
-            'sm': 0,
-            'wd': 0
-        }
+
+        kwargs = {'tsb': True,
+                  'n': deformerNames[0],
+                  'bm': 0,
+                  'dr': 4.5,
+                  'nw': 1,
+                  'omi': False,
+                  'sm': 0,
+                  'wd': 0}
 
         skin = r.skinCluster(*args, **kwargs)
 
@@ -193,7 +283,7 @@ class SkinCluster(GeometryFilter):
         """
         macro = super().macro()
         _self = macro['name']
-        influences = list(map(str, self.influences))
+        influences = list(map(str, self.influence))
 
         if influences:
             macro['influence'] = influences
@@ -237,17 +327,248 @@ class SkinCluster(GeometryFilter):
         """
         :return: The list of influences driving this skin cluster.
         """
-        return list(self.influences)
+        return list(self.influence)
 
     @property
-    def influences(self) -> Iterator['nodes.Joint']:
+    def influence(self) -> Iterator['nodes.Joint']:
         out = m.skinCluster(str(self), q=True, influence=True)
 
         if out:
             for x in out:
                 yield nodes['DependNode'](x)
 
+    def addInfluence(self, *influences, preserveWeights:bool=False):
+        """
+        :param \*influences: one or more influences to add
+        :param preserveWeights: if this is on, new influences will be added with
+            a weight of 0.0; defaults to False
+        """
+        skin = str(self)
+
+        influencesToAdd = without_duplicates(
+            map(str, expand_tuples_lists(*influences))
+        )
+
+        existingInfluences = m.skinCluster(skin,
+                                           q=True, weightedInfluence=True)
+
+        if existingInfluences:
+            influencesToAdd = (x for x in influencesToAdd
+                               if x not in existingInfluences)
+
+        kw = {}
+
+        if preserveWeights:
+            kw['lw'] = True
+            kw['wt'] = 0.0
+
+        for infl in influencesToAdd:
+            m.skinCluster(skin, e=True, ai=infl, **kw)
+
+            if preserveWeights:
+                m.setAttr('{}.liw'.format(infl), 0)
+
+        return self
+
+    def removeInfluence(self, *influences, quiet:bool=False):
+        """
+        :param \*influences: one or more influences to remove
+        :param quiet: suppress ``RuntimeError`` and skip joints that aren't on
+            this skin cluster's influence list; defaults to False
+        """
+        influences = list(map(str, expand_tuples_lists(*influences)))
+
+        if influences:
+            _self = str(self)
+
+            if quiet:
+                for influence in influences:
+                    try:
+                        m.skinCluster(_self, e=True, ri=influence)
+                    except RuntimeError:
+                        continue
+            else:
+                m.skinCluster(_self, e=True, ri=influences)
+
+        return self
+
+    def removeUnusedInfluence(self):
+        """Removes unused influences."""
+        skin = str(self)
+        allInfls = m.skinCluster(skin, q=True, influence=True)
+        wtInfls = m.skinCluster(skin, q=True, weightedInfluence=True)
+
+        if allInfls and wtInfls:
+            inflsToRemove = set(allInfls)-set(wtInfls)
+
+            for infl in inflsToRemove:
+                m.skinCluster(skin, e=True, ri=infl)
+
+        return self
+
+    def getPerComponentWeights(self):
+        """
+        Weights will be returned, and should be set, using a list of
+        lists: [
+            Per-joint weights for component #0: [weight, weight...],
+            Per-joint weights for component #1: [weight, weight...],
+            Per-joint weights for component #2: [weight, weight...]
+            ...
+        ]
+        """
+        return _sw.SkinClusterWeightsWrangler(str(self)).getWeights()
+
+    def setPerComponentWeights(self, weights):
+        """
+        Weights will be returned, and should be set, using a list of
+        lists: [
+            Per-joint weights for component #0: [weight, weight...],
+            Per-joint weights for component #1: [weight, weight...],
+            Per-joint weights for component #2: [weight, weight...]
+            ...
+        ]
+        """
+        _sw.SkinClusterWeightsWrangler(str(self)).setWeights(weights)
+
+    @short(influenceAssociation='ia', surfaceAssociation='sa',autoLabel='al')
+    def mirrorWeights(
+            self,
+            influenceAssociation:Literal[
+                "closestJoint",
+                "closestBone",
+                "label",
+                "name",
+                "oneToOne"
+            ]='closestJoint',
+            surfaceAssociation:Literal[
+                "closestPoint",
+                "rayCast",
+                "closestComponent"
+            ]='closestComponent',
+            autoLabel:bool=False
+    ):
+        """
+        :param bool autoLabel/al: if this is ``True``, *influenceAssociation*
+            will be overriden to 'label', and joint labels auto-configured
+            based on L_ or R_ prefixes (labels will be reverted after
+            mirroring); defaults to ``False``
+        :return: ``self``
+        """
+        if autoLabel:
+            elems = ['label']
+            if influenceAssociation != 'label':
+                elems.append(influenceAssociation)
+            else:
+                elems.append('closestJoint')
+
+            states = {joint:joint.autoLabel() for joint in self.getInfluence()}
+            influenceAssociation = elems
+
+        r.copySkinWeights(ss=self,
+                          ds=self,
+                          ia=influenceAssociation,
+                          sa=surfaceAssociation,
+                          mm='YZ')
+
+        if autoLabel:
+            for joint, state in states.items():
+                joint.setLabelState(state)
+
+        return self
+
+    def clampMaxInfluences(self, maxInfluences:int=4, normalizeAround=None):
+        """
+        An alternative method to limit influences (for, say, a games
+        engine). Doesn't use Maya's obeyMaxInfluences / maxInfluences;
+        rather sets all influences lower than the *maxInfluences* to
+        0.0. In some cases this yields a closer visual match.
+
+        The *obeyMaxInfluences* flag isn't edited at all. If it's on,
+        it will be left on.
+
+        :param normalizeAround: try to prioritize preserving the weight of
+            these joints when normalizing; defaults to ``None``
+        """
+        availInfls = list(self.influence)
+        r.skinCluster(self, e=True, fnw=True)
+
+        if normalizeAround:
+            if isinstance(normalizeAround, (tuple, list)):
+                normalizeAround = list(normalizeAround)
+            else:
+                normalizeAround = [normalizeAround]
+            inflNames = [str(x).split('|')[-1] for x in availInfls]
+            anchorIndices = [inflNames.index(x) for x in normalizeAround]
+
+        perCompWeights = self.getPerComponentWeights()
+
+        numInfls = len(availInfls)
+
+        if numInfls <= maxInfluences:
+            print("No need to clamp, already at max influences.")
+            return
+
+        inflIndices = list(range(numInfls))
+
+        for compIndex, weights in enumerate(perCompWeights):
+            pairs = [[i, w] for i, w in zip(inflIndices, weights)]
+
+            if normalizeAround:
+                hasAnchorWeights = any(
+                    [pairs[i][1] > 0.0 for i in anchorIndices]
+                )
+                if hasAnchorWeights:
+                    keyer = lambda pair: 10000.0 \
+                        if pair[0] in anchorIndices else pair[1]
+                else:
+                    keyer = lambda pair: pair[1]
+            else:
+                keyer = lambda pair: pair[1]
+
+            # Reorder, largest weights first
+            pairs = list(reversed(sorted(pairs, key=keyer)))
+
+            for i in range(maxInfluences, numInfls):
+                pairs[i][1] = 0.0
+
+            pairs.sort(key=lambda x: x[0])
+            weights = [pair[1] for pair in pairs]
+
+            perCompWeights[compIndex] = weights
+
+        self.setPerComponentWeights(perCompWeights)
+        r.skinCluster(self, e=True, fnw=True)
+
+        print("Clamping done.")
+
+        return self
+
     #-------------------------------------|    Weights
+
+    @short(maximumInfluences='mi')
+    def configInfluencesForRealtimeBETA(self, maximumInfluences:int=4):
+        """
+        Restricts influences while preserving as much weight detail as possible.
+        """
+        # Basics
+        r.skinCluster(self, e=True, nw=1) # interactive
+        geo = str(self.getGeometry()[0])
+        r.skinPercent(self, f"{geo}.vtx[:]", normalize=True)
+
+        # Dump weights somewhere safe
+        tempdir = gettempdir()
+        tempfile = os.path.join(tempdir, 'infl_constr_tmp_weights.xml')
+        self.dumpWeights(tempfile, shape=self.getGeometry()[0])
+
+        # Constrain
+        r.skinCluster(self, e=True, mi=maximumInfluences, omi=True)
+
+        # Load weights
+        self.loadWeights(tempfile, method='index')
+        r.skinCluster(self, e=True, fnw=True)
+
+        os.remove(tempfile)
+        return self
 
     def _padBlendWeights(self):
         # Set any missing array indices on ``.blendWeights`` to 0.0. This is a
