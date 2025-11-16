@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 from typing import Iterator, Union, Optional, Literal
 
@@ -7,6 +8,7 @@ from riggery.core.lib import names as _nm
 from riggery.core.lib import xmlweights as _xw
 
 from ..nodetypes import __pool__ as nodes
+from ..plugtypes import __pool__ as plugs
 DependNode = nodes['DependNode']
 
 import maya.cmds as m
@@ -211,10 +213,10 @@ class GeometryFilter(DependNode):
 
         if method == 'uv':
             if not sourceUVSet:
-                sourceUVSet = sourceShape.getCurrentUVSetName()
+                sourceUVSet = sourceShape.uvSet
 
             if not destUVSet:
-                destUVSet = destShape.getCurrentUVSetName()
+                destUVSet = destShape.uvSet
 
         kwargs = {'nm': True}
 
@@ -245,6 +247,105 @@ class GeometryFilter(DependNode):
             kwargs['ds'] = str(destShape)
 
         cmd(**kwargs)
+
+    #-------------------------------------|    XML weight I/O
+
+    def dumpWeights(self,
+                    filepath:Union[str, Path],
+                    shape:Optional[Union[
+                        str,
+                        list[str],
+                        'nodes.DeformableShape',
+                        list['nodes.DeformableShape']]]=None,
+                    remap:Optional[str]=None,
+                    vertexConnections:bool=False,
+                    weightPrecision:int=3,
+                    weightTolerance:float=0.001,
+                    attribute:Optional[Union[
+                        str,
+                        list[str],
+                        'plugs.Attribute',
+                        list['plugs.Attribute']
+                    ]]=None,
+                    defaultValue:Optional[Union[int, float]]=None
+                    ):
+        """
+        Wrapper for :func:`~maya.cmds.deformerWeights` in 'export' mode.
+        Arguments are post-processed to ensure that only relevant deformers and
+        shapes are included. See Maya help for :func:`deformerWeights` for
+        complete flag information.
+        """
+        if shape:
+            shape = list(map(str, expand_tuples_lists(shape)))
+
+        if attribute:
+            attribute = list(map(str, expand_tuples_lists(attribute)))
+
+        _xw.dump(filepath,
+                 deformer=str(self),
+                 shape=shape,
+                 remap=remap,
+                 vertexConnections=vertexConnections,
+                 weightPrecision=weightPrecision,
+                 weightTolerance=weightTolerance,
+                 attribute=attribute,
+                 defaultValue=defaultValue)
+
+        return self
+
+    @short(shape='sh',
+        method='m',
+        worldSpace='ws',
+        attribute='at',
+        ignoreName='ig',
+        positionTolerance='pt',
+        remap='r')
+    def loadWeights(
+            self,
+            filepath:Union[str, Path],
+            shape:Optional[Union[
+                        str,
+                        list[str],
+                        'nodes.DeformableShape',
+                        list['nodes.DeformableShape']]]=None,
+            method:Literal[
+                'index', 'nearest', 'barycentric',
+                'bilinear', 'over'
+            ]='index',
+            worldSpace:Optional[bool]=None,
+            attribute:Optional[Union[
+                        str,
+                        list[str],
+                        'plugs.Attribute',
+                        list['plugs.Attribute']
+                    ]]=None,
+            ignoreName:bool=False,
+            positionTolerance:Optional[Union[int, float]]=None,
+            remap:Optional[str]=None
+    ):
+        """
+        Wrapper for :func:`~maya.cmds.deformerWeights` in 'import' mode.
+        Arguments are post-processed to ensure that only relevant deformers and
+        shapes are included. See Maya help for :func:`deformerWeights` for
+        complete flag information.
+        """
+        if shape:
+            shape = list(map(str, expand_tuples_lists(shape)))
+
+        if attribute:
+            attribute = list(map(str, expand_tuples_lists(attribute)))
+
+        _xw.load(filepath,
+                 deformer=str(self),
+                 shape=shape,
+                 remap=remap,
+                 method=method,
+                 worldSpace=worldSpace,
+                 attribute=attribute,
+                 ignoreName=ignoreName,
+                 positionTolerance=positionTolerance)
+
+        return self
 
     #-------------------------------------|    Name
 
