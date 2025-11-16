@@ -1,8 +1,10 @@
 from typing import Union, Optional, Literal
 import itertools
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import gettempdir
 import xml.etree.ElementTree as ET
+
+import maya.cmds as m
 
 from riggery.general.iterables import without_duplicates, expand_tuples_lists
 from riggery.general.functions import short
@@ -41,12 +43,16 @@ def getShapesFromDeformer(deformer:str) -> list[str]:
     return []
 
 def getDeformersFromShape(shape:str) -> list[str]:
-    deformers = m.listHistory(shape, type='geometryFilter')
+    out = []
+    history = m.listHistory(shape)
 
-    if deformers:
-        return list(without_duplicates((x for x in deformers
-                                        if shape in getShapesFromDeformer(x))))
-    return []
+    if history:
+        for x in history:
+            if m.objectType(x, isAType='geometryFilter'):
+                if shape in getShapesFromDeformer(x):
+                    out.append(x)
+
+    return out
 
 #-----------------------------------------|
 #-----------------------------------------|    ARG MANAGEMENT
@@ -108,9 +114,9 @@ def fixKwargs(kwargs:dict) -> None:
             outSkips = [x for x in assocDeformers if x not in reqDeformers]
 
     elif reqDeformers:
-        outShapes = itertools.chain.from_iterable(
+        outShapes = list(itertools.chain.from_iterable(
             map(getShapesFromDeformer, reqDeformers)
-        )
+        ))
         assocDeformers = itertools.chain.from_iterable(
             map(getDeformersFromShape, outShapes)
         )
@@ -139,14 +145,14 @@ def fixKwargs(kwargs:dict) -> None:
        skip='sk',
        defaultValue='dv')
 def dump(filepath:str,
-         shape:Optional[str, list[str]]=None,
-         deformer:Optional[str, list[str]]=None,
+         shape:Optional[Union[str, list[str]]]=None,
+         deformer:Optional[Union[str, list[str]]]=None,
          vertexConnections:bool=False,
          weightPrecision:int=3,
          weightTolerance:float=0.001,
          remap:Optional[str]=None,
-         attribute:Optional[str, list[str]]=None,
-         skip:Optional[str, list[str]]=None,
+         attribute:Optional[Union[str, list[str]]]=None,
+         skip:Optional[Union[str, list[str]]]=None,
          defaultValue:Optional[Union[int, float]]=None):
     """
     Wrapper for :func:`~pymel.internal.pmcmds.deformerWeights` in 'export'
@@ -182,6 +188,7 @@ def dump(filepath:str,
         kwargs['shape'] = expand_tuples_lists(shape)
 
     fixKwargs(kwargs)
+
     m.deformerWeights(*args, **kwargs)
 
 @short(deformer='df',
@@ -194,17 +201,17 @@ def dump(filepath:str,
        remap='r',
        skip='sk')
 def load(filepath:str,
-         deformer:Optional[str, list[str]]=None,
-         shape:Optional[str, list[str]]=None,
+         deformer:Optional[Union[str, list[str]]]=None,
+         shape:Optional[Union[str, list[str]]]=None,
          method:Literal[
              'index', 'nearest', 'barycentric', 'bilinear', 'over'
          ]='index',
          worldSpace:Optional[bool]=None,
-         attribute:Optional[str, list[str]]=None,
+         attribute:Optional[Union[str, list[str]]]=None,
          ignoreName:bool=False,
          positionTolerance:Optional[Union[float, int]]=None,
          remap:Optional[str]=None,
-         skip:Optional[str, list[str]]=None):
+         skip:Optional[Union[str, list[str]]]=None):
     """
     Wrapper for :func:`~pymel.internal.pmcmds.deformerWeights` in 'import'
     mode. Arguments are post-processed to ensure that only requested deformers

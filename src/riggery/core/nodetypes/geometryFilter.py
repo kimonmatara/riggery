@@ -3,6 +3,7 @@ import os
 from typing import Iterator, Union, Optional, Literal
 
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.functions import short
 
 from riggery.core.lib import names as _nm
 from riggery.core.lib import xmlweights as _xw
@@ -139,7 +140,7 @@ class GeometryFilter(DependNode):
         sourceDeformer = DependNode(sourceDeformer)
 
         if sourceShape:
-            sourceShape = DependNode['DependNode'](sourceShape).toShape()
+            sourceShape = DependNode(sourceShape).toShape()
 
         else:
             sourceShape = next(sourceDeformer.shapes, None)
@@ -250,6 +251,14 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    XML weight I/O
 
+    @short(attribute='at',
+           defaultValue='dv',
+           deformer='df',
+           shape='sh',
+           weightPrecision='wp',
+           weightTolerance='wt',
+           vertexConnections='vc',
+           remap='r')
     def dumpWeights(self,
                     filepath:Union[str, Path],
                     shape:Optional[Union[
@@ -294,31 +303,31 @@ class GeometryFilter(DependNode):
         return self
 
     @short(shape='sh',
-        method='m',
-        worldSpace='ws',
-        attribute='at',
-        ignoreName='ig',
-        positionTolerance='pt',
-        remap='r')
+           method='m',
+           worldSpace='ws',
+           attribute='at',
+           ignoreName='ig',
+           positionTolerance='pt',
+           remap='r')
     def loadWeights(
             self,
             filepath:Union[str, Path],
             shape:Optional[Union[
-                        str,
-                        list[str],
-                        'nodes.DeformableShape',
-                        list['nodes.DeformableShape']]]=None,
+                str,
+                list[str],
+                'nodes.DeformableShape',
+                list['nodes.DeformableShape']]]=None,
             method:Literal[
                 'index', 'nearest', 'barycentric',
                 'bilinear', 'over'
             ]='index',
             worldSpace:Optional[bool]=None,
             attribute:Optional[Union[
-                        str,
-                        list[str],
-                        'plugs.Attribute',
-                        list['plugs.Attribute']
-                    ]]=None,
+                str,
+                list[str],
+                'plugs.Attribute',
+                list['plugs.Attribute']
+            ]]=None,
             ignoreName:bool=False,
             positionTolerance:Optional[Union[int, float]]=None,
             remap:Optional[str]=None
