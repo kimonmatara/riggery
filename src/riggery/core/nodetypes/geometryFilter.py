@@ -276,8 +276,7 @@ class GeometryFilter(DependNode):
                         'plugs.Attribute',
                         list['plugs.Attribute']
                     ]]=None,
-                    defaultValue:Optional[Union[int, float]]=None
-                    ):
+                    defaultValue:Optional[Union[int, float]]=None):
         """
         Wrapper for :func:`~maya.cmds.deformerWeights` in 'export' mode.
         Arguments are post-processed to ensure that only relevant deformers and
