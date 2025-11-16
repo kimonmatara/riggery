@@ -7,10 +7,10 @@ import maya.cmds as m
 
 class GeometryFilter(DependNode):
 
-    #-------------------------------------|    Retrievals
+    #-------------------------------------|    Constructors
 
     @classmethod
-    def fromGeo(cls, geo) -> Iterator:
+    def fromGeo(cls, geo) -> Iterator['GeometryFilter']:
         """
         Yields deformers of this type in the specified geometry's history. Use
         next([...], None) to get the first result or None.
@@ -28,3 +28,16 @@ class GeometryFilter(DependNode):
                         yield DependNode(item)
                 except:
                     continue
+
+    #-------------------------------------|    Shapes
+
+    @property
+    def shapes(self) -> Iterator['GeometryFilter']:
+        """
+        Iterates over shapes affected by this deformer.
+        """
+        out = m.deformer(str(self), q=True, g=True)
+
+        if out:
+            for x in out:
+                yield nodes['DependNode'](x)
