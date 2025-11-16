@@ -12,7 +12,7 @@ from ..datatypes import __pool__ as data
 
 class NurbsCurve(nodes['CurveShape']):
 
-    #----------------------------------------------|    Constructor(s)
+    #-------------------------------------|    Constructor(s)
 
     @classmethod
     def _prepBuildPoints(cls,
@@ -25,7 +25,7 @@ class NurbsCurve(nodes['CurveShape']):
         if parent is not None:
             parent = nodes['DagNode'](parent)
 
-        #-----------------------------------------|    Prep points
+        # Prep points
 
         points = list(points)
         numCVs = len(points)
@@ -372,7 +372,15 @@ class NurbsCurve(nodes['CurveShape']):
         """
         :return: The number of CVs on the curve.
         """
-        return self.__apimfn__().numCVs
+        fn = self.__apimfn__()
+        numCVs = self.__apimfn__().numCVs
+
+        if fn.form == om.MFnNurbsCurve.kPeriodic:
+            numCVs -= fn.degree
+
+        return numCVs
+
+    numVertices = numCVs
 
     def knotDomain(self) -> tuple[float, float]:
         """

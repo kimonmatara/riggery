@@ -6,6 +6,12 @@ import maya.cmds as m
 
 class Mesh(SurfaceShape):
 
+    #-------------------------------------|    Queries
+
+    def numVertices(self) -> int:
+        """:return: The number of vertices on this mesh."""
+        return self.__apimfn__().numVertices
+
     #-------------------------------------|    UV set get / set
     
     def getUVSet(self) -> str:
