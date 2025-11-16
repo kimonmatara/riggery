@@ -1153,6 +1153,11 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     def _getDepNodeName(self) -> str:
         return om.MFnDependencyNode(self.__apimobject__()).name()
 
+    def rename(self, newName:str):
+        """Thin wrapper for the Maya command."""
+        m.rename(str(self), newName)
+        return self
+
     def getName(self, *, absolute:bool=False):
         """
         :return: The shortest unique name for this node.
