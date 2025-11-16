@@ -833,7 +833,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     @cached_property
     def __mfntypes__(self):
-        return _mfm.MFNMATCHES[self.__apiobjects__['MObject'].apiType()]
+        apiType = self.__apiobjects__['MObject'].apiType()
+        return _mfm.MFNMATCHES[apiType]
 
     @cached_property
     def __mfntype__(self):
@@ -845,7 +846,9 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         return matches[0]
 
     def __apimfn__(self):
-        return _mfm.fallbackInst(self.__apimobject__(), self.__mfntype__)
+        mobj = self.__apimobject__()
+        mfnType = self.__mfntype__
+        return _mfm.fallbackInst(mobj, mfnType)[0]
 
     #-----------------------------------------|    Authoring
 
