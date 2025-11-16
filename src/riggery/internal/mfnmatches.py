@@ -36,6 +36,7 @@ def _generateMFnMatches() -> dict:
     for k, v in mFnEnums.items():
         matches = [T for T in mFnTypes if T().hasObj(v)]
         matches = _tu.collapse_ancestors(matches)
+
         if matches:
             out[v] = matches
 
@@ -64,6 +65,7 @@ def _reprToCls(_t:str) -> type:
 
 def _start():
     global MFNMATCHES
+
     try:
         with open(CACHE_FILE_PATH, 'r') as f:
             _MFNMATCHES = json.load(f)
