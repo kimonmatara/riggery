@@ -1,4 +1,11 @@
-from typing import Iterator
+import os
+from typing import Iterator, Union, Optional, Literal
+
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
+
+from riggery.core.lib import names as _nm
+from riggery.core.lib import xmlweights as _xw
+
 from ..nodetypes import __pool__ as nodes
 DependNode = nodes['DependNode']
 
@@ -18,6 +25,7 @@ class GeometryFilter(DependNode):
         geo = nodes['DependNode'](geo).toShape()
         history = m.listHistory(geo, fullNodeName=True, historyAttr=True)
         visited = set()
+
         if history:
             for item in history:
                 if item in visited:
@@ -28,6 +36,36 @@ class GeometryFilter(DependNode):
                         yield DependNode(item)
                 except:
                     continue
+
+    #-------------------------------------|    Membership
+
+    def addGeo(self, *geo):
+        """
+        Thin wrapper for :func:`maya.cmds.deformer` in edit mode.
+        """
+        shapes = list(
+            without_duplicates(map(str, (nodes['DagNode'](x).toShape()
+                                         for x in expand_tuples_lists(*geo))))
+        )
+
+        if shapes:
+            m.deformer(str(self), e=True, geometry=shapes)
+
+        return self
+
+    def removeGeo(self, *geo):
+        """
+        Thin wrapper for :func:`maya.cmds.deformer` in edit mode.
+        """
+        shapes = list(
+            without_duplicates(map(str, (nodes['DagNode'](x).toShape()
+                                         for x in expand_tuples_lists(*geo))))
+        )
+
+        if shapes:
+            m.deformer(str(self), e=True, geometry=shapes, remove=True)
+
+        return self
 
     #-------------------------------------|    Shapes
 
@@ -41,3 +79,185 @@ class GeometryFilter(DependNode):
         if out:
             for x in out:
                 yield nodes['DependNode'](x)
+
+    #-------------------------------------|    Weights
+
+    def copyWeightsFrom(
+            self,
+            sourceDeformer:Union[str, 'GeometryFilter'],
+            sourceShape:Optional[Union[str, 'nodes.DeformableShape']],
+            destShape:Optional[Union[str, 'nodes.DeformableShape']]=None,
+            sourceUVSet:Optional[str]=None,
+            destUVSet:Optional[str]=None,
+            method:Literal[
+                'index',
+                'bilinear',
+                'barycentric',
+                'nearest',
+                'over',
+
+                'closestPoint',
+                'closestComponent',
+                'uv',
+                'rayCast'
+            ]='index'
+    ):
+        """
+        Copies weights from another deformer to this one.
+
+        :param sourceDeformer: the deformer to copy weights from
+        :param sourceShape/ssh: the shape to copy weights from; if omitted,
+            defaults to the first detected shape
+        :param destShape/dsh: the shape to copy weights to; if omitted,
+            defaults to the first detected shape
+        :param sourceUVSet/suv: if specified, 'method' will be overriden to
+            'uv'; if omitted, and 'method' is 'uv', the current UV set will
+            be used; defaults to None
+        :param destUVSet/duv: if specified, 'method' will be overriden to
+            'uv'; if omitted, and 'method' is 'uv', the current UV set will
+            be used; defaults to None
+        :param str method/m: one of:
+
+            - ``index`` (via XML)
+            - ``bilinear`` (via XML)
+            - ``barycentric`` (via XML)
+            - ``nearest`` (via XML)
+            - ``over`` (via XML)
+
+            - ``closestPoint`` (in-scene)
+            - ``closestComponent`` (in-scene)
+            - ``uv`` (in-scene)
+            - ``rayCast`` (in-scene)
+
+        :raises RuntimeError: No shapes on deformer.
+        :return: ``self``
+        """
+        DependNode = nodes['DependNode']
+
+        sourceDeformer = DependNode(sourceDeformer)
+
+        if sourceShape:
+            sourceShape = DependNode['DependNode'](sourceShape).toShape()
+
+        else:
+            sourceShape = next(sourceDeformer.shapes, None)
+
+            if sourceShape is None:
+                raise RuntimeError("No shapes on deformer")
+
+        if destShape:
+            destShape = DependNode(destShape).toShape()
+
+        else:
+            destShape = next(self.shapes, None)
+
+            if destShape is None:
+                raise RuntimeError("No shapes on deformer")
+
+        if sourceUVSet or destUVSet:
+            method = 'uv'
+
+        if method in ('over', 'index', 'nearest',
+                      'bilinear', 'barycentric'):
+            self._copyWeightsViaXMLFrom(
+                sourceDeformer, sourceShape, destShape, method
+            )
+        else:
+            self._copyWeightsViaCmdFrom(sourceDeformer,
+                                        sourceShape,
+                                        destShape,
+                                        method,
+                                        sourceUVSet=sourceUVSet,
+                                        destUVSet=destUVSet)
+        return self
+
+    def _copyWeightsViaXMLFrom(self,
+                               sourceDeformer,
+                               sourceShape,
+                               destShape,
+                               method):
+        kwargs = {}
+
+        bothSkins = sourceDeformer.__melnode__ == \
+                    'skinCluster' and self.__melnode__ == 'skinCluster'
+
+        if bothSkins:
+            kwargs['attribute'] = 'blendWeights'
+
+        tmpPath = _xw.getTempFilePath()
+
+        vertexConnections = method in ('bilinear', 'barycentric')
+        sourceDeformer.dumpWeights(tmpPath, vc=vertexConnections, **kwargs)
+
+        remap = ['{};{}'.format(str(sourceDeformer), str(self)),
+                 '{};{}'.format(str(sourceShape).split('|')[-1],
+                                str(destShape).split('|')[-1])]
+
+        try:
+            self.loadWeights(tmpPath, method=method, remap=remap, **kwargs)
+
+        finally:
+            os.remove(tmpPath)
+
+    def _copyWeightsViaCmdFrom(self,
+                               sourceDeformer,
+                               sourceShape,
+                               destShape,
+                               method,
+                               sourceUVSet=None,
+                               destUVSet=None):
+        if sourceUVSet or destUVSet:
+            method = 'uv'
+
+        if method == 'uv':
+            if not sourceUVSet:
+                sourceUVSet = sourceShape.getCurrentUVSetName()
+
+            if not destUVSet:
+                destUVSet = destShape.getCurrentUVSetName()
+
+        kwargs = {'nm': True}
+
+        uv = method == 'uv'
+
+        if method == 'uv':
+            kwargs['uvSpace'] = [sourceUVSet, destUVSet]
+
+        else:
+            kwargs['sa'] = method
+
+        _sourceDeformer = str(sourceDeformer)
+        _destDeformer = str(self)
+
+        if sourceDeformer.__melnode__ == 'skinCluster' \
+                and self.__melnode__ == 'skinCluster':
+
+            cmd = m.copySkinWeights
+            kwargs['ss'] = _sourceDeformer
+            kwargs['ds'] = _destDeformer
+            kwargs['ia'] = 'oneToOne'
+
+        else:
+            cmd = m.copyDeformerWeights
+            kwargs['sd'] = _sourceDeformer
+            kwargs['ds'] = _destDeformer
+            kwargs['ss'] = str(sourceShape)
+            kwargs['ds'] = str(destShape)
+
+        cmd(**kwargs)
+
+    #-------------------------------------|    Name
+
+    def renameFromGeo(self):
+        """
+        Names this deformer after the transform of the shape it affects.
+        """
+        shape = next(self.shapes, None)
+
+        if shape is not None:
+            self.rename("{}_{}".format(
+                str(shape.parent).split('|')[-1],
+                _nm.TYPESUFFIXES.get(self.__melnode__, self.__melnode__)
+            ))
+
+        return self
