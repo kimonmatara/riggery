@@ -16,22 +16,6 @@ from riggery.core.lib import skinwtio as _sw
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
 
-def _getTempWeightsDir():
-    root = os.path.join(gettempdir())
-    number = 0
-    while True:
-        dirname = 'tmp_weights_dump'
-        if number > 0:
-            dirname += str(number)
-        fullpath = os.path.join(root, dirname)
-        if os.path.isdir(fullpath):
-            number +=1
-            continue
-        break
-    os.makedirs(fullpath)
-    return fullpath
-
-
 class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Contructors
@@ -166,7 +150,7 @@ class SkinCluster(GeometryFilter):
 
         if nm > 1:
             raise RuntimeError(
-                "More than one deformers specified inside: {}".format(xmlfile)
+                "More than one deformer specified inside: {}".format(xmlfile)
             )
 
         if nm == 0:
@@ -177,7 +161,7 @@ class SkinCluster(GeometryFilter):
         deformer = deformerNames[0]
 
         # Deal with existing
-        existing = r.nodes.SkinCluster.getFromGeo(shape)
+        existing = list(r.nodes.SkinCluster.fromGeo(shape))
 
         if existing:
             r.delete(existing)
@@ -201,7 +185,7 @@ class SkinCluster(GeometryFilter):
                   'sm': 0,
                   'wd': 0}
 
-        skin = r.skinCluster(*args, **kwargs)
+        skin = r.skinCluster(*args, **kwargs)[0]
 
         # Load weights
         if loadWeights:
@@ -628,7 +612,7 @@ class SkinCluster(GeometryFilter):
 
         When the ``.blendWeights`` array on a skinCluster is sparsely populated
         (as is typically the case), dumping and reloading it via
-        ``deformerWeights(at='blendWeights')`` results in a wrongindex mapping.
+        ``deformerWeights(at='blendWeights')`` results in a wrong index mapping.
         """
         kwargs = {}
 
@@ -732,3 +716,35 @@ class SkinCluster(GeometryFilter):
             out.append(newSkin)
 
         return out
+
+    def rebuild(self) -> 'SkinCluster':
+        """
+        Deletes and rebuilds this skinCluster via a temporary weight dump. The
+        return value must be caught.
+        """
+        root = gettempdir()
+        basename = 'tmp_weight_dump'
+        index = 0
+
+        while True:
+            fullname = basename
+            if index > 0:
+                fullname += str(index)
+            fullname += '.xml'
+
+            fullpath = os.path.join(root, fullname)
+
+            if os.path.isfile(fullpath):
+                index += 1
+                continue
+
+            break
+
+        try:
+            self.dumpWeights(fullpath)
+            newSkin = SkinCluster.createFromXMLFile(fullpath)
+        finally:
+            os.remove(fullpath)
+            print(f"Removed temporary file: {fullpath}")
+
+        return newSkin
