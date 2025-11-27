@@ -694,3 +694,40 @@ def getPoleVector(
             bestPoleVector = thisPoleVector
 
     return bestPoleVector
+
+def intersectLinesValues(p1, p2, p3, p4, tolerance:float=1e-6) -> 'data.Point':
+    """
+    Assumes infinite lines. Only works with values (not plugs).
+    """
+    p1, p2, p3, p4 = map(data['Point'], (p1, p2, p3, p4))
+
+    # Direction vectors
+    d1 = p2 - p1
+    d2 = p4 - p3
+
+    # Vector between line start points
+    w = p1 - p3
+
+    # Params for closest points
+    a = d1.dot(d1)
+    b = d1.dot(d2)
+    c = d2.dot(d2)
+    d = d1.dot(w)
+    e = d2.dot(w)
+
+    denom = a*c - b*b
+
+    if abs(denom) < tolerance: # parallel
+        return None
+
+    s = (b*e - c*d) / denom
+    t = (a*e - b*d) / denom
+
+    point1 = p1 + d1 * s
+    point2 = p3 + d2 * t
+
+    # Check if they actually intersect (not skew)
+    if (point2 - point1).length() > tolerance:
+        return None
+
+    return point1
