@@ -724,7 +724,6 @@ class NurbsCurve(plugs['Geometry']):
         currentLen = self.length()
 
         if scalePivot is not None:
-            print("yah pivot!")
             scalePivot = _mm.conform(scalePivot,
                                      (data['Point'], plugs['Point']),
                                      force=True)

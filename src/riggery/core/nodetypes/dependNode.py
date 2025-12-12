@@ -1156,9 +1156,15 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     def _getDepNodeName(self) -> str:
         return om.MFnDependencyNode(self.__apimobject__()).name()
 
-    def rename(self, newName:str):
-        """Thin wrapper for the Maya command."""
-        m.rename(str(self), newName)
+    def rename(self, newName:Optional[str]=None, /):
+        """
+        If *newName* is omitted, one is derived from Name context blocks.
+        """
+        newName = _n.resolveNameArg(newName, nodeType=self.__melnode__)
+
+        if newName is not None:
+            m.rename(str(self), newName)
+
         return self
 
     def getName(self, *, absolute:bool=False):

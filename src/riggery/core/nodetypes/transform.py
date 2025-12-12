@@ -16,6 +16,7 @@ from ..lib.evaluation import cache_dg_output
 from ..lib import controls as _c
 from ..lib import names as _n, controlshapes as _cs
 from ..lib import namespaces as _ns
+from ..lib import names as _n
 from riggery.internal import str2api as _s2a
 
 
@@ -855,6 +856,27 @@ class Transform(nodes['DagNode']):
 
                     for xf, scale in zip(tweenXfs, tweenScales):
                         xf.setScale(scale, worldSpace=True)
+
+        return self
+
+    #-----------------------------------------|    Naming
+
+    def rename(self, newName:Optional[str]=None, /):
+        """
+        If *newName* is omitted, one is derived from Name context blocks.
+        """
+        shape = self.shape
+
+        if shape is None:
+            nodeType = self.__melnode__
+
+        else:
+            nodeType = shape.__melnode__
+
+        newName = _n.resolveNameArg(newName, nodeType=nodeType)
+
+        if newName is not None:
+            m.rename(str(self), newName)
 
         return self
 
