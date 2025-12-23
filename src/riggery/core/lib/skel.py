@@ -764,7 +764,7 @@ class Chain(list):
             it. No in-line checking is performed; the pole vector may be of zero
             length.
         """
-        return _mo.getPoleVector(list(self.points))
+        return _mo.getPoleVector(list(self.points))['poleVector']
 
     def ikJitter(self,
                  jitterVector,
