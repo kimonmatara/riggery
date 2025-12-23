@@ -626,12 +626,12 @@ def closestPointOnLine(refPoint:Union[list[float], str, 'plugs.Point'],
     return outPoint
 
 def getPoleVector(
-        chainPoints:list[Union[str, list[float], 'plugs.Point']]
-) -> Union['data.Vector', 'plugs.Vector']:
+        chainPoints:list[Union[str, list[float], 'plugs.Point']],
+) -> dict:
     """
-    :return: A 'Maya-style' pole vector given the chain points. Works with plugs
-        or values. No in-line checking is performed; the pole vector may be of
-        zero-length.
+    :return: A dictionary with piecemeal calculations. Grab 'poleVector' for
+        the definitive output. No in-line checking is performed; the pole vector
+        may be zero-length.
     """
     pointInfos = [_mm.info(x, (data.Point, plugs.Point), force=True)
                   for x in chainPoints]
@@ -677,23 +677,25 @@ def getPoleVector(
                     outDistance,
                     plugs.Number
                 )
+    else:
+        bestDistance = None
+        bestPoleVector = None
 
-        return outPoleVector
+        for innerPoint in points[1:-1]:
+            thisPoleVector = vectorFromLineToPoint(innerPoint,
+                                                   startPoint,
+                                                   chordVector)
+            thisLength = thisPoleVector.length()
 
-    bestDistance = None
-    bestPoleVector = None
+            if bestDistance is None or thisLength > bestDistance:
+                bestDistance = thisLength
+                bestPoleVector = thisPoleVector
 
-    for innerPoint in points[1:-1]:
-        thisPoleVector = vectorFromLineToPoint(innerPoint,
-                                               startPoint,
-                                               chordVector)
-        thisLength = thisPoleVector.length()
+        outPoleVector = bestPoleVector
 
-        if bestDistance is None or thisLength > bestDistance:
-            bestDistance = thisLength
-            bestPoleVector = thisPoleVector
-
-    return bestPoleVector
+    return {'poleVector': outPoleVector,
+            'chordVector': chordVector,
+            'points': points}
 
 def intersectLinesValues(p1, p2, p3, p4, tolerance:float=1e-6) -> 'data.Point':
     """
