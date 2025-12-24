@@ -62,6 +62,15 @@ def split_camel(s:str):
 
     return s
 
+def camel_to_under(s:str) -> str:
+    """
+    Converts a camelCase string to underscores. Case is preserved only for the
+    first element.
+    """
+    elems = split_camel(s)
+    elems = [elems[0]] + [uncap(x) for x in elems[1:]]
+    return '_'.join(elems)
+
 def split_multi(s:str, delims:list[Union[str, Callable]]):
     """
     Recursively splits a string using multiple delimiters or callables.
