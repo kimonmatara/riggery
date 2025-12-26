@@ -79,7 +79,7 @@ class Joint(nodes['Transform']):
 
         for key in ('jointOrient', 'rotateAxis',
                     'offsetParentMatrix', 'displayLocalAxis',
-                    'radius', 'rotateOrder'):
+                    'radius', 'rotateOrder', 'preferredAngle'):
             joint.attr(key).set(macro[key])
 
         if worldSpace:
@@ -103,7 +103,8 @@ class Joint(nodes['Transform']):
                 'offsetParentMatrix': self.attr('offsetParentMatrix')(),
                 'displayLocalAxis': self.attr('displayLocalAxis')(),
                 'radius': self.attr('radius')(),
-                'rotateOrder': self.attr('rotateOrder')()}
+                'rotateOrder': self.attr('rotateOrder')(),
+                'preferredAngle': self.attr('preferredAngle')()}
 
     def cleanCopy(self):
         """
