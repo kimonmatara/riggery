@@ -629,6 +629,8 @@ def getPoleVector(
         chainPoints:list[Union[str, list[float], 'plugs.Point']],
 ) -> dict:
     """
+    Suitable for chains of arbitrary length.
+
     :return: A dictionary with piecemeal calculations. Grab 'poleVector' for
         the definitive output. No in-line checking is performed; the pole vector
         may be zero-length.
