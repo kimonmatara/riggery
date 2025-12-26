@@ -664,7 +664,7 @@ class Transform(nodes['DagNode']):
     def __getattr__(self, item):
         try:
             return self.attr(item, checkShape=False)
-        except AttributeError:
+        except AttributeError as exc:
             shape = self.shape
 
             if shape:
