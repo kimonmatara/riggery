@@ -50,7 +50,10 @@ class IkHandle(nodes['Transform']):
         #------------------------|    Resolve arguments
 
         chain = _sk.Chain.fromStartEnd(startJoint, endJoint)
+        preferredAngles = [j.attr('preferredAngle')() for j in chain]
+
         numJoints = len(chain)
+
         if numJoints < 2:
             raise ValueError("not enough joints")
 
@@ -83,10 +86,14 @@ class IkHandle(nodes['Transform']):
 
         kwargs['name'] = handleName
 
-        if upVector is not None:
+        ikh, eff = map(Elem, m.ikHandle(**kwargs))
+
+        if upVector is None:
+            for j, preferredAngle in zip(chain, preferredAngles):
+                j.attr('preferredAngle').set(preferredAngle)
+        else:
             chain.ikJitter(upVector)
 
-        ikh, eff = map(Elem, m.ikHandle(**kwargs))
         eff.name = effName
 
         if parent is not None:
