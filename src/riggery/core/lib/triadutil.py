@@ -1,4 +1,4 @@
-"""Utilities for managing mathematical triads."""
+"""Utilities for managing triads."""
 
 import math
 from typing import Union, Optional, Iterable, Literal
@@ -383,3 +383,56 @@ def getTriadMatrices(
     matrices.append(lastMatrix)
 
     return matrices
+
+def cookIKTriadSquashStretch(chain, # .skel.Chain
+                             squashyAttr:'_plugs.Number',
+                             stretchyAttr:'_plugs.Number',
+                             globalScale:'_plugs.Number',
+                             startPoint:'_plugs.Point',
+                             endPoint:'_plugs.Point',
+                             connect:bool=True):
+    numJoints = len(chain)
+    if numJoints == 3:
+        isBevelled = False
+    elif numJoints == 4:
+        isBevelled = True
+    else:
+        raise ValueError("expected three or four joints")
+
+    # Calculate native length
+    _points = list(chain.points)
+    _vectors = [y-x for x, y in zip(_points, _points[1:])]
+    _length = sum((v.length() for v in _vectors))
+
+    nativeLength = _length * globalScale
+    chordVector = endPoint - startPoint
+    targetLength = chordVector.length().gatedClamp(nativeLength,
+                                                   squashyAttr,
+                                                   stretchyAttr)
+
+    if isBevelled:
+        nativeBevelLength = (_points[2]-_points[1]).length() * globalScale
+        factor = (targetLength
+                  - nativeBevelLength) / (nativeLength
+                                          - nativeBevelLength)
+    else:
+        factor = targetLength / nativeLength
+
+    if connect:
+        absBoneAxis = chain.detectBoneAxis().strip('-')
+        chan = f's{absBoneAxis}'
+
+        joints = chain[0], chain[2 if isBevelled else 1]
+
+        for joint in joints:
+            factor >> joint.attr(chan)
+
+    out = {'factor': factor,
+           'nativeLength': nativeLength,
+           'targetLength': targetLength,
+           'chordVector': chordVector}
+
+    if isBevelled:
+        out['nativeBevelLength'] = nativeBevelLength
+
+    return out
