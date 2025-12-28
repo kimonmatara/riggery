@@ -1,3 +1,4 @@
+from typing import Literal
 import math
 from ..lib import mixedmode as _mm
 import maya.api.OpenMaya as om
@@ -49,20 +50,58 @@ class Vector(__pool__['Tensor3']):
 
         return out
 
-    def guessUpVector(self):
+    # def guessUpVector(self):
+    #     """
+    #     Runs comparisons against base X, Y and Z and vectors, and returns the
+    #     one that's most perpendicular to this vector.
+    #     """
+    #     _self = self.normal()
+    #     bestDot = None
+    #     outVector = None
+    #     for vector in map(Vector, [(1, 0, 0), (0, 1, 0), (0, 0, 1)]):
+    #         thisDot = abs(vector.dot(_self))
+    #         if bestDot is None or thisDot < bestDot:
+    #             bestDot = thisDot
+    #             outVector = vector
+    #     return outVector
+
+    def closestAxisLetter(self) -> Literal['x', 'y', 'z', '-x', '-y', '-z']:
         """
-        Runs comparisons against base X, Y and Z and vectors, and returns the
-        one that's most perpendicular to this vector.
+        :return: The closest letter-axis representation of this vector.
         """
-        _self = self.normal()
-        bestDot = None
-        outVector = None
-        for vector in map(Vector, [(1, 0, 0), (0, 1, 0), (0, 0, 1)]):
-            thisDot = abs(vector.dot(_self))
-            if bestDot is None or thisDot < bestDot:
-                bestDot = thisDot
-                outVector = vector
-        return outVector
+        axes = ('x', 'y', 'z', '-x', '-y', '-z')
+        vectors = (Vector((1, 0, 0)),
+                   Vector((0, 1, 0)),
+                   Vector((0, 0, 1)),
+                   Vector((-1, 0, 0)),
+                   Vector((0, -1, 0)),
+                   Vector((0, 0, -1)))
+
+        dotsmap = ((k, self.dot(v, normalize=True))
+                   for k, v in zip(axes, vectors))
+
+        return sorted(dotsmap, key=lambda pair: pair[1])[-1][0]
+
+    def inventPerpendicular(self) -> 'Vector':
+        """
+        Finds the closest letter axis matching this vector, and returns a
+        perpendicularized version of the next axis in letter order.
+        """
+        thisAxis = self.closestAxisLetter()
+        thisAbsAxis = thisAxis.strip('-')
+        outAxis = 'xyz'[('xyz'.index(thisAbsAxis)+1) % 3]
+        if '-' in thisAxis:
+            outAxis = '-'+thisAbsAxis
+
+        axes = ('x', 'y', 'z', '-x', '-y', '-z')
+        vectors = (Vector((1, 0, 0)),
+                   Vector((0, 1, 0)),
+                   Vector((0, 0, 1)),
+                   Vector((-1, 0, 0)),
+                   Vector((0, -1, 0)),
+                   Vector((0, 0, -1)))
+
+        return dict(zip(axes, vectors))[outAxis].rejectFrom(self)
 
     def mostPerpendicular(self, others):
         """
