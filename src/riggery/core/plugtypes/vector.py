@@ -167,89 +167,136 @@ class Vector(plugs['Tensor3Float']):
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asRotateMatrix()
 
-    def angleTo(self, otherVector, normal=None, *, shortest=False):
-        """
-        :param otherVector: the vector towards which to measure an angle
-        :param normal: if this is provided then, if *shortest* is True, the
-            angle will be in the -180 -> +180 range; otherwise, it will be
-            in the 0 -> 360 range; if omitted, it will be in the 0 -> 180
-            range; defaults to None
-        :param shortest: ignored if *normal* is omitted
-        """
-        if normal is None:
-            node = nodes.AngleBetween.createNode()
-            self >> node.attr('vector1')
-            otherVector >> node.attr('vector2')
-            return node.attr('angle')
-        return self._correctedAngle(otherVector,
-                                    normal,
-                                    shortest=shortest).asType(plugs['Angle'])
-
-    def _correctedAngle(self, otherVector, normal, shortest:bool=False):
-        otherVector, otherVectorShape, otherVectorIsPlug = \
-            _mm.info(otherVector, data['Vector'])
-
-        normal, normalShape, normalIsPlug = _mm.info(normal, data['Vector'])
-
-        # Get 180 angle
-        node = nodes.AngleBetween.createNode()
+    def angleTo(self, other, normal=None, *, shortest:bool=False):
+        node = nodes['AngleBetween'].createNode()
         self >> node.attr('vector1')
-        otherVector >> node.attr('vector2')
-        partialAngle = node.attr('angle')
+        other >> node.attr('vector2')
 
-        # Get cross of this vector and other, detect if zero length
-        crossThisOther = self.cross(otherVector)
-        crossThisOtherLength = crossThisOther.length()
-        crossThisOtherIsZero = crossThisOtherLength.lt(1e-6)
+        if normal is None:
+            return node.attr('angle')
 
-        # If the dot of this and other is 1.0, return 0.0. Otherwise,
-        # if the dot is -1.0, return 180.0. Otherwise:
-        # Get the (safe) dot of the cross and normal. If it's above 0.0,
-        # return the partial angle. Otherwise, return unwound angle.
+        outAngle = node.attr('angle')
+        outAxis = node.attr('axis')
 
-        dotThisOther = self.dot(otherVector, normalize=True)
-        dotThisOtherIsOne = dotThisOther.ge(1.0-1e-7)
-        dotThisOtherIsMinusOne = dotThisOther.le(-1.0+1e-7)
+        aligned = outAxis.length().lt(1e-6)
+        dot = normal.dot(aligned.ifElse(normal, outAxis), normalize=True)
+        flipped = dot.lt(0.0)
 
-        operand = crossThisOtherIsZero.ifElse(normal,
-                                              crossThisOther,
-                                              plugs.Vector)
-        dotCrossNormal = normal.dot(operand, normalize=True)
-        doCorrectAngle = dotCrossNormal.lt(0.0)
+        pb = nodes['Network'].createNode()
+
+        outAngle = flipped.ifElse(math.radians(360)-outAngle,
+                                  outAngle,
+                                  plugs['Angle'])
 
         if shortest:
-            correctedAngle = -partialAngle
-        else:
-            correctedAngle = math.radians(360.0)-partialAngle
-
-        nw = nodes.Network.createNode()
-
-        zeroAngle = nw.addAttr('zeroAngle',
-                               at='doubleAngle',
-                               dv=0.0,
-                               lock=True,
-                               k=True)
-
-        halfAngle = nw.addAttr(
-            'halfAngle',
-            at='doubleAngle',
-            dv=om.MAngle(180, unit=om.MAngle.kDegrees
-                         ).asUnits(om.MAngle.uiUnit()),
-            lock=True,
-            k=True)
-
-        outAngle = dotThisOtherIsOne.ifElse(
-            zeroAngle,
-            dotThisOtherIsMinusOne.ifElse(
-                halfAngle,
-                doCorrectAngle.ifElse(
-                    correctedAngle,
-                    partialAngle
-                )
+            outAngle = outAngle.gt(math.radians(180)).ifElse(
+                outAngle - math.radians(360),
+                outAngle,
+                plugs['Angle']
             )
-        )
 
-        return outAngle.asType(plugs['Angle'])
+        nw = nodes['Network'].createNode()
+        zero = nw.addAttr('zeroAngle', at='doubleAngle')
+
+        return aligned.ifElse(zero, outAngle, plugs['Angle'])
+
+    # def angleTo(self, otherVector, normal=None, *, shortest=False):
+    #     """
+    #     :param otherVector: the vector towards which to measure an angle
+    #     :param normal: if this is provided then, if *shortest* is True, the
+    #         angle will be in the -180 -> +180 range; otherwise, it will be
+    #         in the 0 -> 360 range; if omitted, it will be in the 0 -> 180
+    #         range; defaults to None
+    #     :param shortest: ignored if *normal* is omitted
+    #     """
+    #     if normal is None:
+    #         node = nodes.AngleBetween.createNode()
+    #         self >> node.attr('vector1')
+    #         otherVector >> node.attr('vector2')
+    #         return node.attr('angle')
+    #     return self._correctedAngle(otherVector,
+    #                                 normal,
+    #                                 shortest=shortest).asType(plugs['Angle'])
+    #
+    # def _correctedAngle(self, otherVector, normal, shortest:bool=False):
+    #     otherVector, otherVectorShape, otherVectorIsPlug = \
+    #         _mm.info(otherVector, data['Vector'])
+    #
+    #     normal, normalShape, normalIsPlug = _mm.info(normal, data['Vector'])
+    #
+    #     # Get 180 angle
+    #     with _nm.Name('angle_calc'):
+    #         node = nodes.AngleBetween.createNode()
+    #         self >> node.attr('vector1')
+    #         otherVector >> node.attr('vector2')
+    #         partialAngle = node.attr('angle')
+    #
+    #     with _nm.Name('cross_calc'):
+    #         # Get cross of this vector and other, detect if zero length
+    #         crossThisOther = self.cross(otherVector)
+    #         crossThisOtherLength = crossThisOther.length()
+    #         crossThisOtherIsZero = crossThisOtherLength.lt(1e-6)
+    #
+    #     # If the dot of this and other is 1.0, return 0.0. Otherwise,
+    #     # if the dot is -1.0, return 180.0. Otherwise:
+    #     # Get the (safe) dot of the cross and normal. If it's above 0.0,
+    #     # return the partial angle. Otherwise, return unwound angle.
+    #
+    #     with _nm.Name('dot_calc'):
+    #         dotThisOther = self.dot(otherVector, normalize=True)
+    #         dotThisOtherIsOne = dotThisOther.ge(1.0-1e-7)
+    #         dotThisOtherIsMinusOne = dotThisOther.le(-1.0+1e-7)
+    #
+    #     with _nm.Name('operand_pick'):
+    #         operand = crossThisOtherIsZero.ifElse(normal,
+    #                                               crossThisOther,
+    #                                               plugs.Vector)
+    #         operand.evaluate()
+    #         print("dotThisOther is ", dotThisOther())
+    #         print("dotThisOtherIsOne is ", dotThisOtherIsOne())
+    #         print("dotThisOtherIsMinusOne is ", dotThisOtherIsMinusOne())
+    #
+    #         with _nm.Name('dot_cross'):
+    #             normal.loc(name='the_normal')
+    #             operand.loc(name='the_operand')
+    #             dotCrossNormal = normal.dot(operand, normalize=True)
+    #
+    #         with _nm.Name('do_correct'):
+    #             doCorrectAngle = dotCrossNormal.lt(0.0)
+    #
+    #     if shortest:
+    #         correctedAngle = -partialAngle
+    #     else:
+    #         correctedAngle = math.radians(360.0)-partialAngle
+    #
+    #     nw = nodes.Network.createNode()
+    #
+    #     zeroAngle = nw.addAttr('zeroAngle',
+    #                            at='doubleAngle',
+    #                            dv=0.0,
+    #                            lock=True,
+    #                            k=True)
+    #
+    #     halfAngle = nw.addAttr(
+    #         'halfAngle',
+    #         at='doubleAngle',
+    #         dv=om.MAngle(180, unit=om.MAngle.kDegrees
+    #                      ).asUnits(om.MAngle.uiUnit()),
+    #         lock=True,
+    #         k=True)
+    #
+    #     outAngle = dotThisOtherIsOne.ifElse(
+    #         zeroAngle,
+    #         dotThisOtherIsMinusOne.ifElse(
+    #             halfAngle,
+    #             doCorrectAngle.ifElse(
+    #                 correctedAngle,
+    #                 partialAngle
+    #             )
+    #         )
+    #     )
+    #
+    #     return outAngle.asType(plugs['Angle'])
 
     @cache_dg_output
     def length(self):
