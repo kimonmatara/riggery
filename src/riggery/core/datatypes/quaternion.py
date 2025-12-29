@@ -39,6 +39,10 @@ class Quaternion(__pool__['Tensor4']):
         :return: A locator with its rotation set to this quaternion.
         """
         loc = nodes.Locator.createNode().parent
+
+        if name is not None:
+            loc.rename(name)
+
         loc.attr('inheritsTransform').set(inheritsTransform)
         loc.attr('displayLocalAxis').set(True)
         loc.attr('r').set(self.asEulerRotation())
@@ -98,6 +102,10 @@ class Quaternion(__pool__['Tensor4']):
 
     def __mul__(self, other):
         other, shape, isPlug = _mm.info(other)
+
+        if shape is None:
+            return Quaternion().slerp(self, weight=other)
+
         if shape == 4:
             if isPlug:
                 node = nodes.QuatProd.createNode()
