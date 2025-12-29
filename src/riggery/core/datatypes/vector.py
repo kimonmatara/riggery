@@ -175,83 +175,59 @@ class Vector(__pool__['Tensor3']):
             range; defaults to None
         :param shortest: ignored if *normal* is omitted
         """
-        if normal is None:
-            return self._simpleAngleTo(otherVector)
-        return self._correctedAngleTo(otherVector, normal, shortest=shortest)
+        otherVector, _, otherVectorIsPlug = _mm.info(otherVector,
+                                                     (plugs['Vector'], Vector))
 
-    def _simpleAngleTo(self, otherVector):
-        otherVector, otherVectorShape, otherVectorIsPlug \
-            = _mm.info(otherVector)
+        hasPlugs = otherVectorIsPlug
 
-        if otherVectorIsPlug:
-            node = nodes.AngleBetween.createNode()
+        if normal is not None:
+            normal, _, normalIsPlug = _mm.info(normal,
+                                               (plugs['Vector'], Vector))
+            hasPlugs = hasPlugs or normalIsPlug
+
+        if hasPlugs:
+            pb = nodes['Network'].createNode()
+            otherVector = pb.addVectorAttr('otherVector', i=otherVector, l=True)
+
+            if normal is not None:
+                normal = pb.addVectorAttr('normal', i=normal, l=True)
+
+            node = nodes['AngleBetween'].createNode()
             node.attr('vector1').set(self)
-            node.attr('vector2').put(otherVector, True)
-            return node.attr('angle')
+            otherVector >> node.attr('vector2')
 
-        return om.MVector(self).angle(om.MVector(otherVector))
+            if normal is None:
+                return node.attr('angle')
 
-    def _correctedAngleTo(self, otherVector, normal, shortest=False):
-        otherVector, _, otherIsPlug = _mm.info(otherVector, Vector)
-        normal, _, normalIsPlug = _mm.info(normal, Vector)
+            outAngle = node.attr('angle')
+            outAxis = node.attr('axis')
 
-        if (otherIsPlug or normalIsPlug):
-            # Get 180 angle
-            node = nodes.AngleBetween.createNode()
-            node.attr('vector1').set(self)
-            node.attr('vector2').put(otherVector, otherIsPlug)
-            partialAngle = node.attr('angle')
+            aligned = outAxis.length().lt(1e-6)
+            dot = normal.dot(aligned.ifElse(normal, outAxis), normalize=True)
+            flipped = dot.lt(0.0)
 
-            # Get cross of this vector and other, detect if zero length
-            crossThisOther = self.cross(otherVector)
-            crossThisOtherLength = crossThisOther.length()
-            crossThisOtherIsZero = crossThisOtherLength.lt(1e-6)
+            pb = nodes['Network'].createNode()
 
-            # If the dot of this and other is 1.0, return 0.0. Otherwise,
-            # if the dot is -1.0, return 180.0. Otherwise:
-            # Get the (safe) dot of the cross and normal. If it's above 0.0,
-            # return the partial angle. Otherwise, return unwound angle.
-            dotThisOther = self.dot(otherVector, normalize=True)
-            dotThisOtherIsOne = dotThisOther.ge(1.0-1e-7)
-            dotThisOtherIsMinusOne = dotThisOther.le(-1.0+1e-7)
-
-            operand = crossThisOtherIsZero.ifElse(normal,
-                                                  crossThisOther,
-                                                  plugs.Vector)
-            dotCrossNormal = normal.dot(operand, normalize=True)
-            doCorrectAngle = dotCrossNormal.lt(0.0)
+            outAngle = flipped.ifElse(math.radians(360)-outAngle,
+                                      outAngle,
+                                      plugs['Angle'])
 
             if shortest:
-                correctedAngle = -partialAngle
-            else:
-                correctedAngle = math.radians(360.0)-partialAngle
-
-            nw = nodes.Network.createNode()
-
-            zeroAngle = nw.addAttr('zeroAngle', at='doubleAngle',
-                                   dv=0.0, lock=True, k=True)
-
-            halfAngle = nw.addAttr('halfAngle', at='doubleAngle',
-                                   dv=math.radians(180.0), lock=True, k=True)
-
-            outAngle = dotThisOtherIsOne.ifElse(
-                zeroAngle,
-                dotThisOtherIsMinusOne.ifElse(
-                    halfAngle,
-                    doCorrectAngle.ifElse(
-                        correctedAngle,
-                        partialAngle
-                    )
+                outAngle = outAngle.gt(math.radians(180)).ifElse(
+                    outAngle - math.radians(360),
+                    outAngle,
+                    plugs['Angle']
                 )
-            )
 
-            return nw.addAttr('outAngle',
-                              i=outAngle,
-                              k=True,
-                              at='doubleAngle',
-                              lock=True)
+            nw = nodes['Network'].createNode()
+            zero = nw.addAttr('zeroAngle', at='doubleAngle')
 
-        # Use API calls for everything
+            return aligned.ifElse(zero, outAngle, plugs['Angle'])
+
+        # Soft
+        if normal is None:
+            return om.MVector(self).angleTo(om.MVector(otherVector))
+
         self = om.MVector(self).normal()
         other = om.MVector(otherVector).normal()
 
