@@ -1,6 +1,6 @@
 """Defines classes to manage skeletal chains."""
 import math
-from typing import Iterator, Optional, Union, Iterable
+from typing import Iterator, Optional, Union, Iterable, Literal
 
 import riggery.core.lib.mathops as _mo
 import riggery.core.lib.mixedmode as _mm
@@ -396,44 +396,71 @@ class Chain(list):
         """
         return len(self) == 2
 
-    def splitBone(self, numSplits:int) -> list:
+    def splitBone(
+            self,
+            numSplits:int,
+            twistAxis:Optional[Literal['x', 'y', 'z', '-x', '-y', '-z']]=None
+    ):
         """
         .. note::
 
-            This is not an in-place operation; a new Chain instance will be
+            This is *not* an in-place operation; a new Chain instance will be
             returned. This is intentional, to maintain access to indices on the
             original.
 
         :param numSplits: the number of joints to insert between the start and
             end
+        :param twistAxis: if this is provided, then the new joints will receive
+            twisted orientations
         :return: A new Chain instance, comprising the original start joint,
             the new inbetween joints, and the original end joint.
         """
-        if len(self) != 2:
+        if not self.isBone():
             raise TypeError("not a bone")
 
-        self.compose()
+        if numSplits < 1:
+            return self.copy()
 
+        # Calculate tween ratios
+        tweenRatios = list(floatrange(0, 1, numSplits+2))[1:-1]
+
+        # Calculate tween points
         startPoint, endPoint = self.points
+        tweenPoints = [startPoint.blend(endPoint,
+                                        weight=x) for x in tweenRatios]
 
-        vector = endPoint - startPoint
-        pmtx = self[0].attr('pm')[0]()
-        innerPoints = [
-            startPoint.blend(endPoint, ratio)
-            for ratio in list(floatrange(0, 1, numSplits+2))[1:-1]
-        ]
+        if twistAxis is None:
+            rmtx = self[0].getMatrix(worldSpace=True).pick(r=True)
+            tweenMatrices = [rmtx * x.asTranslateMatrix() for x in tweenPoints]
+        else:
+            boneVector = endPoint - startPoint
+            startTwistVector = self[0].getMatrix(
+                worldSpace=True).getAxis(twistAxis).rejectFrom(boneVector)
+            endTwistVector = self[1].getMatrix(
+                worldSpace=True).getAxis(twistAxis).rejectFrom(boneVector)
 
-        newJoints = []
+            tweenVectors = [startTwistVector.blend(endTwistVector,
+                                                   weight=x,
+                                                   slerp=True)
+                            for x in tweenRatios]
 
-        for innerPoint in innerPoints:
-            newJoint = self[0].cleanCopy()
-            newJoint.attr('t').set(innerPoint ^ newJoint.pim[0]())
-            newJoints.append(newJoint)
+            boneAxis = self.detectBoneAxis()
+            tweenMatrices = [_mm.createOrthoMatrix(boneAxis, boneVector,
+                                                   twistAxis, tweenVector,
+                                                   w=tweenPoint).pick(t=True,
+                                                                      r=True)
+                             for tweenPoint, tweenVector in zip(tweenPoints,
+                                                                tweenVectors)]
 
-        newStack = [self[0]] + newJoints + [self[1]]
-        for thisJoint, nextJoint in zip(newStack, newStack[1:]):
-            nextJoint.parent = thisJoint
-        return Chain(newStack)
+        tweenJoints = [nodes.Joint.create(matrix=matrix, worldSpace=True)
+                     for matrix in tweenMatrices]
+
+        newJoints = [self[0]] + tweenJoints + [self[1]]
+
+        for parent, child in zip(newJoints, newJoints[1:]):
+            child.setParent(parent)
+
+        return Chain(newJoints)
 
     def displayLocalAxis(self):
         for x in self:
@@ -835,6 +862,7 @@ class Chain(list):
     #-------------------------------------------|    Instance copying
 
     def copy(self):
+        """Returns a copy of this Chain instance. No new joints are created."""
         return type(self)(self)
 
     #-------------------------------------------|    Instance access
