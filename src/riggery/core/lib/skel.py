@@ -396,25 +396,7 @@ class Chain(list):
         """
         return len(self) == 2
 
-    def splitBone(
-            self,
-            numSplits:int,
-            twistAxis:Optional[Literal['x', 'y', 'z', '-x', '-y', '-z']]=None
-    ):
-        """
-        .. note::
-
-            This is *not* an in-place operation; a new Chain instance will be
-            returned. This is intentional, to maintain access to indices on the
-            original.
-
-        :param numSplits: the number of joints to insert between the start and
-            end
-        :param twistAxis: if this is provided, then the new joints will receive
-            twisted orientations
-        :return: A new Chain instance, comprising the original start joint,
-            the new inbetween joints, and the original end joint.
-        """
+    def splitBone(self, numSplits:int, twist:bool=False):
         if not self.isBone():
             raise TypeError("not a bone")
 
@@ -429,28 +411,45 @@ class Chain(list):
         tweenPoints = [startPoint.blend(endPoint,
                                         weight=x) for x in tweenRatios]
 
-        if twistAxis is None:
-            rmtx = self[0].getMatrix(worldSpace=True).pick(r=True)
-            tweenMatrices = [rmtx * x.asTranslateMatrix() for x in tweenPoints]
-        else:
-            boneVector = endPoint - startPoint
-            startTwistVector = self[0].getMatrix(
-                worldSpace=True).getAxis(twistAxis).rejectFrom(boneVector)
-            endTwistVector = self[1].getMatrix(
-                worldSpace=True).getAxis(twistAxis).rejectFrom(boneVector)
-
-            tweenVectors = [startTwistVector.blend(endTwistVector,
-                                                   weight=x,
-                                                   slerp=True)
-                            for x in tweenRatios]
+        if twist:
+            # Will figure out twist using a parallel-transport style solution,
+            # i.e. transport the start twist vector to the lower bone, and then
+            # measure a delta from the lower bone's actual twist axis
 
             boneAxis = self.detectBoneAxis()
-            tweenMatrices = [_mm.createOrthoMatrix(boneAxis, boneVector,
-                                                   twistAxis, tweenVector,
-                                                   w=tweenPoint).pick(t=True,
-                                                                      r=True)
-                             for tweenPoint, tweenVector in zip(tweenPoints,
-                                                                tweenVectors)]
+            absBoneAxis = boneAxis.strip('-')
+
+            twistAxis = next((ax for ax in 'xyz' if ax != absBoneAxis))
+
+            startMatrix = self[0].getMatrix(ws=True)
+            endMatrix = self[1].getMatrix(ws=True)
+
+            startTwistVector = startMatrix.getAxis(twistAxis)
+            startBoneVector = endPoint - startPoint
+            endBoneVector = endMatrix.getAxis(boneAxis)
+            endRefTwistVector = (startTwistVector
+                                 * (startBoneVector.quatTo(endBoneVector)))
+
+            angle = endRefTwistVector.angleTo(endMatrix.getAxis(twistAxis),
+                                              shortest=True,
+                                              normal=endBoneVector)
+
+            tweenTwistVectors = [
+                startTwistVector.rotateByAxisAngle(startBoneVector,
+                                                   angle * weight)
+                for weight in tweenRatios
+            ]
+
+            tweenMatrices = [
+                _mm.createOrthoMatrix(boneAxis, startBoneVector,
+                                    twistAxis, tweenTwistVector,
+                                    w=point).pick(t=True, r=True)
+                for point, tweenTwistVector in zip(tweenPoints,
+                                                   tweenTwistVectors)
+            ]
+        else:
+            rmtx = self[0].getMatrix(worldSpace=True).pick(r=True)
+            tweenMatrices = [rmtx * x.asTranslateMatrix() for x in tweenPoints]
 
         tweenJoints = [nodes.Joint.create(matrix=matrix, worldSpace=True)
                      for matrix in tweenMatrices]
@@ -461,6 +460,7 @@ class Chain(list):
             child.setParent(parent)
 
         return Chain(newJoints)
+
 
     def displayLocalAxis(self):
         for x in self:
