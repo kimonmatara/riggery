@@ -6,12 +6,14 @@ from typing import Union, Optional, Iterable, Literal
 from riggery.general.functions import short
 from ..datatypes import __pool__ as _data
 from ..plugtypes import __pool__ as _plugs
+from ..nodetypes import __pool__ as _nodes
+
 from . import mixedmode as _mm
 from . import names as _nm
 
 # The below is intended to match Maya's tolerances, which aren't particularly
 # high or accurate
-INLINE_TOLERANCE = 1e-6
+INLINE_TOLERANCE = 1e-5
 
 class TriadInsufficientHintsError(ValueError):
     """
@@ -19,7 +21,17 @@ class TriadInsufficientHintsError(ValueError):
     line and no further user hints have been provided.
     """
 
-def bevelTriad(p0, p1, p2, length) -> tuple:
+class TriadPointNumberError(ValueError):
+    """
+    Raised when a triad does not comprise exactly three or four points.
+    """    
+
+def bevelTriad(p0, p1, p2, length) -> tuple[
+    'r.data.Point',
+    'r.data.Point',
+    'r.data.Point',
+    'r.data.Point'
+]:
     """
     Splits the middle point of a triad into two, creating an isosceles bevel.
 
@@ -67,7 +79,11 @@ def bevelTriad(p0, p1, p2, length) -> tuple:
 
     return p0, b0, b1, p2
 
-def unbevelTriad(p0, p1, p2, p3) -> tuple:
+def unbevelTriad(p0, p1, p2, p3) -> tuple[
+    Union['_data.Point', '_plugs.Point'],
+    Union['_data.Point', '_plugs.Point'],
+    Union['_data.Point', '_plugs.Point']
+]:
     """
     Reverses the result of :func:`bevelTriad` (assumes an isosceles bevel).
 
@@ -84,7 +100,7 @@ def unbevelTriad(p0, p1, p2, p3) -> tuple:
     p2, _, p2IsPlug = _mm.info(p2, pointTypes)
     p3, _, p3IsPlug = _mm.info(p3, pointTypes)
 
-    plugsInPoints = any((p0IsPlug, p1IsPlug, p2IsPlug, p3IsPlug))
+    hasPlugs = any((p0IsPlug, p1IsPlug, p2IsPlug, p3IsPlug))
 
     v0 = p1-p0
     v1 = p3-p2
@@ -92,15 +108,49 @@ def unbevelTriad(p0, p1, p2, p3) -> tuple:
     theta = (-v1).angleTo(v0) * 0.5
     opp = (p2-p1).length() * 0.5
 
-    if plugsInPoints:
+    if hasPlugs:
         sinTheta = theta.sin()
+        aligned = sinTheta.lt(1e-6)
+
+        pb = _nodes['Network'].createNode()
+        one = pb.addAttr('one', k=True, at='double', dv=1.0, l=True)
+        operand = aligned.ifElse(one, sinTheta)
+
+        hyp = opp / operand
+
+        midpoint = aligned.ifElse(p1.blend(p2),
+                                  p1 + (v0.normal() * hyp))
+
     else:
         sinTheta = math.sin(theta)
+        aligned = sinTheta <= 1e-8
 
-    hyp = opp / sinTheta
-    midpoint = p1 + (v0.normal() * hyp)
+        if aligned:
+            midpoint = p1.blend(p2)
+        else:
+            hyp = opp / sinTheta
+            midpoint = p1 + (v0.normal() * hyp)
 
     return p0, midpoint, p3
+
+def resolveTriadBevel(points:Iterable['_data.Point'],
+                      bevel:Optional[float]=None
+                      ) -> tuple[list['_data.Point'], bool]:
+    """
+    'Bevel' is overwritten on output with the *actual* bevel if four points are
+    provided.
+
+    :returns: list of three or four points, bevel length (float)
+    """
+    points, isBevelled = conformTriadPoints(points)
+
+    if isBevelled:
+        bevel = (points[2]-points[1]).length()
+    else:
+        if bevel is not None:
+            points = bevelTriad(*points, bevel)
+
+    return points, bevel
 
 def getBoneVectorsFromTriadPoints(
         triadPoints:list[list[float]]
@@ -436,3 +486,118 @@ def cookIKTriadSquashStretch(chain, # .skel.Chain
         out['nativeBevelLength'] = nativeBevelLength
 
     return out
+
+def getTriadPeakPoint(points:Iterable['_data.Point']) -> '_data.Point':
+    """
+    If the triad is bevelled (four points):
+        If the triad is in-line (or reverse-in-line), returns the blend of the
+        bevel points
+        Otherwise, returns the converged peak point
+    Otherwise, returns points[1].
+    """
+    points, isBevelled = conformTriadPoints(points)
+    if isBevelled:
+        out = unbevelTriad(*points)[1]
+    else:
+        out = points[1]
+    return out
+
+def conformTriadPoints(points:Iterable['_data.Point']
+                  ) -> tuple[list['_data.Point'], bool]:
+    """
+    :raises TriadPointNumberError: expected three or four points
+    :return: Tuple of list-of-points, is-bevelled (bool).
+    """
+    points = list(map(_data.Point, points))
+    numPoints = len(points)
+
+    if numPoints == 3:
+        isBevelled = False
+
+    elif numPoints == 4:
+        isBevelled = True
+
+    else:
+        raise TriadPointNumberError('expected three or four points')
+
+    return points, isBevelled
+
+def parseTriadCurlVectorAndPolePoint(
+        points:Iterable['_data.Point'],
+        polePoint:Optional['_data.Point']=None,
+        curlVector:Optional['_data.Vector']=None,
+        polePointDistance:Optional[float]=None
+) -> tuple['_data.Vector', '_data.Point', bool]:
+    """
+    :param points: three or four (bevelled) points
+    :param polePoint: the pole target point; if provided, it will be snapped, if
+        necessary, to the resolved curl vector
+    :param curlVector: the triad curl vector; ignored if the triad has a defined
+        angle
+    :param polePointDistance: only used if deriving a new pole point
+    :raises TriadPointNumberError: expected three or four points
+    :raises TriadInsufficientHintsError: insufficient hints for in-line triad
+    :return: Tuple of curl vector, pole point and is-inline (bool)
+    """
+    # Conform givens
+
+    points, isBevelled = conformTriadPoints(points)
+
+    if polePoint is not None:
+        polePoint = _data['Point'](polePoint)
+
+    if curlVector is not None:
+        curlVector = _data['Vector'](curlVector)
+
+    # Resolve cross / inline
+
+    vectors = [y-x for x, y in zip(points, points[1:])]
+    cross = vectors[0].cross(vectors[-1])
+    crossLen = cross.length()
+    triadLen = sum((v.length() for v in vectors))
+
+    isInline = crossLen < INLINE_TOLERANCE
+
+    # Resolve curl vector
+
+    chordVector = points[-1]-points[0]
+    curlDerivedFromPolePoint = False
+
+    if isInline:
+        if curlVector is None:
+            if polePoint is None:
+                raise TriadInsufficientHintsError(
+                    'insufficient hints for in-line triad'
+                )
+            poleVector = polePoint - points[0]
+            curlVector = poleVector.cross(chordVector)
+            curlDerivedFromPolePoint = True
+
+        curlVector = curlVector.normal()
+    else:
+        curlVector = cross / crossLen
+
+    # Resolve pole point
+
+    if polePoint is None:
+        if isInline:
+            trajectory = chordVector.cross(curlVector).normal()
+        else:
+            trajectory = (vectors[0].normal()-vectors[-1].normal()).normal()
+
+        if polePointDistance is None:
+            polePointDistance = triadLen * 0.5
+
+        triadPeakPoint = getTriadPeakPoint(points)
+        trajectory = trajectory * polePointDistance
+        polePoint = getTriadPeakPoint(points) + trajectory
+    else:
+        if not curlDerivedFromPolePoint:
+            peakPoint = getTriadPeakPoint(points)
+            vector = polePoint - peakPoint
+            vectorLen = vector.length()
+
+            vector = vector.rejectFrom(curlVector).normal() * vectorLen
+            polePoint = peakPoint + vector
+
+    return curlVector, polePoint, isInline
