@@ -226,7 +226,7 @@ class Vector(__pool__['Tensor3']):
 
         # Soft
         if normal is None:
-            return om.MVector(self).angleTo(om.MVector(otherVector))
+            return om.MVector(self).angle(om.MVector(otherVector))
 
         self = om.MVector(self).normal()
         other = om.MVector(otherVector).normal()
