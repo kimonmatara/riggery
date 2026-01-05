@@ -21,9 +21,7 @@ def axisLetterToVector(axis:str) -> list[float]:
     return data['Vector'](AXISVECS[axis])
 
 def nextAxisLetter(axis1:str, axis2:str) -> str:
-    """
-    Uses origin-space cross products.
-    """
+    """Uses origin-space cross products."""
     vec1 = axisLetterToVector(axis1)
     vec2 = axisLetterToVector(axis2)
     vec3 = vec1.cross(vec2)
