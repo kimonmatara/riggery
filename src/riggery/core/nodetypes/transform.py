@@ -13,6 +13,7 @@ from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 from ..lib.evaluation import cache_dg_output
+from ..lib import mixedmode as _mm
 from ..lib import controls as _c
 from ..lib import names as _n, controlshapes as _cs
 from ..lib import namespaces as _ns
@@ -708,6 +709,31 @@ class Transform(nodes['DagNode']):
         return False
 
     #-----------------------------------------|    Rigging
+
+    @short(maintainOffset='mo',
+           afterInput='ai')
+    def driveOpm(self,
+                 input,
+                 maintainOffset:bool=False,
+                 afterInput:bool=False):
+        input = _mm.conform(input, (data['Matrix'], plugs['Matrix']))
+
+        if maintainOffset:
+            if afterInput:
+                prev = self.attr('opm').getInputOrValue()[0]
+            else:
+                prev = self.attr('opm')()
+
+            input = prev * input.asOffset()
+
+        elif afterInput:
+            prev = self.attr('opm').inputs(plugs=True)
+            if prev:
+                prev = prev[0]
+                input = prev * input
+
+        input >> self.attr('opm')
+        return self
 
     @short(rotateOrder='ro')
     def createOffsetGroups(self, *suffixes) -> list['Transform']:
