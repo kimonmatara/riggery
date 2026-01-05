@@ -851,6 +851,17 @@ class Chain(list):
 
         raise ValueError("need two or more joints")
 
+    def createIkHandles(self, parent=None) -> list:
+        """Creates one IK handle per bone."""
+        out = []
+
+        for i, bone in enumerate(self.bones):
+            with _nm.Name(i+1):
+                ikh = bone.createIkHandle(parent=parent)
+            out.append(ikh)
+
+        return out
+
     #-------------------------------------------|    Naming
 
     def rename(self, startNumber:int=1):
