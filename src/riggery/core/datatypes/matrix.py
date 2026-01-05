@@ -704,8 +704,12 @@ class Matrix(data['Tensor']):
         """
         'Multi' version of :meth:`flipAxis`.
         """
+        if not axes:
+            axes = 'xyz'
+
         for axis in axes:
             self.flipAxis(axis)
+
         return self
 
     #-------------------------------------------|   Transformations
