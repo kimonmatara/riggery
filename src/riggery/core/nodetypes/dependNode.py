@@ -103,19 +103,25 @@ class Section:
             raise RuntimeError(f"foreign attribute: {attrRef}")
         raise TypeError(f"expected string or Attribute")
 
-    def collect(self, *attrRefs, atTop:bool=False) -> list['plugs.Attribute']:
+    def collect(self,
+                *attrRefs,
+                atTop:bool=False,
+                force:bool=False) -> list['plugs.Attribute']:
         attrRefs = expand_tuples_lists(*attrRefs)
         attrRefs = list(map(self._conformToName, attrRefs))
         attrRefs = list(without_duplicates(attrRefs))
+
         if attrRefs:
             self.create()
-            out = _reo.collectIntoSection(
-                self._node.__apimobject__(),
-                self._name,
-                attrRefs,
-                atTop=atTop
-            )
+
+            out = _reo.collectIntoSection(self._node.__apimobject__(),
+                                          self._name,
+                                          attrRefs,
+                                          atTop=atTop,
+                                          force=force)
+
             return [plugs.Attribute.fromMPlug(x) for x in out]
+
         return [self._node.attr(x) for x in attrRefs]
 
     #-------------------------------------|    Remove
@@ -520,7 +526,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     def addAxisAttr(self,
                     name:str,
                     defaultAxis:Literal['x', 'y', 'z',
-                                       '-x', '-y', '-z'],
+                    '-x', '-y', '-z'],
                     channelBox:bool=True,
                     section:Optional[str]=None):
         """
@@ -799,8 +805,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                     attr.lock(recurse=True)
 
         for attr in filter(
-            lambda x: x.isAnimatableDynamic() and not x.isProxy(),
-            self.iterAttr(userDefined=True)
+                lambda x: x.isAnimatableDynamic() and not x.isProxy(),
+                self.iterAttr(userDefined=True)
         ):
             attr.hide(recurse=True)
 
@@ -868,7 +874,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         pname = cls.mro()[1].__name__
         lines = [
             'from ..nodetypes import __pool__ as nodes', '', '', ''
-            f"class {clsname}(nodes['{pname}']):", '',
+                                                                 f"class {clsname}(nodes['{pname}']):", '',
             '    ...'
         ]
         return '\n'.join(lines)

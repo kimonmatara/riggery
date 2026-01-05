@@ -253,16 +253,23 @@ def getSectionMap(node:om.MObject) -> dict[str:list[str]]:
 def collectIntoSection(node:om.MObject,
                        sectionName:str,
                        memberNames:list[str],
-                       atTop:bool=False) -> list[om.MPlug]:
+                       atTop:bool=False,
+                       force:bool=False) -> list[om.MPlug]:
     existingMembers = getSectionMembers(node, sectionName)
     newMembers = conformToLongNames(node, memberNames)
-    _newMembers = [x for x in newMembers if x not in existingMembers]
+
+    if force:
+        existingMembers = [x for x in existingMembers if x not in newMembers]
+        _newMembers = newMembers[:]
+    else:
+        _newMembers = [x for x in newMembers if x not in existingMembers]
 
     if _newMembers:
         if atTop:
             rebuildList = [sectionName] + _newMembers + existingMembers
         else:
             rebuildList = [sectionName] + existingMembers + _newMembers
+
         reorder(node, rebuildList, expandSections=True)
     return [om.MFnDependencyNode(node).findPlug(x, False) for x in newMembers]
 
@@ -415,9 +422,14 @@ def reorder(node:om.MObject,
         # members from anyplace else, and expand the original mention
 
         _attrNames = []
-
         sectionMap = getSectionMap(node)
         mentionedSections = set(attrNames).intersection(set(sectionMap))
+
+        # Re-impose preferred ordering
+        for k in mentionedSections:
+            mems = sectionMap[k]
+            mems.sort(key=lambda x: attrNames.index(x))
+            sectionMap[k] = mems
 
         for attrName in attrNames:
             if attrName in sectionMap:
@@ -443,6 +455,7 @@ def reorder(node:om.MObject,
 
     macros = [deletePlug(x) for x in plugsToDelete]
     out = [recreatePlug(x) for x in macros]
+
     return out
 
 def shiftMulti(node:om.MObject,
