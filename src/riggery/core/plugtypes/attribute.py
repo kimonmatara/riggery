@@ -483,8 +483,10 @@ class Attribute(Elem, metaclass=AttributeMeta):
         will be True if there was an input, otherwise False.
         """
         inputs = self.inputs(plugs=True)
+
         if inputs:
             return inputs[0], True
+
         return self(), False
 
     def getAttr(self, **kwargs):
@@ -1194,6 +1196,22 @@ class Attribute(Elem, metaclass=AttributeMeta):
     siblings = property(iterSiblings)
 
     #-----------------------------------------|    Reordering
+
+    def sendToTop(self):
+        """Moves this attribute to the top of the Channel Box."""
+        thisMObj = self.node().__apimobject__()
+
+        names = list(_reo.getReorderablePlugs(thisMObj))
+        ourName = self.attrName(longName=True)
+
+        if names[0] == ourName:
+            return self
+
+        names.remove(ourName)
+        names.insert(0, ourName)
+        out = _reo.reorder(thisMObj, names, expandSections=False)
+        self.__apiobjects__ = {'MPlug': out[0]}
+        return self
 
     def sendBelow(self, other):
         """
