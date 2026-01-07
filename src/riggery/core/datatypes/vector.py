@@ -166,6 +166,24 @@ class Vector(__pool__['Tensor3']):
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asMatrix()
 
+    def axisAngleTo(self, otherVector) -> tuple:
+        otherVector, _, otherVectorIsPlug = _mm.info(otherVector,
+                                                     (plugs['Vector'], Vector))
+
+        if otherVectorIsPlug:
+            node = nodes['AngleBetween'].createNode()
+            node.attr('vector1').put(self, False)
+            node.attr('vector2').put(otherVector, True)
+            return (node.attr('axis'), node.attr('angle'))
+
+        thisMVector = self.api
+        otherMVector = otherVector.api
+
+        mQuat = thisMVector.rotateTo(otherMVector)
+        outMVector, angle = mQuat.asAxisAngle()
+
+        return Vector.fromApi(outMVector), angle
+
     def angleTo(self, otherVector, normal=None, *, shortest=False):
         """
         :param otherVector: the vector towards which to measure an angle
