@@ -61,17 +61,33 @@ class ShapeScale:
 #-----------------------------------------|    LOW-LEVEL
 #-----------------------------------------|
 
-def iterShapesUnderTransform(
-        transform:str,
-        includeLocators:bool=False
-) -> Iterator[str]:
-    types = ['nurbsCurve']
-    if includeLocators:
-        types.append('locator')
+def transformShapesUnderTransform(transform:str,
+                                  translate=None,
+                                  rotate=None,
+                                  scale=None):
+    if any((translate is not None,
+            rotate is not None,
+            scale is not None)):
+
+        for shape in iterShapesUnderTransform(transform):
+            if scale is not None:
+                args = list(scale) + [f'{shape}.cv[:]']
+                m.scale(*args, relative=True, objectSpace=True)
+
+            if rotate is not None:
+                args = list(rotate) + [f'{shape}.cv[:]']
+                m.rotate(*args, relative=True, objectSpace=True)
+                
+            if translate is not None:
+                args = list(translate) + [f'{shape}.cv[:]']
+                m.move(*args, relative=True, objectSpace=True)
+
+
+def iterShapesUnderTransform(transform:str) -> Iterator[str]:
     out = m.listRelatives(transform,
                           noIntermediate=True,
                           shapes=True,
-                          type=types,
+                          type='nurbsCurve',
                           path=True)
     if out:
         for x in out:
@@ -155,7 +171,7 @@ def iterCurveMacrosFromMixedSources(
                                      captureVisInput=captureVisInput)
 
 def clearShapesUnderTransform(transform):
-    shapes = list(iterShapesUnderTransform(transform, includeLocators=True))
+    shapes = list(iterShapesUnderTransform(transform))
     for shape in shapes:
         try:
             m.delete(shape)
@@ -256,13 +272,13 @@ def iterSceneSourceTransforms(*userProvided) -> Iterator[str]:
                 yield parent
 
 def getFirstVisInputUnderControl(control:str) -> Optional[str]:
-    for shape in iterShapesUnderTransform(control, includeLocators=True):
+    for shape in iterShapesUnderTransform(control):
         inp = m.connectionInfo(f"{shape}.v", sfd=True)
         if inp:
             return inp
 
 def getFirstOverrideColorUnderControl(control:str) -> Optional[int]:
-    for shape in iterShapesUnderTransform(control, includeLocators=True):
+    for shape in iterShapesUnderTransform(control):
         if m.getAttr(f"{shape}.overrideEnabled"):
             col = m.getAttr(f"{shape}.overrideColor")
             if col > 0:
@@ -578,7 +594,7 @@ def setControlColor(color:int, *destControls:Union[str, list[str]]) -> None:
 
     for ct in without_duplicates(expand_tuples_lists(*destControls)):
         visited = True
-        for shape in iterShapesUnderTransform(ct, includeLocators=True):
+        for shape in iterShapesUnderTransform(ct):
             try:
                 if doReset:
                     m.setAttr(f"{shape}.overrideEnabled", False)
@@ -600,7 +616,7 @@ def copyControlColor(srcControl:str,
     if not destControls:
         raise NoTargetsError
 
-    for shape in iterShapesUnderTransform(srcControl, includeLocators=True):
+    for shape in iterShapesUnderTransform(srcControl):
         if m.getAttr(f"{shape}.overrideEnabled"):
             _color = m.getAttr(f"{shape}.overrideColor")
             if _color > 0:
@@ -618,8 +634,7 @@ def copyControlColor(srcControl:str,
         return
 
     for destControl in destControls:
-        theseShapes = list(iterShapesUnderTransform(destControl,
-                                                    includeLocators=True))
+        theseShapes = list(iterShapesUnderTransform(destControl))
         thisColList = colors[:]
         diff = len(theseShapes) - numAvailCols
 
