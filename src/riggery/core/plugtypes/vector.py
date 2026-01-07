@@ -167,6 +167,12 @@ class Vector(plugs['Tensor3Float']):
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asRotateMatrix()
 
+    def axisAngleTo(self, other) -> tuple:
+        node = nodes['AngleBetween'].createNode()
+        self >> node.attr('vector1')
+        other >> node.attr('vector2')
+        return (node.attr('axis'), node.attr('angle'))
+
     def angleTo(self, other, normal=None, *, shortest:bool=False):
         node = nodes['AngleBetween'].createNode()
         self >> node.attr('vector1')
@@ -557,6 +563,26 @@ class Vector(plugs['Tensor3Float']):
         return node.attr('output')
 
     #-----------------------------------------|    Effects
+
+    def coneClamp(self, maxAngle:float, normal=None):
+        """
+        Only works within a 180 spherical range.
+
+        :param normal: the reference (starting point) vector; if omitted,
+            defaults to a static capture of this vector
+        :param maxAngle: the maximum angle in all directions; if this goes
+            beyond 180, you'll get flips to the other side
+        """
+        if normal is None:
+            normal = self()
+        else:
+            normal = _mm.conform(normal, (data['Vector'], Vector))
+
+        axis, angle = normal.axisAngleTo(self)
+        clampedAngle = angle.maxClamp(maxAngle)
+        out = normal.rotateByAxisAngle(axis, clampedAngle)
+
+        return out.normal() * self.length()
 
     def coneFalloff(self, maxAngle:float, spreadFactor=1.0, power:int=2):
         """
