@@ -710,6 +710,24 @@ class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Rigging
 
+    @short(keyable='k', defaultValue='dv', section='s')
+    def createProxyRotateOrder(self,
+                               longName:str='rotationOrder', /,
+                               keyable:bool=False,
+                               defaultValue='xyz',
+                               section:Optional[str]=None):
+        proxy = self.attr('ro').createProxy(self,
+                                            longName=longName,
+                                            section=section)
+        if keyable:
+            proxy.setFlags(cb=False, k=True)
+        else:
+            proxy.setFlags(cb=True, k=False)
+
+        proxy.defaultValue = defaultValue
+        proxy.value = defaultValue
+        return proxy
+
     @short(maintainOffset='mo',
            afterInput='ai')
     def driveOpm(self,
@@ -822,6 +840,21 @@ class Transform(nodes['DagNode']):
             scale=scale
         )
         return list(map(nodes['DagNode'], out))
+
+    @short(translate='t', rotate='r', scale='s')
+    def transformControlShape(self, *,
+                              translate:Optional['data.Point']=None,
+                              rotate:Optional['data.Vector']=None,
+                              scale:Optional['data.Vector']=None):
+        """
+        Transforms CVs on any curve shapes under this transform. All transforms
+        should be given as triples (vector-like).
+        """
+        _cs.transformShapesUnderTransform(str(self),
+                                          translate=translate,
+                                          rotate=rotate,
+                                          scale=scale)
+        return self
 
     #-----------------------------------------|    Layout utilities
 
