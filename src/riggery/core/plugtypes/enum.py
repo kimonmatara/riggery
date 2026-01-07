@@ -16,6 +16,26 @@ class Enum(__pool__['Int']):
     #-----------------------------------------|    Selectors
 
     @classmethod
+    @short(defaultValue='dv')
+    def createRotateOrderPicker(cls,
+                                node,
+                                attrName:str, *,
+                                section:Optional[str]=None,
+                                defaultValue:Optional[Union[int, str]]=None):
+        node = nodes['DependNode'](node)
+
+        kw = {}
+        if defaultValue is not None:
+            kw['defaultValue'] = defaultValue
+
+        return node.createAttr(attrName,
+                               cb=True,
+                               at='enum',
+                               enumName=':'.join(['xyz', 'yzx', 'zxy', 'xzy',
+                                                  'yxz', 'zyx']),
+                               section=section, **kw)
+
+    @classmethod
     @short(noneLabel='nl',
            allLabel='al',
            section='s',
@@ -248,11 +268,13 @@ class Enum(__pool__['Int']):
 
     def _setValue(self, value, /, **_):
         plug = self.__apimplug__()
+
         if plug.isArray:
             plug = plug.elementByLogicalIndex(0)
 
         if isinstance(value, str):
             value = om.MFnEnumAttribute(plug.attribute()).fieldValue(value)
+
         plug.setInt(value)
 
     #-----------------------------------------|    Enum methods
@@ -264,7 +286,14 @@ class Enum(__pool__['Int']):
     def getEnumNames(self) -> list[str]:
         if self.isEmpty():
             return []
-        return m.addAttr(str(self), q=True, enumName=True).split(':')
+
+        if self.isDynamic():
+            return m.addAttr(str(self), q=True, enumName=True).split(':')
+
+        fn = self.__apimfn__()
+        min = fn.getMin()
+        max = fn.getMax()
+        return [fn.fieldName(x) for x in range(min, max+1)]
 
     def clearEnumNames(self):
         if not self.isEmpty():
