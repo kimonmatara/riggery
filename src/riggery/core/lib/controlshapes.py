@@ -42,7 +42,6 @@ class LibraryKeyExistsError(ShapeLibraryError):
 
 def transformCurveCVs(curveShape:str, translate=None, rotate=None, scale=None):
     """Transforms NURBS curve CVs."""
-    print("on curve shape ", curveShape)
 
     if any((x is not None for x in (translate, rotate, scale))):
         if scale is not None:
@@ -57,31 +56,32 @@ def transformCurveCVs(curveShape:str, translate=None, rotate=None, scale=None):
             args = list(translate) + [f'{curveShape}.cv[:]']
             m.move(*args, relative=True, objectSpace=True)
 
-def iterCurveShapes(*sources) -> Iterator[str]:
+def iterShapes(type:Union[str, list[str]], *sources) -> Iterator[str]:
     """
     :param \*sources: curve shapes or transforms
-    :return: A list of curve shapes expanded / parsed from ``*sources``.
+    :return: A list of shapes expanded / parsed from ``*sources``.
     """
+    types = expand_tuples_lists(type)
     yielded = set()
 
     for source in expand_tuples_lists(*sources):
         source = str(source)
 
         if m.objectType(source, isAType='transform'):
-            curveShapes = m.listRelatives(
+            shapes = m.listRelatives(
                 source,
                 shapes=True,
-                type='nurbsCurve',
+                type=types,
                 noIntermediate=True,
                 path=True
             )
-            if curveShapes:
-                for curveShape in curveShapes:
-                    if curveShape not in yielded:
-                        yielded.add(curveShape)
-                        yield curveShape
+            if shapes:
+                for shape in shapes:
+                    if shape not in yielded:
+                        yielded.add(shape)
+                        yield shape
 
-        elif m.objectType(source, isAType='nurbsCurve'):
+        elif any((m.objectType(source, isAType=x) for x in types)):
             if source not in yielded:
                 yielded.add(source)
                 yield source
@@ -125,16 +125,21 @@ def getCurveMacro(curveShape:str,
 
     return out
 
-def clearCurveShapes(*sources) -> None:
+def clearControlShapes(*sources, includeLocators:bool=True) -> None:
     """
     This will ignore intermediate curve shapes, unless they are explicitly
     passed-in.
 
     :param \*source: curve shapes or transforms
     """
-    for curveShape in list(iterCurveShapes(*sources)):
+    types = ['nurbsCurve']
+
+    if includeLocators:
+        types.append('locator')
+
+    for shape in list(iterShapes(types, *sources)):
         try:
-            m.delete(curveShape)
+            m.delete(shape)
         except:
             continue
 
@@ -225,7 +230,7 @@ def getFirstVisInput(*sources):
     Returns the first curve-shape-level visibility input across ``*sources``,
     or None.
     """
-    for curveShape in iterCurveShapes(*sources):
+    for curveShape in iterShapes('nurbsCurve', *sources):
         inp = m.connectionInfo(f"{curveShape}.v", sfd=True)
 
         if inp:
@@ -236,7 +241,7 @@ def getFirstOverrideColor(*sources):
     Returns the first curve-shape-level override color across ``*sources``, or
     None.
     """
-    for curveShape in iterCurveShapes(*sources):
+    for curveShape in iterShapes('nurbsCurve', *sources):
         if m.getAttr(f"{curveShape}.overrideEnabled"):
             col = m.getAttr(f"{curveShape}.overrideColor")
             if col > 0:
@@ -262,7 +267,7 @@ class ControlShape:
         macros = [getCurveMacro(curveShape,
                                 captureColor=captureColor,
                                 captureVisInput=captureVisInput)
-                  for curveShape in iterCurveShapes(*sources)]
+                  for curveShape in iterShapes('nurbsCurve', *sources)]
 
         if macros:
             inst = cls(macros)
@@ -376,7 +381,7 @@ class ControlShape:
                 thisInst = self
 
             if replace:
-                clearCurveShapes(transform)
+                clearControlShapes(transform, includeLocators=True)
 
             shapeMObjects = []
 
@@ -741,7 +746,7 @@ def setColor(color:Optional[int], *controls):
     :param \*controls: transforms or curve shapes; color is applied strictly at
         the shape level
     """
-    for curve in iterCurveShapes(*controls):
+    for curve in iterShapes('nurbsCurve', *controls):
         if color in (0, None):
             m.setAttr(f"{curve}.overrideColor", 0)
 
@@ -760,6 +765,65 @@ def copyColor(source:str, *destinations):
 
     if color not in (0, None):
         setColor(color, *destinations)
+
+def copyShape(srcControl:str,
+              *destControls:Union[str, list[str]],
+              copyColor:bool=True,
+              copyVisInput:bool=False,
+
+              translate:Optional[list[float]]=None,
+              rotate:Optional[list[float]]=None,
+              scale:Optional[Union[float, list[float]]]=None,
+
+              worldSpace=False,
+              worldMirrorAxis:Optional[Literal['x', 'y', 'z']]=None,
+
+              replace:bool=True) -> list[str]:
+    """Copies control shapes from one control to others."""
+    destControls = list(without_duplicates(expand_tuples_lists(*destControls)))
+
+    if not destControls:
+        raise NoTargetsError
+
+    worldSpace = worldSpace or worldMirrorAxis
+
+    entry = ControlShape.capture(srcControl,
+                                 captureVisInput=copyVisInput,
+                                 captureColor=copyColor)
+    edits = {}
+
+    for name, state in zip(('scale', 'rotate', 'translate'),
+                           (scale, rotate, translate)):
+        if state is not None:
+            edits[name] = state
+
+    if edits:
+        for k, v in edits.items():
+            getattr(entry, k)(v)
+
+    if worldSpace:
+        out = []
+        origMatrix = m.xform(srcControl, q=True, matrix=True, worldSpace=True)
+        entry.transform(origMatrix)
+
+        if worldMirrorAxis:
+            row, col = {'x': (0, 0), 'y': (1, 1), 'z': (2, 2)}[worldMirrorAxis]
+            flipperMatrix = om.MMatrix()
+            flipperMatrix.setElement(row, col,
+                                     flipperMatrix.getElement(row, col) * -1)
+            entry.transform(flipperMatrix)
+
+        for destControl in destControls:
+            thisMatrix = om.MMatrix(
+                m.xform(destControl, q=True, matrix=True, worldSpace=True)
+            ).inverse()
+
+            thisEntry = entry.copy()
+            thisEntry.transform(thisMatrix)
+
+            out += thisEntry.apply(destControl, replace=replace)
+        return out
+    return entry.apply(destControls, replace=replace)
 
 #-----------------------------------------|
 #-----------------------------------------|    LIBRARY
@@ -907,3 +971,33 @@ class ShapeLibrary(metaclass=SingletonMeta):
 
     def __repr__(self):
         return "<control shapes library>"
+
+#-----------------------------------------|
+#-----------------------------------------|    SCALE TRACKER
+#-----------------------------------------|
+
+class ShapeScale:
+    """
+    Context manager to track relative / nested shape scaling. For external use;
+    not used within this module at all.
+    """
+    __factor__ = None
+
+    def __init__(self, factor:float, override:bool=False):
+        self._factor = factor
+        self._override = override
+
+    def __enter__(self):
+        self._prev = ShapeScale.__factor__
+        if self._override:
+            ShapeScale.__factor__ = self._factor
+        else:
+            if self._prev is None:
+                ShapeScale.__factor__ = self._factor
+            else:
+                ShapeScale.__factor__ *= self._factor
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ShapeScale.__factor__ = self._prev
+        return False

@@ -802,7 +802,7 @@ class Transform(nodes['DagNode']):
             scale = _cs.ShapeScale.__factor__
 
         out = list(map(nodes['DagNode'],
-                       _cs.ControlShapeLibrary()[libraryKey].apply(
+                       _cs.ShapeLibrary()[libraryKey].apply(
                            str(self),
                            applyColor=True,
                            axisRemap=axisRemap,
@@ -813,7 +813,7 @@ class Transform(nodes['DagNode']):
         return out
 
     def setControlColor(self, color):
-        _cs.setControlColor(color, self)
+        _cs.setColor(color, self)
         return self
 
     @short(applyColor='ac',
@@ -830,7 +830,7 @@ class Transform(nodes['DagNode']):
             worldSpace:bool=False,
             worldMirrorAxis:Optional[Literal['x', 'y', 'z']]=None
     ) -> list['nodes.NurbsCurve']:
-        out =_cs.copyControlShapes(
+        out =_cs.copyShape(
             str(self),
             list(map(str, expand_tuples_lists(*destControls))),
             copyColor=copyColor,
@@ -850,10 +850,11 @@ class Transform(nodes['DagNode']):
         Transforms CVs on any curve shapes under this transform. All transforms
         should be given as triples (vector-like).
         """
-        _cs.transformShapesUnderTransform(str(self),
-                                          translate=translate,
-                                          rotate=rotate,
-                                          scale=scale)
+        for curve in _cs.iterShapes('nurbsCurve', str(self)):
+            _cs.transformCurveCVs(curve,
+                                  translate=translate,
+                                  rotate=rotate,
+                                  scale=scale)
         return self
 
     #-----------------------------------------|    Layout utilities
