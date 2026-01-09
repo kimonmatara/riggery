@@ -153,6 +153,8 @@ class ClassPool:
         already in the cache.
         """
         for item in os.listdir(self.__package_dirname__):
+            if item == '__init__.py':
+                continue
             mt = re.match(r"^(.*)\.py$", item)
             if mt:
                 clsname = cap(mt.group(1))
