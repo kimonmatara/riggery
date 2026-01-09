@@ -136,7 +136,7 @@ class Namespace(str):
         """
         :param namespace: the namespace to create
         :param makeUnique/mu: if the namespace already exists, append a number
-            to it to make it unique; this will only be used
+            to it to make it unique; defaults to False
         :param reuse/re: if the namespace already exists, return the existing
             namespace; defaults to False
         :param reuseOnlyIfEmpty/roe: ignored if *reuse* if False; if the
