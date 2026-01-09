@@ -3,7 +3,7 @@ import re
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Iterator, Iterable, Optional, Union
+from typing import Iterator, Iterable, Optional, Union, Literal
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
