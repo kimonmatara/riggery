@@ -52,6 +52,7 @@ def _generate():
                                     Point
                                 EulerRotation
                             Tensor3Int
+                            Tensor3Bool
                         Tensor4
                             Quaternion
                             Tensor4Int
