@@ -254,6 +254,7 @@ class DependNodeMeta(type(Elem)):
             dct['create'] = classmethod(
                 captureCreateArgsKwargs(dct['create'].__func__)
             )
+            dct['__has_constructor__'] = True
         except KeyError:
             pass
 
@@ -264,6 +265,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     __pool__ = nodes
     __typesuffix__ = None
+
+    __has_constructor__ = False # automatic; don't override
 
     tags = _tags.TagsGetter()
     sections = SectionsGetter()
