@@ -15,7 +15,7 @@ from ..datatypes import __pool__ as data
 from ..lib.evaluation import cache_dg_output
 from ..lib import mixedmode as _mm
 from ..lib import controls as _c
-from ..lib import names as _n, controlshapes as _cs
+from ..lib import controlshapes as _cs
 from ..lib import namespaces as _ns
 from ..lib import names as _n
 from riggery.internal import str2api as _s2a

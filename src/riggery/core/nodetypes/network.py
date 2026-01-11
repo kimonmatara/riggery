@@ -1,9 +1,13 @@
-import maya.cmds as m
-
+import json
+from pathlib import Path
 from typing import Iterator
 from ..nodetypes import __pool__ as nodes
 
 DependNode = nodes['DependNode']
+
+from riggery.general.functions import short
+from riggery.general.iterables import without_duplicates, expand_tuples_lists
+from riggery.general.files import force_ext
 
 import maya.cmds as m
 
@@ -23,9 +27,50 @@ class Network(DependNode, metaclass=NetworkMeta):
 
     __subtype_pool__ = None
 
+    #-------------------------------------|    Init
+
     def __init__(self):
         super().__init__()
         self.updateType()
+
+    #-------------------------------------|    Scene inspections
+
+    @classmethod
+    @short(selection='sl')
+    def ls(cls, *patterns, selection:bool=False) -> Iterator:
+        """
+        Iterator. Yields objects of this type in the scene.
+
+        :param \*patterns: name patterns to match
+        :param \*selection/sl: selected objects only; defaults to False
+        """
+        for network in super().ls(*patterns, selection=selection):
+            network.updateType()
+
+            if isinstance(network, cls):
+                yield network
+
+    #-------------------------------------|    Serialization
+
+    def macro(self) -> dict:
+        out = super().macro()
+
+        T = type(self)
+
+        if T is not Network:
+            out['networkType'] = T.__name__
+
+        return out
+
+    @classmethod
+    def _getMacroBuilderClass(cls, macro:dict) -> type:
+        try:
+            networkType = macro['networkType']
+        except KeyError:
+            return Network
+        return cls.__subtype_pool__[networkType]
+
+    #-------------------------------------|    Type wrangling
 
     def updateType(self):
         """

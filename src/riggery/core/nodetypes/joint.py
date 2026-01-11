@@ -3,6 +3,7 @@ from typing import Union, Optional
 
 from riggery.general.functions import short
 import riggery.core.lib.skel as _sk
+from riggery.core.lib import names as _nm
 
 from ..nodetypes import __pool__ as nodes
 
@@ -51,66 +52,6 @@ class Joint(nodes['Transform']):
             node.makeIdentity(rotate=True, apply=True, jointOrient=False)
 
         return node
-
-    @classmethod
-    @short(name='n',
-           parent='p',
-           worldSpace='ws')
-    def createFromMacro(cls,
-                        macro:dict, *,
-                        name:str=None,
-                        parent=None,
-                        worldSpace=False):
-        """
-        Recreates a joint using the type of dictionary returned by
-        :meth:`Joint.macro`.
-
-        :param macro: the macro to use
-        :param name/n: an optional name override; defaults to name blocks
-        :param parent/p: an optional destination parent; defaults to None
-        :param worldSpace/ws: apply the matrix information in world-space;
-            defaults to False
-        :return: The constructed joint.
-        """
-        joint = nodes['Joint'].createNode(name=name)
-
-        if parent is not None:
-            joint.parent = parent
-
-        for key in ('jointOrient', 'rotateAxis',
-                    'offsetParentMatrix', 'displayLocalAxis',
-                    'radius', 'rotateOrder', 'preferredAngle'):
-            joint.attr(key).set(macro[key])
-
-        if worldSpace:
-            joint.setMatrix(macro['worldMatrix'])
-        else:
-            joint.setMatrix(macro['matrix'])
-
-        return joint
-
-    #------------------------------------------|    Serialization
-
-    def macro(self) -> dict:
-        """
-        :return: A dictionary of serializable data that can be used by
-            :meth:`fromMacro` to recreate the joint.
-        """
-        return {'matrix': self.attr('matrix')(),
-                'worldMatrix': self.attr('worldMatrix')(),
-                'jointOrient': self.attr('jointOrient')(),
-                'rotateAxis': self.attr('rotateAxis')(),
-                'offsetParentMatrix': self.attr('offsetParentMatrix')(),
-                'displayLocalAxis': self.attr('displayLocalAxis')(),
-                'radius': self.attr('radius')(),
-                'rotateOrder': self.attr('rotateOrder')(),
-                'preferredAngle': self.attr('preferredAngle')()}
-
-    def cleanCopy(self):
-        """
-        :return: A cleanly-rebuilt copy of this joint, under the same parent.
-        """
-        return self.createFromMacro(self.macro(), parent=self.parent)
 
     #------------------------------------------|    DAG
 

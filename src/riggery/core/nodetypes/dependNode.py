@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from functools import cached_property
 import re
 from typing import Union, Optional, Iterator, Iterable, Literal
@@ -17,13 +19,13 @@ import riggery.internal.str2api as _s2a
 import riggery.internal.api2str as _a2s
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.files import force_ext
+from riggery.general.strings import cap, uncap
 from ..lib import names as _n, namespaces as _ns, tags as _tags
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem, ElemInstError
 
-
-uncap = lambda x: x[0].lower()+x[1:]
 
 
 class Section:
@@ -245,9 +247,14 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         :param \*selection/sl: selected objects only; defaults to False
         """
         kwargs = {}
+
         if selection:
             kwargs['selection'] = selection
-        result = m.ls(*patterns, type=cls.__melnode__, **kwargs)
+
+        if cls is not DependNode:
+            kwargs['type'] = cls.__melnode__
+
+        result = m.ls(*patterns, **kwargs)
 
         if result:
             for x in result:
@@ -1221,14 +1228,133 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         return om.MObjectHandle(self.__apiobjects__['MObject']).isValid()
 
-    #-------------------------------------|    Serialization stubs
+    #-------------------------------------|    Serialization
+
+    @classmethod
+    def _getMacroBuilderClass(cls, macro):
+        # This is for use by archivers etc. Don't override it on network;
+        # network should delegate inside createFromMacro() instead
+        builder = nodes[cap(macro['nodeType'])]
+
+        if not issubclass(builder, cls):
+            raise TypeError("builder class not a subclass of calling class")
+
+        return builder
 
     @classmethod
     def createFromMacro(cls, macro:dict) -> 'DependNode':
-        raise NotImplementedError(f'not implemented for {cls.__name__}')
+        return cls._getMacroBuilderClass(macro)._createFromMacro(macro)
+
+    @classmethod
+    def _createFromMacro(cls, macro:dict) -> 'DependNode':
+        kwargs = {}
+
+        if not _n.Name.__elems__:
+            try:
+                kwargs['name'] = macro['name']
+            except KeyError:
+                pass
+
+        node =  cls.createNode(**kwargs)
+
+        for attrName, attrValue in macro.get('attrs', {}).items():
+            try:
+                node.attr(attrName).set(attrValue)
+            except:
+                continue
+
+        return node
 
     def macro(self) -> dict:
-        return {'__class__': self.__class__.__name__, 'name': str(self)}
+        attrs = {}
+
+        for attr in self.listAttr(write=True):
+            try:
+                attrs[attr.attrName()] = attr.get()
+            except:
+                continue
+
+        return {'nodeType': self.__class__.__melnode__,
+                'name': str(self),
+                'attrs': attrs}
+
+    @classmethod
+    def captureSceneArchive(cls) -> dict:
+        """
+        Traverses the scene for nodes of this type, and returns macros for any
+        nodes that override :meth:`macro`.
+        """
+        out = {'description': 'riggery node macros archive'}
+        entries = out['macros'] = []
+
+        for node in cls.ls():
+            try:
+                macro = node.macro()
+            except Exception as exc:
+                m.warning(
+                    "Couldn't derive macro for '{}': {}".format(node,
+                                                                exc)
+                )
+                continue
+
+            entries.append(macro)
+
+        return entries
+
+    @classmethod
+    def dumpSceneArchive(cls,
+                         archive:dict,
+                         filePath:str,
+                         ovewrite:bool=False) -> Path:
+        filePath = Path(force_ext(filePath, 'json'))
+        pdir = filePath.parent
+
+        if not pdir.is_dir():
+            raise FileNotFoundError(
+                "parent directory does not exist: {}".format(pdir)
+            )
+
+        if (not overwrite) and filePath.exists():
+            raise FileExistsError(filePath)
+
+        _data = json.dumps(archive, indent=2)
+
+        with open(filePath, 'w', encoding='utf-8') as f:
+            f.write(_data)
+
+        print(
+            "Dumped {} macros into: {}".format(len(archive.get('entries', [])),
+                                               filePath)
+        )
+        return filePath
+
+    @classmethod
+    def loadSceneArchive(cls, filePath:str) -> dict:
+        with open(filePath, 'r', encoding='utf-8') as f:
+            _data = f.read()
+        return json.loads(_data)
+
+    @classmethod
+    def applySceneArchive(cls, archive:dict) -> list:
+        macros = archive.get('macros')
+
+        out = []
+
+        for macro in macros:
+            try:
+                builderClass = cls._getMacroBuilderClass(macro)
+                result = builderClass.createFromMacro(macro)
+            except Exception as exc:
+                m.warning(
+                    "Couldn't reconstitute macro for '{}' node: {}".format(
+                        macro['__melnode__'],
+                        exc
+                    )
+                )
+                continue
+            out.append(result)
+
+        return out
 
     #-------------------------------------|    Repr etc.
 
