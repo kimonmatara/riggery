@@ -2,7 +2,7 @@
 
 import re
 from string import ascii_uppercase
-from typing import Callable, Union
+from typing import Callable, Union, Iterable
 
 def cap(s:str) -> str:
     """
@@ -38,6 +38,12 @@ def int_to_letter(number:int, start:int=0) -> str:
     """
     number -= start
     return ascii_uppercase[number % 26] * ((number // 26)+1)
+
+def join_camel(elems:Iterable[str]) -> str:
+    """Quick camel case joiner. """
+    elems = list(elems)
+    elems = [elems[0]] + [cap(x) for x in elems[1:]]
+    return ''.join(elems)
 
 def split_camel(s:str):
     """
