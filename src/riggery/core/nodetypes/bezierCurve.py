@@ -3,10 +3,14 @@ from typing import Iterable, Optional
 import maya.cmds as m
 
 from riggery.general.functions import short
-import riggery.core.lib.names as _nm
+
+from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
-import riggery.core.lib.nurbsutil as _nut
+
+from ..lib import names as _nm
+from ..lib import mixedmode as _mm
+from ..lib import nurbsutil as _nut
 
 NurbsCurve = nodes['NurbsCurve']
 
@@ -22,7 +26,7 @@ class BezierCurve(NurbsCurve):
            displayType='dt',
            lineWidth='lw')
     def create(cls,
-               points:Iterable,
+               points:Iterable, *,
                parent=None,
                name:Optional[str]=None,
                worldSpace:bool=False,
@@ -43,69 +47,80 @@ class BezierCurve(NurbsCurve):
             defaults to None
         :return: The generated curve shape.
         """
+        #-----------------|    Resolve points
+
         points = list(points)
+
         if not _nut.numCVsValidForBezier(len(points)):
             raise ValueError("invalid number of CVs for bezier")
 
-        pointValues, pointPlugs, hasPlugs = cls._prepBuildPoints(
-            points,
-            parent=parent,
-            worldSpace=worldSpace
-        )
+        pointInfo = cls._parsePoints(points)
+        pointValues = pointInfo['values']
 
-        #------------------------------------|    Command build
+        #-----------------|    Draw using Maya command
 
-        spans, knots = _nut.getBezierSpansKnots(len(pointValues))
-        kwargs = {'point': pointValues, 'knot': knots, 'degree': 3,
-                  'bezier': True}
+        kwargs = {}
 
         if parent is None:
             if name:
                 kwargs['name'] = name
+
             elif _nm.Name.__elems__:
                 kwargs['name'] = _nm.Name.evaluate(
                     typeSuffix=cls.__typesuffix__
                 )
-            else:
-                kwargs['name'] = 'bezier1'
+            reparented = False
+        else:
+            reparented = True
 
-        curveXform = nodes['DagNode'](m.curve(**kwargs))
-        curveShape = curveXform.shape
+        spans, knots = _nut.getBezierSpansKnots(len(pointValues))
 
-        #------------------------------------|    Parent wrangling
+        if worldSpace and reparented:
+            parent = nodes['DagNode'](parent)
+            _wim = parent.attr('wim')()
+            pointValues = [x ^ _wim for x in pointValues]
 
-        if parent is not None:
-            m.parent(str(curveShape), str(parent), r=True, shape=True)
-            m.delete(str(curveXform))
+        outParent = nodes['DagNode'](m.curve(point=pointValues,
+                                             knot=knots,
+                                             degree=3,
+                                             bezier=True, **kwargs))
+        outShape = outParent.shape
 
+        if reparented:
+            outShape.parent = parent
+            m.delete(str(outParent))
+            outParent = outShape.parent
+
+        #-----------------|    Resolve parent
+
+        if reparented:
             if name is None:
-                curveShape.conformShapeName()
+                outShape.conformShapeName()
             else:
-                curveShape.name = name
+                outShape.name = name
+        else:
+            if name is not None:
+                outShape.name = name
 
-        #------------------------------------|    Connect plugs
+        #-----------------|    Drive
 
-        inputs = [pointValue if pointPlug is None else pointPlug
-                  for pointValue, pointPlug in zip(pointValues, pointPlugs)]
+        if pointInfo['hasPlugs']:
+            inputs = pointInfo['conformed']
 
-        curveShape.driveCVs(inputs)
+            if worldSpace:
+                wim = outParent.attr('wim')
+                inputs = [input ^ wim for input in inputs]
 
-        #------------------------------------|    Niceties
+            outShape.driveCVs(inputs)
 
         if displayType is not None:
-            curveShape.attr('overrideEnabled').set(True)
-            curveShape.attr('overrideDisplayType').set(displayType)
+            outShape.attr('overrideEnabled').set(True)
+            displayType >> outShape.attr('overrideDisplayType')
 
         if lineWidth is not None:
-            lineWidth >> curveShape.attr('lineWidth')
+            lineWidth >> outShape.attr('lineWidth')
 
-        # Some bugs with naming, forcing it here, revisit this, as it overrides
-        # situations where a shape name is explicitly passed
-        curveShape.conformShapeName()
-
-        #------------------------------------|    Return
-
-        return curveShape
+        return outShape
 
     @classmethod
     @short(parent='p',

@@ -40,33 +40,11 @@ class NurbsCurve(nodes['CurveShape']):
 
         #-----------------|    Resolve points
 
-        pointsAsValues = []
-        pointsAsPlugs = []
-        hasPlugs = False
+        pointInfo = cls._parsePoints(points)
 
-        if worldSpace and parent is not None:
-            parent = nodes['DependNode'](parent)
-            parentWim = parent.attr('wim')
-            _parentWim = parentWim()
-        else:
-            parentWim = _parentWim = None
-
-        for point in points:
-            point, _, isPlug = _mm.info(point, (data['Point'],
-                                                plugs['Point']), force=True)
-            if isPlug:
-                if parentWim is not None:
-                    point ^= parentWim
-
-                pointsAsPlugs.append(point)
-                pointsAsValues.append(point())
-                hasPlugs = True
-            else:
-                if _parentWim is not None:
-                    point *= _parentWim
-
-                pointsAsPlugs.append(None)
-                pointsAsValues.append(point)
+        pointsAsValues = pointInfo['values']
+        pointsAsPlugs = pointInfo['plugs']
+        hasPlugs = pointInfo['hasPlugs']
 
         useBSpline = ep and hasPlugs
 
@@ -85,6 +63,10 @@ class NurbsCurve(nodes['CurveShape']):
         drawInfo = _nut.expandDrawInfo(pointsAsValues,
                                        degree=1 if useBSpline else degree,
                                        periodic=periodic)
+
+        if worldSpace and reparented:
+            _wim = nodes['DagNode'](parent).attr('wim')().api
+            drawInfo['points'] = [point * _wim for point in points]
 
         #-----------------|    Draw the curve
 
@@ -126,20 +108,19 @@ class NurbsCurve(nodes['CurveShape']):
                 outShape.name = name
         else:
             if name is None:
-                outParent.name = _nm.Name.evaluate(cls.__typesuffix__)
+                if _nm.Name.__elems__:
+                    outParent.name = _nm.Name.evaluate(cls.__typesuffix__)
             else:
                 outShape.name = name
 
         if hasPlugs:
-            pointInputs = []
+            inputs = pointInfo['conformed']
 
-            for pointAsPlug, pointAsValue in zip(pointsAsPlugs, pointsAsValues):
-                if pointAsPlug is None:
-                    pointInputs.append(pointAsValue)
-                else:
-                    pointInputs.append(pointAsPlug)
+            if worldSpace:
+                wim = outParent.attr('wim')
+                inputs = [input ^ wim for input in inputs]
 
-            outShape.driveCVs(pointInputs)
+            outShape.driveCVs(inputs)
 
         if useBSpline:
             newInput = outShape.newInput()
@@ -153,6 +134,29 @@ class NurbsCurve(nodes['CurveShape']):
             lineWidth >> outShape.attr('lineWidth')
 
         return outShape
+
+    # Point worklist utilities
+    @classmethod
+    def _parsePoints(cls, points) -> dict:
+        """
+        :return: Dictionary with these keys:
+            'plugs':        list:[Optional[r.plugs.Point]]
+            'values':       list:[r.data.Point]
+            'conformed':    list[Union[r.plugs.Point, r.data.Point]]
+            'hasPlugs':     bool
+        """
+        infos = [_mm.info(point, (data['Point'], plugs['Point']), force=True)
+                 for point in points]
+        hasPlugs = any((info[2] for info in infos))
+
+        outPlugs = [info[0] if info[2] else None for info in infos]
+        outValues = [info[0] if (not info[2]) else info[0]() for info in infos]
+        outConformed = [info[0] for info in infos]
+
+        return {'plugs': outPlugs,
+                'values': outValues,
+                'conformed': outConformed,
+                'hasPlugs': hasPlugs}
 
     #-------------------------------------|    Inspections
 
