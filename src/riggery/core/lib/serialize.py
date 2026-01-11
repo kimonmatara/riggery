@@ -1,18 +1,8 @@
-from typing import Any
-
+import maya.api.OpenMaya as om
 from ..elem import Elem
 
-import maya.api.OpenMaya as om
-
-
-def simplify(item:Any):
-    """
-    Tensor subtypes from riggery.datatypes don't have to be simplified, they're
-    already subclassed from `list`.
-
-    :raises TypeError: can't simplify *item*
-    """
-    if isinstance(item, (str, int, float)):
+def simplify(item):
+    if isinstance(item, (int, float, str)):
         return item
 
     if isinstance(item, list):
@@ -24,17 +14,16 @@ def simplify(item:Any):
     if isinstance(item, dict):
         return {simplify(k): simplify(v) for k, v in item.items()}
 
-    if  isinstance(item, Elem):
-        return str(item)
-
-    elif isinstance(item,
-                    (om.MVector,
-                     om.MQuaternion,
-                     om.MMatrix,
-                     om.MEulerRotation)):
+    if isinstance(item, (om.MVector,
+                         om.MMatrix,
+                         om.MQuaternion,
+                         om.MEulerRotation)):
         return list(item)
 
     if isinstance(item, om.MPoint):
-        return list(item)[:3]
+        return list(item)[:-3]
 
-    raise TypeError("Can't simplify '{}' item".format(type(item)))
+    if isinstance(item, Elem):
+        return str(item)
+
+    raise TypeError("can't simplify item of type '{}'".format(type(item)))

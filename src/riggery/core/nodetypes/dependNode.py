@@ -1,6 +1,7 @@
+import ast
 import json
 from pathlib import Path
-from functools import cached_property
+from functools import cached_property, wraps
 import re
 from typing import Union, Optional, Iterator, Iterable, Literal
 from contextlib import contextmanager
@@ -16,17 +17,43 @@ from riggery.internal import cmdinfo as _ci, \
     mfnmatches as _mfm
 import riggery.internal.plugutil.reorder as _reo
 import riggery.internal.str2api as _s2a
-import riggery.internal.api2str as _a2s
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.files import force_ext
 from riggery.general.strings import cap, uncap
-from ..lib import names as _n, namespaces as _ns, tags as _tags
+from riggery.general.modules import LazyModule
+from riggery.core.lib.serialize import simplify
+
+from ..lib import names as _n
+from ..lib import namespaces as _ns
+from ..lib import tags as _tags
+
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem, ElemInstError
 
 
+def captureCreateArgsKwargs(f):
+    @wraps(f)
+    def wrapped(cls, *args, **kwargs):
+        node = f(cls, *args, **kwargs)
+        try:
+            args = simplify(args)
+            kwargs = simplify(kwargs)
+        except TypeError as exc:
+            m.warning("Couldn't serialize create() args for {}: {}".format(
+                repr(cls.__name__), exc
+            ))
+            return node
+
+        # Add even if empty, to signal that create() should be used in the
+        # createFromMacro() implementation, rather than createNode()
+        buff = node.addAttr('_createArgsKwargs', dt='string')
+        buff.set(repr((args, kwargs)))
+        buff.lock()
+
+        return node
+    return wrapped
 
 class Section:
 
@@ -214,13 +241,19 @@ class SectionsGetter:
 
 
 class DependNodeMeta(type(Elem)):
-
     def __new__(meta, clsname, bases, dct):
         nodeType = _ni.UNCAPMAP.get(clsname, uncap(clsname))
         dct.setdefault('__melnode__', nodeType)
 
         try:
             dct.setdefault('__typesuffix__', _n.TYPESUFFIXES[nodeType])
+        except KeyError:
+            pass
+
+        try:
+            dct['create'] = classmethod(
+                captureCreateArgsKwargs(dct['create'].__func__)
+            )
         except KeyError:
             pass
 
@@ -1245,38 +1278,137 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     def createFromMacro(cls, macro:dict) -> 'DependNode':
         return cls._getMacroBuilderClass(macro)._createFromMacro(macro)
 
-    @classmethod
-    def _createFromMacro(cls, macro:dict) -> 'DependNode':
-        kwargs = {}
 
-        if not _n.Name.__elems__:
+    def getAttrState(self):
+        out = {}
+
+        for attr in self.listAttr(write=True):
             try:
-                kwargs['name'] = macro['name']
-            except KeyError:
-                pass
+                info = {}
 
-        node =  cls.createNode(**kwargs)
+                if attr.isLocked():
+                    info['locked'] = True
 
-        for attrName, attrValue in macro.get('attrs', {}).items():
-            try:
-                node.attr(attrName).set(attrValue)
+                inputs = attr.inputs(plugs=True)
+
+                if inputs:
+                    info['input'] = str(inputs[0])
+
+                info['value'] = simplify(attr())
+
+                info['keyable'] = attr.getFlag('keyable')
+                info['channelBox'] = attr.getFlag('channelBox')
+
+                out[attr.attrName()] = info
             except:
                 continue
+
+        return out
+
+    def setAttrState(self, state:dict):
+        for attrName, state in state.items():
+            try:
+                attr = self.attr(attrName)
+            except:
+                continue
+
+            attr.release()
+
+            input = state.get('input')
+
+            if input is not None:
+                try:
+                    attr.connectInput(input, force=True)
+                except:
+                    if '|' in input:
+                        elems = input.split('.')
+                        node = elems[0]
+                        shortName = node.split('|')[-1]
+                        matches = m.ls(shortName)
+
+                        if matches and len(matches) == 1:
+                            input = '.'.join([matches[0]] + elems[1:])
+                            try:
+                                attr.connectInput(input, force=True)
+                            except:
+                                pass
+
+            try:
+                state['input'] >> attr
+            except:
+                pass
+
+            try:
+                attr.set(state['value'])
+            except:
+                pass
+
+            try:
+                if state['keyable']:
+                    attr.setFlags(keyable=True, channelBox=False)
+
+                elif state['channelBox']:
+                    attr.setFlags(keyable=False, channelBox=True)
+
+                else:
+                    attr.setFlags(channelBox=False, keyable=False)
+            except:
+                pass
+
+            if state.get('locked', False):
+                try:
+                    attr.lock()
+                except:
+                    pass
+
+    attrState = property(getAttrState, setAttrState)
+
+    @classmethod
+    def _createFromMacro(cls, macro:dict) -> 'DependNode':
+        createArgsKwargs = macro.get('createArgsKwargs')
+
+        if createArgsKwargs is None:
+            kwargs = {}
+
+            if not _n.Name.__elems__:
+                kwargs['name'] = macro['name']
+
+            node = cls.createNode(**kwargs)
+        else:
+            args, kwargs = createArgsKwargs
+
+            if _n.Name.__elems__:
+                kwargs = kwargs.copy()
+
+                for key in ('n', 'name'):
+                    try:
+                        del(kwargs[key])
+                    except KeyError:
+                        continue
+
+            node = cls.create(*args, **kwargs)
+
+        node.attrState = macro['attrs']
 
         return node
 
     def macro(self) -> dict:
-        attrs = {}
+        out = {'nodeType': self.__class__.__melnode__,
+               'name': str(self),
+               'attrs': self.attrState}
 
-        for attr in self.listAttr(write=True):
-            try:
-                attrs[attr.attrName()] = attr.get()
-            except:
-                continue
+        try:
+            buf = self.attr('_createArgsKwargs')
+        except AttributeError:
+            return out
 
-        return {'nodeType': self.__class__.__melnode__,
-                'name': str(self),
-                'attrs': attrs}
+        try:
+            createArgsKwargs = ast.literal_eval(buf())
+        except:
+            return out
+
+        out['createArgsKwargs'] = createArgsKwargs
+        return out
 
     @classmethod
     def captureSceneArchive(cls) -> dict:

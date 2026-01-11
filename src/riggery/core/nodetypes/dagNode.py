@@ -15,8 +15,10 @@ from riggery.internal import str2api as _s2a, \
     cmdinfo as _ci, \
     mfnmatches as _mfm
 
+DependNode = nodes['DependNode']
 
-class DagNode(nodes['DependNode']):
+
+class DagNode(DependNode):
 
     #-----------------------------------------|    Constructor(s)
 
@@ -414,42 +416,6 @@ class DagNode(nodes['DependNode']):
     pickWalkChildren = property(iterPickWalkChildren,
                                 setPickWalkChildren,
                                 clearPickWalkChildren)
-
-    #-----------------------------------------|    Serialization
-
-    def macro(self) -> dict:
-        out = super().macro()
-        parent = self.parent
-        if parent:
-            out['parent'] = str(parent)
-        return out
-
-    @classmethod
-    def _createFromMacro(cls, macro:dict) -> 'DependNode':
-        kwargs = {}
-
-        if not _n.Name.__elems__:
-            try:
-                kwargs['name'] = macro['name']
-            except KeyError:
-                pass
-
-        parent = macro.get('parent')
-
-        if parent:
-            matches = m.ls(parent, type='transform')
-            if matches and len(matches) == 1:
-                kwargs['parent'] = matches[0]
-
-        node =  cls.createNode(**kwargs)
-
-        for attr, attrValue in macro.get('attrs', {}).items():
-            try:
-                node.attr(attr).set(attrValue)
-            except:
-                continue
-
-        return node
 
     #-----------------------------------------|    Repr
 
