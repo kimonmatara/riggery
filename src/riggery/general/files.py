@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 from pathlib import Path
 import re
 
@@ -170,3 +170,8 @@ class SGStream:
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, repr(str(self)))
+
+
+def force_ext(filePath:Union[Path, str], extension:str) -> Path:
+    extension = extension.strip('.')
+    return Path(os.path.splitext(str(filePath))[0] + '.' + extension)
