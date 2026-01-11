@@ -1,78 +1,264 @@
-"""NURBS utilities."""
-
-from typing import Literal, Union, Iterable, Iterator, Optional
-from ..datatypes import __pool__ as _data
-from ..plugtypes import __pool__ as _plugs
-from . import mixedmode as _mm
-
-from riggery.general.numbers import floatrange, remap
+from typing import Any, Iterable, Optional, Iterator
+from itertools import chain
 
 import maya.api.OpenMaya as om
-import maya.cmds as m
 
-FORM = {'open': 1, 'closed': 2, 'periodic': 3}
-revFORM = {v: k for k, v in FORM.items()}
+from riggery.general.functions import short
+from riggery.general.numbers import remap
 
-def resolveForm(form:Union[str, int]) -> int:
+from . import mixedmode as _mm
+
+from ..datatypes import __pool__ as _data
+from ..plugtypes import __pool__ as plugs
+
+#-----------------------------------------|
+#-----------------------------------------|    Periodic curves
+#-----------------------------------------|
+
+# Periodic curves include an invisible extra span that overlaps the start of the
+# curve to create the perfectly 'closed' continuity. This creates additional,
+# internal CVs which can't be seen or manipulated in the Maya viewport.
+#
+# On periodic curves, Maya's API methods expect, and return, this 'expanded' CV
+# list, but for higher-level manipulation you'll probably prefer to deal with
+# the visible CVs instead.
+#
+# The general formula to add the *overlapping* segment to a list of 'visible
+# only' CVs is: cvList + cvList[:degree]
+#
+# And, accordingly, to reverse the periodic 'padding', you do:
+# cvList = cvList[:len(cvList)-degree]
+
+def periodicToVisibleCVs(periodicCVs:Iterable[Any], degree:int) -> list[Any]:
     """
-    :param form: One of:
-        1 or 'open'
-        2 or 'closed'
-        3 of 'periodic'
-    :return: The user argument, conformed to an index matching an enum on
-        :class:`~maya.api.OpenMaya.MFnNurbsCurve` as as ``kClosed``.
+    :param periodicCVs: a CV list (indices, components, doesn't matter) of the
+        length returned by the Maya API methods, which includes the periodic
+        'overlap'
+    :param degree: the curve degree
+    :return: The CV list cropped to the visible range.
     """
-    if isinstance(form, str):
-        return {'open': 1, 'closed': 2, 'periodic': 3}[form]
-    return form
+    periodicCVs = list(periodicCVs)
+    return periodicCVs[:len(periodicCVs)-degree]
 
-def getSpansKnots(numCVs:int, degree:int) -> tuple[int, list[int]]:
+def visibleToPeriodicCVs(visibleCVs:Iterable[Any], degree:int) -> list[Any]:
     """
-    This is an older implementation that should probably get retired, as it
-    doesn't deal with periodic curves at all.
-
-    :param numCVs: The target number of CVs.
-    :param degree: The target curve degree.
-    :raises ValueError: The number of CVs is impossible given the target
-        degree.
-    :return: A tuple of <number of spans>, <knot list>
+    :param visibleCVs: a CV list (indices, components, doesn't matter) that only
+        includes the *visible* range on a periodic curve
+    :param degree: the curve degree
+    :return: The CV list with the periodic overlap added to the end, as expected
+        by the API functions.
     """
-    m.warning("getSpansKnots() is deprecated")
+    visibleCVs = list(visibleCVs)
+    return visibleCVs + visibleCVs[:degree]
 
-    numSpans = numCVs - degree
+def periodicToVisibleNumCVs(periodicNumCVs:int, degree:int) -> int:
+    """
+    :param periodicNumCVs: the number of CVs returned, and expected, by the
+        Maya API methods on periodic curves
+    :param degree: the curve degree
+    :return: The number of *visible* CVs on the periodic curve.
+    """
+    return periodicNumCVs - degree
 
-    if numSpans < 1:
-        raise ValueError("num CVs impossible given degree / form")
+def visibleToPeriodicNumCVs(visibleNumCVs:int, degree:int) -> int:
+    """
+    :param visibleNumCVs: the number of visible CVs on a periodic curve
+    :param degree: the curve degree
+    :return: The internal number of CVs, as returned and expected by the API
+        functions for periodic curves, including the 'overlap'.
+    """
+    return visibleNumCVs + degree
 
-    knots = [0] * degree + list(range(1, numSpans)) + [numSpans] * degree
+#-----------------------------------------|
+#-----------------------------------------|    General analysis
+#-----------------------------------------|
+
+@short(degree='d',
+       knotDomain='kd',
+       periodic='per',
+       uniform='u')
+def expandDrawInfo(points:Iterable['_data.Point'], *,
+                   degree:Optional[int]=None,
+                   knotDomain:Optional[tuple[float, float]]=None,
+                   periodic:bool=False,
+                   uniform:bool=True) -> dict:
+    """
+    Expands basic drawing hints with expanded information expected by
+    MFnNurbsCurve.create() and MFnNurbsCurve.createWithEditPoints(). Points will
+    be conformed to MPoint.
+
+    Note that, in the case of periodic curves, you may get more points returned
+    than you specified; this is because periodic curves have internal
+    'overlapping' CVs that the constructors expect to receive.
+
+    :param points: the draw points; in the case of periodic curves, it's assumed
+        these are strictly *visible* points, excluding the periodic overlap
+    :param degree/d: the curve degree; if omitted, a 'convenient' degree will be
+        selected based on the number of CVs
+    :param knotDomain/kd: an optional custom knot domain
+    :param periodic/per: indicate that this is for a periodic curve; defaults to
+        False
+    :param uniform/u: this is purely passed-through to the dict for convenience;
+        it's for the EP API constructor, and defines whether parameterization
+        should be uniform; defaults to True
+    :return: A dictionary with these keys: points, degree, spans, rational,
+        uniform, knots, is2D, form
+    """
+    points = list(points)
+    numCVs = len(points)
+
+    degree = resolveDegreeFromNumCVs(numCVs, degree, periodic=periodic)
+
+    points = list(map(om.MPoint, points))
+    is2D = all((x[2] == 0.0 for x in points))
+
+    spans, knots = getSpansKnots(numCVs,
+                                 degree,
+                                 periodic=periodic,
+                                 visibleCVs=True,
+                                 knotDomain=knotDomain)
+
+    if periodic:
+        points = visibleToPeriodicCVs(points, degree)
+
+    return {'points': points,
+            'degree': degree,
+            'spans': spans,
+            'rational': False,
+            'uniform': uniform,
+            'knots': knots,
+            'is2D': is2D,
+            'form': 3 if periodic else 1}
+
+
+@short(periodic='per')
+def resolveDegreeFromNumCVs(numCVs:int,
+                            degree:Optional[int]=None,
+                            periodic:bool=False):
+    """
+    :param numCVs: the number of CVs on the curve; for periodic curves, this
+        always assumes *visible* CVs
+    :raises ValueError: numCVs impossible given degree and form
+    :return: The resolved degree.
+    """
+    if numCVs < 2:
+        raise ValueError("need at least 2 CVs")
+
+    if periodic:
+        if degree is None:
+            if numCVs == 2:
+                degree = 1
+            elif numCVs >= 3:
+                degree = 3
+        else:
+            if degree > numCVs:
+                raise ValueError('degree impossible for num CVs and periodic')
+    else:
+        if degree is None:
+            if numCVs == 2:
+                degree = 1
+            elif numCVs == 3:
+                degree = 2
+            else:
+                degree = 3
+        else:
+            if degree > (numCVs - 1):
+                raise ValueError("degree impossible for num CVs")
+
+    return degree
+
+@short(degree='d',
+       periodic='per',
+       visibleCVs='v',
+       knotDomain='kd')
+def getSpansKnots(
+        numCVs:int,
+        degree:int, *,
+        periodic:bool=False,
+        visibleCVs:bool=True,
+        knotDomain:Optional[tuple[float, float]]=None
+) -> tuple[int, list[int]]:
+    """
+    :param numCVs: the number of CVs
+    :param degree/d: the curve degree
+    :param periodic/d: whether the curve is periodic; defaults to False
+    :param visibleCVs/v: ignored if *periodic* is False; if ``True``, *numCVs*
+        will be taken to refer to *visible* rather than *internal* CVs; defaults
+        to True
+    :param knotDomain: by default, knots are returned in the 0 -> numSpans
+        range; if you have a preferred min / max, enter it here to remap; on
+        periodic curves, this will be taken as the 'visible' range in all cases;
+        the returned knots will under- and over- shoot it to account for
+        overlaps; defaults to None
+    :raises ValueError: num CVs impossible given degree / form
+    :return: Tuple of ``<number of spans>, <knot list>``.
+    """
+    if periodic:
+        if not visibleCVs:
+            numCVs = numCVs - degree
+
+        if degree > numCVs:
+            raise ValueError("num CVs impossible given degree / form")
+
+        numSpans = numCVs
+
+        internalKnotRange = list(range(numSpans + 1))
+        startPadding = list(range(-(degree-1), 0))
+        endPadding = list(range(numSpans + 1, numSpans + degree))
+
+        knots = startPadding + internalKnotRange + endPadding
+    else:
+        numSpans = numCVs - degree
+
+        if numSpans < 1:
+            raise ValueError("num CVs impossible given degree / form")
+
+        knots = [0] * degree + list(range(1, numSpans)) + [numSpans] * degree
+
+    if knotDomain:
+        knots = [remap(knot, 0, numSpans, knotDomain[0], knotDomain[1])
+                 for knot in knots]
 
     return numSpans, knots
 
-def getBezierSpansKnots(numCVs:int) -> tuple[int, list[int]]:
-    """
-    Variant of :func:`getSpansKnots` appropriate for bezier curves, where the
-    knot list is different.
+#-----------------------------------------|
+#-----------------------------------------|    Beziers
+#-----------------------------------------|
 
-    :param numCVs: The target number of CVs.
-    :return: A tuple of <number of spans>, <knot list>.
-    """
-    numAnchors = numCVsToNumAnchors(numCVs)
-    knots = [0, 0, 0]
-    for i in range(1, numAnchors-1):
-        knots += [i] * 3
-    knots += [numAnchors-1] * 3
-    return numAnchors + 1, knots
+# Assumptions:
+#     Bezier curves are always degree 3
+#     Bezier curves are never periodic
 
-# def clampDegree(numCVs:int, degree:int) -> int:
-#     """
-#     Returns *degree*, or the maximum degree that can produce the given number
-#     of CVs, whichever is lowest.
-#
-#     :raises ValueError: *numCVs* is 1 or less.
-#     """
-#     if numCVs < 2:
-#         raise ValueError("need at least two CVs")
-#     return min(degree, numCVs-1)
+def bezierSpansFromNumCVs(numCVs:int) -> int:
+    return numCVs - 3
+
+def bezierKnotsFromNumCVs(
+        numCVs:int,
+        knotDomain:Optional[tuple[float, float]]=None,
+        spans:Optional[int]=None
+) -> list[float]:
+    if spans is None:
+        spans = bezierSpansFromNumCVs(numCVs)
+
+    numGroups = spans // 3 + 2
+
+    out = list(
+        map(float, chain.from_iterable([[x] * 3 for x in range(numGroups)]))
+    )
+
+    if knotDomain:
+        out = [remap(x, 0, numGroups-1, knotDomain[0], knotDomain[1])
+               for x in out]
+
+    return out
+
+def getBezierSpansKnots(
+        numCVs:int, *,
+        knotDomain:Optional[tuple[float, float]]=None
+) -> tuple[int, list[float]]:
+    spans = bezierSpansFromNumCVs(numCVs)
+    knots = bezierKnotsFromNumCVs(numCVs, spans=spans, knotDomain=knotDomain)
+    return spans, knots
 
 def numCVsValidForBezier(numCVs:int) -> bool:
     """
@@ -114,17 +300,25 @@ def numCVsToNumAnchors(numCVs:int) -> int:
     """
     return ((numCVs - 4) // 3) + 2
 
-def numAnchorsToParams(numAnchors:int) -> list[float]:
+def numAnchorsToDefaultKnotDomain(numAnchors:int) -> tuple[float, float]:
+    return 0.0, float(numAnchors - 1)
+
+def numAnchorsToParams(
+        numAnchors:int,
+        knotDomain:Optional[tuple[float, float]]=None
+) -> list[float]:
     """
-    .. note::
-
-        This is a pure projection. Results may be wrong for your curve if it has
-        a non-default knot domain.
-
     :param numAnchors: the number of anchors
+    :param knotDomain: an optional custom knot domain
     :return: A list of parameters, one per anchor.
     """
-    return [paramAtAnchor(i, numAnchors) for i in range(numAnchors)]
+    out = [paramAtAnchor(i, numAnchors) for i in range(numAnchors)]
+
+    if knotDomain:
+        origMin, origMax = numAnchorsToDefaultKnotDomain(numAnchors)
+        out = [remap(x, origMin, origMax, knotDomain[0], knotDomain[1])
+               for x in out]
+    return out
 
 def numAnchorsToNumCVs(numAnchors:int) -> int:
     """
@@ -172,14 +366,19 @@ def anchorGroupsToCVs(anchorGroups:Iterable[dict]) -> Iterator[int]:
             except KeyError:
                 pass
 
-def paramAtAnchor(anchorIndex:int, numAnchors:int) -> float:
-    """
-    This is pure projection, may be wrong if the bezier curve you're working
-    with is parameterized in a non-default way.
-    """
+def paramAtAnchor(anchorIndex:int,
+                  numAnchors:int, *,
+                  knotDomain:Optional[tuple[float, float]]=None) -> float:
     numCVs = numAnchorsToNumCVs(numAnchors)
+
     spans, knots = getBezierSpansKnots(numCVs)
-    return knots[::3][anchorIndex]
+    out = knots[::3][anchorIndex]
+
+    if knotDomain:
+        origMin, origMax = numAnchorsToDefaultKnotDomain(numAnchors)
+        out = remap(out, origMin, origMax, knotDomain[0], knotDomain[1])
+
+    return out
 
 def pointsToAnchorPointsAndTangents(points:Iterable[float]):
     """
@@ -227,9 +426,11 @@ def pointsAndTangentsToAnchorGroups(points, tangents) -> list[dict]:
         if i == 0:
             group['anchor'] = point
             group['out'] = point + tangent
+
         elif i == numAnchors - 1:
             group['in'] = point - tangent
             group['anchor'] = point
+
         else:
             halfTan = tangent * 0.5
             group['in'] = point - halfTan
@@ -256,12 +457,14 @@ def anchorsAndTangentsFromAnchorGroups(anchorGroups:Iterable):
     """
     anchors = []
     tangents = []
+
     for anchorGroup in anchorGroups:
         anchor = anchorGroup['anchor']
         anchors.append(anchor)
         start = anchorGroup.get('in', anchor)
         end = anchorGroup.get('out', anchor)
         tangents.append(end-start)
+
     return anchors, tangents
 
 def cvsFromAnchorSpecs(anchorSpecs):
@@ -316,79 +519,3 @@ def handleLengthToTangentLength(handleLength):
         parameter driven by the Bezier anchor handle.
     """
     return _mm.conform(handleLength, _plugs['Float']) / (2/3)
-
-def expandDrawInfo(points:Iterable,
-                   degree:Optional[int]=None,
-                   knotDomain:Optional[tuple[float, float]]=None,
-                   periodic:bool=False,
-                   uniform:bool=True) -> dict:
-    """
-    Expands basic drawing hints with expanded information expected by
-    MFnNurbsCurve.create() and MFnNurbsCurve.createWithEditPoints(). Points will
-    be conformed to MPoint.
-
-    Note that, in the case of periodic curves, you may get more points returned
-    than you specified; this is because periodic curves have internal
-    'overlapping' CVs that the constructors expect to receive.
-
-    :param points: the curve CVs; if these were inspected from a scene curve,
-        ensure that they do NOT include overlapping CV points on periodic curves
-        (excess periodic points can be shaved with points =
-        points[:len(points)-degree])
-    :raises ValueError: need at least 2 CVs
-    """
-    points = list(map(om.MPoint, points))
-    numCVs = len(points)
-
-    if numCVs < 2:
-        raise ValueError("need at least 2 CVs")
-
-    is2D = all((x[2] == 0.0 for x in points))
-
-    if periodic:
-        numSpans = numCVs
-
-        if degree is None:
-            degree = min(numSpans, 3)
-
-        if knotDomain is None:
-            knotDomain = 0, numSpans
-
-        knots = list(floatrange(knotDomain[0], knotDomain[1], numSpans+1))
-        domainDelta = knotDomain[1]-knotDomain[0]
-        knotStride = domainDelta / numSpans
-
-        for i in range(degree-1):
-            knots.insert(0, knots[0] - knotStride)
-            knots.append(knots[-1] + knotStride)
-
-        # periodic overlap
-        points += points[:degree]
-
-    else:
-        if degree is None:
-            if numCVs == 2:
-                degree = 1
-
-            elif numCVs == 3:
-                degree = 2
-            else:
-                degree = 3
-        else:
-            degree = min(numCVs-1, degree)
-
-        numSpans = numCVs - degree
-        knots = [0] * degree + list(range(1, numSpans)) + [numSpans] * degree
-
-        if knotDomain is not None:
-            knots = [remap(x, 0, numSpans, knotDomain[0], knotDomain[1])
-                     for x in knots]
-
-    return {'points': points,
-            'degree': degree,
-            'numSpans': numSpans,
-            'rational': False,
-            'uniform': uniform,
-            'knots': knots,
-            'is2D': is2D,
-            'form': 3 if periodic else 1}
