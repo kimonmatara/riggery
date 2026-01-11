@@ -1,4 +1,5 @@
-from typing import Optional, Union, Iterator, Iterable
+from copy import deepcopy
+from typing import Optional, Union, Iterator, Iterable, Literal
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -6,61 +7,17 @@ import maya.cmds as m
 from ..lib import names as _nm, mixedmode as _mm, nurbsutil as _nut
 from riggery.general.functions import short
 from riggery.general.numbers import floatrange
+from riggery.internal import str2api as _s2a
+from riggery.internal import api2str as _a2s
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
+from ..plugtypes import __pool__ as plugs
+
 
 
 class NurbsCurve(nodes['CurveShape']):
 
-    #-------------------------------------|    Constructor(s)
-
-    @classmethod
-    def _prepBuildPoints(cls,
-                         points,
-                         parent=None,
-                         worldSpace=False) -> tuple[list, list, bool]:
-        """
-        :return: Tuple of point values, point plugs, has plugs (bool)
-        """
-        if parent is not None:
-            parent = nodes['DagNode'](parent)
-
-        # Prep points
-
-        points = list(points)
-        numCVs = len(points)
-        if numCVs < 2:
-            raise ValueError("need at least two CVs")
-
-        pointPlugs = []
-        pointValues = []
-        hasPlugs = False
-
-        Point = data['Point']
-
-        for point in points:
-            point, _, isPlug = _mm.info(point, Point)
-            if isPlug:
-                hasPlugs = True
-                pointPlugs.append(point)
-                pointValues.append(Point(point.get()))
-            else:
-                pointPlugs.append(None)
-                pointValues.append(point)
-
-        if worldSpace:
-            if parent is not None:
-                for i in range(numCVs):
-                    pointValue = pointValues[i]
-                    pointValue *= parent.attr('wim').get()
-                    pointValues[i] = pointValue
-
-                for i in range(numCVs):
-                    plug = pointPlugs[i]
-                    if plug is not None:
-                        pointPlugs[i] = plug * parent.attr('wim')
-
-        return pointValues, pointPlugs, hasPlugs
+    #-------------------------------------|    Constructor
 
     @classmethod
     @short(degree='d',
@@ -71,8 +28,8 @@ class NurbsCurve(nodes['CurveShape']):
            displayType='dt',
            lineWidth='lw')
     def create(cls,
-               points:Iterable,
-               degree=None,
+               points:Iterable[Union['data.Point', 'plugs.Point']], *,
+               degree:Optional[int]=None,
                parent=None,
                periodic:bool=False,
                name:Optional[str]=None,
@@ -80,313 +37,148 @@ class NurbsCurve(nodes['CurveShape']):
                ep:bool=False,
                displayType=None,
                lineWidth:Optional[float]=None):
-        """
-        :param points: the CV points; these can be plugs (for a 'live' curve)
-            or values
-        :param degree/d: if omitted, defaults to 3, but drops to 2 or 1 when
-            there aren't enough CVs
-        :param parent/p: an optional parent for the curve shape; defaults to
-            None
-        :param periodic/per: whether to create a fully closed (periodic) curve;
-            defaults to False
-        :param name/n: if provided, and a parent is provided, will be used as
-            the shape name; if a parent is not provided, it will be used to
-            name the newly-generated parent; if omitted, block naming will be
-            used, where available; defaults to False
-        :param displayType/dt: sets the override display type; defaults to
-            None
-        :param lineWidth/lw: an optional value for the display line width;
-            defaults to None
-        :raises ValueError: Fewer than two CVs were requested, or the number
-            of CVs is not possible given the requested degree.
-        :return: The generated curve shape.
-        """
-        if ep:
-            degree = 1
 
-        if parent is not None:
-            parent = nodes['DagNode'](parent)
+        #-----------------|    Resolve points
 
-        #-----------------------------------------|    Prep points
+        pointsAsValues = []
+        pointsAsPlugs = []
+        hasPlugs = False
 
-        pointValues, pointPlugs, hasPlugs = cls._prepBuildPoints(
-            points,
-            parent=parent,
-            worldSpace=worldSpace
-        )
+        if worldSpace and parent is not None:
+            parent = nodes['DependNode'](parent)
+            parentWim = parent.attr('wim')
+            _parentWim = parentWim()
+        else:
+            parentWim = _parentWim = None
 
-        numCVs = len(pointValues)
+        for point in points:
+            point, _, isPlug = _mm.info(point, (data['Point'],
+                                                plugs['Point']), force=True)
+            if isPlug:
+                if parentWim is not None:
+                    point ^= parentWim
 
-        #------------------------------------|    Prep for curve()
-
-        if degree is None:
-            degree = _nut.clampDegree(numCVs, 3)
-
-        spans, knots = _nut.getSpansKnots(numCVs, degree)
-        kwargs = {'point': pointValues, 'knot': knots, 'degree': degree}
-
-        # Wrangle name argument
-        if parent is None:
-            if name:
-                kwargs['name'] = name
-            elif _nm.Name.__elems__:
-                kwargs['name'] = _nm.Name.evaluate(
-                    typeSuffix=cls.__typesuffix__
-                )
-
-        #------------------------------------|    Draw static curve with curve()
-
-        curveXform = m.curve(**kwargs)
-
-        if periodic:
-            m.closeCurve(curveXform,
-                         constructionHistory=False,
-                         blendBias=0.5,
-                         blendKnotInsertion=False,
-                         preserveShape=0,
-                         replaceOriginal=True)
-
-        curveXform = nodes['DagNode'](curveXform)
-        curveShape = curveXform.shape
-
-        #------------------------------------|    Parent wrangling
-
-        if parent is not None:
-            m.parent(str(curveShape), str(parent), r=True, shape=True)
-            m.delete(str(curveXform))
-
-            if name is None:
-                curveShape.conformShapeName()
+                pointsAsPlugs.append(point)
+                pointsAsValues.append(point())
+                hasPlugs = True
             else:
-                curveShape.name = name
+                if _parentWim is not None:
+                    point *= _parentWim
 
-        #------------------------------------|    Connect plugs
+                pointsAsPlugs.append(None)
+                pointsAsValues.append(point)
 
-        inputs = [pointValue if pointPlug is None else pointPlug for pointValue,
-        pointPlug in zip(pointValues, pointPlugs)]
+        useBSpline = ep and hasPlugs
 
-        curveShape.driveCVs(inputs)
+        #-----------------|    Resolve parent
 
-        #------------------------------------|    EP
+        kwargs = {}
 
-        if ep:
-            curveShape.newInput().toBSpline() >> curveShape.input
-            if not hasPlugs:
-                curveShape.deleteHistory()
+        if parent is not None:
+            reparented = True
+            kwargs['parent'] = _s2a.getNodeMObject(str(parent))
+        else:
+            reparented = False
 
-        #------------------------------------|    Niceties
+        #-----------------|    Get draw info
+
+        drawInfo = _nut.expandDrawInfo(pointsAsValues,
+                                       degree=1 if useBSpline else degree,
+                                       periodic=periodic)
+
+        #-----------------|    Draw the curve
+
+        fn = om.MFnNurbsCurve()
+
+        useBSpline = ep and hasPlugs
+
+        if ep and not useBSpline:
+            # If we have incoming plugs, we can't draw as EP, since the input
+            # points will no longer match; instead, draw as CV and convert to
+            # EP in the DG
+            result = fn.createWithEditPoints(drawInfo['points'],
+                                             drawInfo['degree'],
+                                             drawInfo['form'],
+                                             drawInfo['is2D'],
+                                             drawInfo['rational'],
+                                             drawInfo['uniform'],
+                                             **kwargs)
+        else:
+            result = fn.create(drawInfo['points'],
+                               drawInfo['knots'],
+                               drawInfo['degree'],
+                               drawInfo['form'],
+                               drawInfo['is2D'],
+                               drawInfo['rational'],
+                               **kwargs)
+
+        if result.hasFn(om.MFn.kTransform):
+            outParent = nodes['DependNode'].fromMObject(result)
+            outShape = outParent.shape
+        else:
+            outShape = nodes['DependNode'].fromMObject(result)
+            outParent = outShape.parent
+
+        if reparented:
+            if name is None:
+                outShape.conformShapeName()
+            else:
+                outShape.name = name
+        else:
+            if name is None:
+                outParent.name = _nm.Name.evaluate(cls.__typesuffix__)
+            else:
+                outShape.name = name
+
+        if hasPlugs:
+            pointInputs = []
+
+            for pointAsPlug, pointAsValue in zip(pointsAsPlugs, pointsAsValues):
+                if pointAsPlug is None:
+                    pointInputs.append(pointAsValue)
+                else:
+                    pointInputs.append(pointAsPlug)
+
+            outShape.driveCVs(pointInputs)
+
+        if useBSpline:
+            newInput = outShape.newInput()
+            newInput.toBSpline() >> outShape.input
 
         if displayType is not None:
-            curveShape.attr('overrideEnabled').set(True)
-            curveShape.attr('overrideDisplayType').set(displayType)
+            outShape.attr('overrideEnabled').set(True)
+            displayType >> outShape.attr('overrideDisplayType')
 
         if lineWidth is not None:
-            lineWidth >> curveShape.attr('lineWidth')
+            lineWidth >> outShape.attr('lineWidth')
 
-        #------------------------------------|    Return
+        return outShape
 
-        return curveShape
+    #-------------------------------------|    Inspections
 
-    @classmethod
-    @short(parent='p', name='n')
-    def createFromMacros(
-            cls,
-            macros:list,
-            parent=None,
-            name:Optional[str]=None,
-            rescale:Union[None, int, float]=None
-    ) -> list:
-        """
-        Reconstitutes one or more curve shapes under a single transform.
-        Useful for control shape serialization etc.
-
-        :param macros: one or more dicts of the type returned by :meth:`macro`
-        :param parent/p: an optional destination parent; if omitted, a new one
-            will be created
-        :param name/n: this will only be used if a new parent is
-            created; shapes will derive their name from the resolved parent;
-            defaults to None
-        :param rescale: an optional rescaling factor; defaults to None
-        :return: The generated shapes, in a list.
-        """
-        if parent:
-            parent = nodes['DagNode'](parent)
-            _parent = parent.__apimobject__()
-            conformPerShape = True
-        else:
-            name = _nm.resolveNameArg(name, typeSuffix=cls.__typesuffix__)
-            parent = nodes['Transform'].createNode(name=name)
-            _parent = parent.__apimobject__()
-            conformPerShape = False
-
-        mfn = om.MFnNurbsCurve()
-        shapes = []
-
-        for macro in macros:
-            points, knots, degree, form, is2D, rational = [
-                macro[k] for k in ('points', 'knots', 'degree',
-                                   'form', 'is2D','rational')
-            ]
-            if rescale is not None:
-                points = [[point[0] * rescale,
-                           point[1] * rescale,
-                           point[2] * rescale] for point in points]
-
-            shape = nodes['DagNode'].fromMObject(mfn.create(
-                [om.MPoint(point) for point in points],
-                knots,
-                degree,
-                form,
-                is2D,
-                rational,
-                _parent
-            ))
-
-            try:
-                shape.attr('lineWidth').set(macro['lineWidth'])
-            except KeyError:
-                pass
-
-            if 'overrideColor' in macro:
-                shape.attr('overrideEnabled').set(True)
-                shape.attr('overrideColor').set(macro['overrideColor'])
-
-            shapes.append(shape)
-
-        if conformPerShape:
-            for shape in shapes:
-                shape.conformShapeName()
-        else:
-            parent.conformShapeNames()
-
-        return shapes
-
-    #----------------------------------------------|    Serialization
-
-    def _getArgsForMFnCreate(self) -> tuple: # -> tuple[tuple, dict]
-        """
-        Returns positional arguments that can be passed onto
-        :meth:`maya.api.OpenMaya.MFnNurbsCurve.create` to recreate this curve.
-        The 'parent' keyword argument will have to be provided separately if
-        needed.
-
-        All information is sampled in object space.
-        """
-        mFn = self.__apimfn__()
-        points = mFn.cvPositions(om.MSpace.kObject)
-        return tuple([
-            points,
-            mFn.knots(),
-            mFn.degree,
-            mFn.form,
-            all([point[2] == 0.0 for point in points]),
-            self.isRational()
-        ])
-
-    def macro(self, *, captureOverrideColor:bool=False) -> dict:
-        """
-        :return: A dictionary of information that can be used to recreate
-            the curve. The informaton is in object-space; world
-            transformations are discarded. Useful for control shapes etc.
-        """
-        points, knots, degree, form, is2D, \
-            rational = self._getArgsForMFnCreate()
-
-        out = {'points': [list(x) for x in points],
-               'knots': list(knots),
-               'degree': degree,
-               'form': form,
-               'is2D': is2D,
-               'rational': rational,
-               'lineWidth': self.attr('lineWidth').get()}
-
-        if captureOverrideColor:
-            if self.attr('overrideEnabled').get():
-                overrideColor = self.attr('overrideColor').get()
-                if overrideColor > 0:
-                    out['overrideColor'] = overrideColor
-
-        return out
-
-    #----------------------------------------------|    Iterators
-
-    @short(worldSpace='ws')
-    def iterCVPoints(self, worldSpace:bool=False) -> Iterator:
+    @short(worldSpace='ws',
+           visible='v')
+    def iterCVPoints(self, *,
+                     worldSpace:bool=False,
+                     visible:bool=False) -> Iterator:
         """
         Yields CV points.
 
+        :param visible: on periodic curves, remove internal / overlapping CVs,
+            which can neither be seen nor manipulated in the Maya viewport;
+            defaults to False
         :param worldSpace: sample points in world-space; defaults to False
         """
-        for item in self.__apimfn__(dag=True).cvPositions(
-                space=om.MSpace.kWorld if worldSpace else om.MSpace.kObject
-        ):
-            yield data['Point'](item)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
 
-    cvPoints = property(fget=iterCVPoints)
+        fn = self.__apimfn__(dag=True)
+        out = list(fn.cvPositions(space=space))
 
-    #----------------------------------------------|    Queries
+        if visible and fn.form == fn.kPeriodic:
+            out = out[:len(out)-fn.degree]
 
-    def isRational(self) -> bool:
-        """
-        :return: True if any of the CVs on this curve have non-1.0 weights.
-        """
-        for w in self.cvWeights:
-            if w != 1.0:
-                return True
-        return False
-
-    def iterCVWeights(self) -> Iterator[float]:
-        """
-        Iterates over the CV weights. These are retrieved via forced reads
-        on the ``weights`` attribute.
-        """
-        plug = self.attr('weights')
-        for index in range(self.numCVs()):
-            yield plug[index].get()
-
-    cvWeights = property(iterCVWeights)
-
-    def is2D(self) -> bool:
-        """
-        This is really here to give some sort considered argument for the API
-        constructor.
-
-        :return: True if the all the Z components of the object-space CV
-            positions are zero.
-        """
-        return all((point[2] == 0.0 for point in self.cvPoints))
-
-    def degree(self) -> int:
-        """
-        :return: The curve degree (e.g. 3 for cubic).
-        """
-        return self.__apimfn__().degree
-
-    def form(self) -> int:
-        """
-        :return: One of 1 (open), 2 (closed), 3 (periodic)
-        """
-        return self.__apimfn__().form
-
-    def numCVs(self) -> int:
-        """
-        :return: The number of CVs on the curve.
-        """
-        fn = self.__apimfn__()
-        numCVs = self.__apimfn__().numCVs
-
-        if fn.form == om.MFnNurbsCurve.kPeriodic:
-            numCVs -= fn.degree
-
-        return numCVs
-
-    numVertices = numCVs
-
-    def knotDomain(self) -> tuple[float, float]:
-        """
-        :return: The curve's min U and max U.
-        """
-        return self.__apimfn__().knotDomain
+        for point in out:
+            yield data['Point'](point)
 
     def knots(self) -> list[float]:
         """
@@ -394,15 +186,59 @@ class NurbsCurve(nodes['CurveShape']):
         """
         return list(self.__apimfn__().knots())
 
+    def knotDomain(self) -> tuple[float, float]:
+        """
+        :return: The curve's min U and max U.
+        """
+        return self.__apimfn__().knotDomain
+
+    @short(visible='v')
+    def numCVs(self, visible:bool=False) -> int:
+        """
+        :param visible: on periodic curves, remove internal / overlapping CVs,
+            which can neither be seen nor manipulated in the Maya viewport;
+            defaults to False
+        :return: The number of CVs on the curve.
+        """
+        fn = self.__apimfn__()
+        numCVs = self.__apimfn__().numCVs
+
+        if visible and fn.form == fn.kPeriodic:
+            numCVs -= fn.degree
+
+        return numCVs
+
+    numVertices = numCVs
+
+    def form(self) -> int:
+        """
+        :return: One of 1 (open), 2 (closed), 3 (periodic)
+        """
+        return self.__apimfn__().form
+
+    def isPeriodic(self) -> bool:
+        """
+        :return: True if this is a periodic (fully closed, circle-like) curve.
+        """
+        return self.__apimfn__().form == 3
+
+    def degree(self) -> int:
+        """
+        :return: The curve degree (e.g. 3 for cubic).
+        """
+        return self.__apimfn__().degree
+
     @short(worldSpace='ws')
     def cageLength(self, worldSpace:bool=False) -> float:
         """
+        On periodic curves, this only deals with visible CVs.
+
         :param worldSpace/ws: return the world-space cage length; defaults to
             False
-        :return: The length of the cage formed by the curve's CVS. On degree-1
-            curves, this will be the same as the curve length.
+        :return: The length of the cage formed by the curve's visible CVs.
+            On degree-1 curves, this will be the same as the curve length.
         """
-        points = list(self.iterCVPoints(worldSpace))
+        points = list(self.iterCVPoints(worldSpace=worldSpace, visible=True))
         vectors = [(nextPoint-thisPoint) \
                    for thisPoint, nextPoint in zip(points, points[1:])]
         return sum([vector.length() for vector in vectors])
@@ -416,10 +252,13 @@ class NurbsCurve(nodes['CurveShape']):
         :return: The arc length of this curve or 0.0 if it cannot be computed.
         """
         out = self.__apimfn__().length()
+
         if not worldSpace:
             return out
+
         objectCageLength = self.cageLength()
         worldCageLength = self.cageLength(worldSpace=worldSpace)
+
         return out * (worldCageLength / objectCageLength)
 
     @short(tolerance='tol',
@@ -428,6 +267,8 @@ class NurbsCurve(nodes['CurveShape']):
                               tolerance=1e-6,
                               asComponent:bool=False) -> list[tuple[int]]:
         """
+        On periodic curves, this only deals with visible CVs.
+
         :param tolerance/tol: the matching tolerance; defaults to 1e-6
         :param asComponent/ac: return component strings rather than indices;
             defaults to False
@@ -436,7 +277,7 @@ class NurbsCurve(nodes['CurveShape']):
         """
         mapping = [] # [(point, [cvIndex, cvIndex])]
 
-        cvPositions = list(self.cvPoints)
+        cvPositions = list(self.iterCVPoints(visible=True))
 
         for i, thisPoint in enumerate(cvPositions):
             inserted = False
@@ -450,10 +291,12 @@ class NurbsCurve(nodes['CurveShape']):
             mapping.append((thisPoint, [i]))
 
         out = [tuple(entry[1]) for entry in mapping]
+
         if asComponent:
             _self = str(self)
             out = [tuple([f"{_self}.cv[{index}]" \
                           for index in entry]) for entry in out]
+
         return out
 
     #----------------------------------------------|    Soft sampling
@@ -556,10 +399,6 @@ class NurbsCurve(nodes['CurveShape']):
         for i, point in enumerate(points):
             point >> shape.attr('controlPoints')[i]
 
-            # src = str(point)
-            # dest = str(shape.attr('controlPoints')[i])
-            # m.connectAttr(src, dest, f=True)
-
         return self
 
     @short(collocated='col', tolerance='tol')
@@ -596,7 +435,8 @@ class NurbsCurve(nodes['CurveShape']):
                          asIndex:bool=False,
                          asComponent:bool=False,
                          worldSpace:bool=False) -> list[dict]:
-        indices = list(range(self.numCVs()))
+        indices = list(range(self.numCVs(visible=True)))
+
         if asIndex:
             content = indices
         else:
@@ -610,6 +450,7 @@ class NurbsCurve(nodes['CurveShape']):
                     data['Point'](m.pointPosition(x, world=worldSpace))
                     for x in components
                 ]
+
         return list(_nut.cvsToAnchorGroups(content))
 
     #----------------------------------------------|    Distributions
@@ -723,7 +564,9 @@ class NurbsCurve(nodes['CurveShape']):
 
         if not isFirst:
             anchorGroup['in'] = anchorCVIndex - 1
+
         anchorGroup['anchor'] = anchorCVIndex
+
         if not isLast:
             anchorGroup['out'] = anchorCVIndex + 1
 
@@ -752,3 +595,4 @@ class NurbsCurve(nodes['CurveShape']):
         :return: The U parameter at the center of the specified Bezier anchor.
         """
         return self.knots()[::3][anchorIndex]
+
