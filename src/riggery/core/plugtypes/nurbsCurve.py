@@ -551,6 +551,9 @@ class NurbsCurve(plugs['Geometry']):
                    degree:Optional[int]=None,
                    keepRange:Union[int, str]=1):
         """
+        At the moment does not support periodic curves (due to outdated call to
+        _nut.getSpansKnots(), which does not deal with periodic curves).
+
         :param numCVs: the target number of CVs; if this is very low, the curve
             degree may be dropped as well
         :param degree/d: an optional override for the curve degree; defaults to
