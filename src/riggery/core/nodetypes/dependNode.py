@@ -1299,13 +1299,13 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
             entries.append(macro)
 
-        return entries
+        return out
 
     @classmethod
     def dumpSceneArchive(cls,
                          archive:dict,
                          filePath:str,
-                         ovewrite:bool=False) -> Path:
+                         overwrite:bool=False) -> Path:
         filePath = Path(force_ext(filePath, 'json'))
         pdir = filePath.parent
 
@@ -1323,7 +1323,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             f.write(_data)
 
         print(
-            "Dumped {} macros into: {}".format(len(archive.get('entries', [])),
+            "Dumped {} macros into: {}".format(len(archive.get('macros', [])),
                                                filePath)
         )
         return filePath
