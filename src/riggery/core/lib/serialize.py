@@ -1,3 +1,4 @@
+from pathlib import PurePath
 import maya.api.OpenMaya as om
 from ..elem import Elem
 
@@ -23,7 +24,7 @@ def simplify(item):
     if isinstance(item, om.MPoint):
         return list(item)[:-3]
 
-    if isinstance(item, Elem):
+    if isinstance(item, (Elem, PurePath)):
         return str(item)
 
     raise TypeError("can't simplify item of type '{}'".format(type(item)))
