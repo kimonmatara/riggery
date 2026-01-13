@@ -115,7 +115,7 @@ class Reference(DependNode):
 
     @staticmethod
     def _getCopyNumber(filePath:str) -> Optional[int]:
-        mt = re.match(r"^.*?\{([0-9]+)}$", filePath)
+        mt = re.match(r"^.*?\{([0-9]+)}$", str(filePath))
         if mt:
             return int(mt.group(1))
 
