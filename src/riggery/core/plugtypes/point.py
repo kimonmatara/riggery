@@ -88,7 +88,7 @@ class Point(plugs['Vector']):
             return node.attr('output')
 
         if shape == 16:
-            node = nodes.PointMatrixMult.createNode()
+            node = nodes.PointMatrixMultDL.createNode()
             self >> node.attr('inPoint')
             node.attr('inMatrix').put(other, isPlug)
             return node.attr('output')

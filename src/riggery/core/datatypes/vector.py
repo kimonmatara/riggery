@@ -454,7 +454,7 @@ class Vector(__pool__['Tensor3']):
 
             if shape == 16: # (vector-matrix or point-matrix)
                 if self.__ispoint__:
-                    node = nodes.PointMatrixMult.createNode()
+                    node = nodes.PointMatrixMultDL.createNode()
                     node.attr('inPoint').set(self)
                     other >> node.attr('inMatrix')
                 else:
@@ -468,7 +468,7 @@ class Vector(__pool__['Tensor3']):
                 matrix = other.asRotateMatrix()
 
                 if self.__ispoint__:
-                    node = nodes.PointMatrixMult.createNode()
+                    node = nodes.PointMatrixMultDL.createNode()
                     node.attr('inPoint').set(self)
                     matrix >> node.attr('inMatrix')
                 else:
@@ -526,7 +526,7 @@ class Vector(__pool__['Tensor3']):
 
         if shape == 16:
             if isPlug:
-                node = nodes['PointMatrixMult'].createNode()
+                node = nodes['PointMatrixMultDL'].createNode()
                 node.attr('inPoint').set(self)
                 node.attr('inMatrix').put(other, isPlug)
                 return node.attr('output')

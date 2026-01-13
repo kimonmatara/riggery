@@ -209,7 +209,7 @@ class Matrix(plugs['Tensor']):
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3:
-            node = nodes.PointMatrixMult.createNode()
+            node = nodes.PointMatrixMultDL.createNode()
             node.attr('inPoint').put(other, isPlug)
             self >> node.attr('inMatrix')
             return node.attr('output')
@@ -267,7 +267,7 @@ class Matrix(plugs['Tensor']):
         if index == 3:
             plug = nw.attr('outPosition')
             if not plug.inputs():
-                node = nodes['PointMatrixMult'].createNode()
+                node = nodes['PointMatrixMultDL'].createNode()
                 self >> node.attr('inMatrix')
                 node.attr('output') >> plug
             return plug

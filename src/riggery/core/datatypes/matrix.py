@@ -138,7 +138,7 @@ class Matrix(data['Tensor']):
 
         if shape == 3:
             if isPlug:
-                node = nodes.PointMatrixMult.createNode()
+                node = nodes.PointMatrixMultDL.createNode()
                 node.attr('inMatrix').set(self)
                 other.put(other, True)
                 return node.attr('output')

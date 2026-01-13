@@ -13,6 +13,7 @@ import riggery.internal.nttags as _ntt
 
 def _loadTypeSuffixes() -> dict:
     path = os.path.join(os.path.dirname(__file__), 'ntsuffixes.json')
+
     with open(path, 'r') as f:
         return json.load(f)
 
@@ -35,7 +36,11 @@ def _updateTypeSuffixes(overwrite:bool=False):
 
     :param overwrite: overwrite entries already in the file; defaults to False
     """
-    suffcache = _loadTypeSuffixes()
+    try:
+        suffcache = _loadTypeSuffixes()
+    except FileNotFoundError:
+        suffcache = {}
+
     downloaded = _ntt.download()
 
     if not overwrite:

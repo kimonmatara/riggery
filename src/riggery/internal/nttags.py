@@ -3,7 +3,7 @@
 import re
 import maya.cmds as m
 
-URL = r"https://help.autodesk.com/cloudhelp/2024/ENU/Maya-Tech-Docs/Nodes/index_tags.html"
+URL = r"https://help.autodesk.com/cloudhelp/2026/ENU/Maya-Tech-Docs/Nodes/index_tags.html"
 PAT = re.compile(r'^\s*<tt>(.*?)</tt>.*?>(.*?)</a>.*?$')
 ALLNODETYPES = set(m.allNodeTypes(includeAbstract=False))
 

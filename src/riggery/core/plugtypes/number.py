@@ -96,7 +96,7 @@ class Number(__pool__['Math']):
 
     @cache_dg_output
     def __neg__(self):
-        node = nodes.MultDoubleLinear.createNode()
+        node = nodes.MultDL.createNode()
         self >> node.attr('input1')
         node.attr('input2').set(-1.0)
         return node.attr('output').asType(type(self))
@@ -120,7 +120,7 @@ class Number(__pool__['Math']):
         other, shape, isPlug = _mm.info(other)
 
         if shape is None:
-            node = nodes.MultDoubleLinear.createNode()
+            node = nodes.MultDL.createNode()
             self >> node.attr('input1')
             node.attr('input2').put(other, isPlug)
             return node.attr('output')
@@ -138,7 +138,7 @@ class Number(__pool__['Math']):
         other, shape, isPlug = _mm.info(other)
 
         if shape is None:
-            node = nodes.MultDoubleLinear.createNode()
+            node = nodes.MultDL.createNode()
             node.attr('input1').put(other, isPlug)
             self >> node.attr('input2')
             return node.attr('output')

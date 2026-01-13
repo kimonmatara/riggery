@@ -492,7 +492,7 @@ class Vector(plugs['Tensor3Float']):
             return node.attr('output')
 
         if shape == 16: # point-matrix mult
-            node = nodes.PointMatrixMult.createNode()
+            node = nodes.PointMatrixMultDL.createNode()
             self >> node.attr('inPoint')
             node.attr('inMatrix').put(other, isPlug)
             return node.attr('output')
