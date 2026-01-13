@@ -27,4 +27,7 @@ def simplify(item):
     if isinstance(item, (Elem, PurePath)):
         return str(item)
 
+    if item is None:
+        return item
+
     raise TypeError("can't simplify item of type '{}'".format(type(item)))
