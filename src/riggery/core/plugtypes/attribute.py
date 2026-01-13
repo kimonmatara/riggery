@@ -1407,6 +1407,9 @@ class Attribute(Elem, metaclass=AttributeMeta):
         if self.isDynamic():
             typ = self.attributeType()
 
+            if typ is None:
+                return False
+
             if re.match(r"^(float|double|long|short)[23]$", typ):
                 return True
 
