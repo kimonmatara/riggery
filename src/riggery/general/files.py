@@ -128,17 +128,16 @@ class SGStream:
                              + self.extension + r"$")
         versionMap = []
 
+        pdir = self.parent
+
         for item in os.scandir(self.parent):
             name = item.name
             mt = re.match(pat, name)
 
             if mt:
-                versionMap.append((int(mt.group(1)), name))
+                versionMap.append((int(mt.group(1)), pdir / name))
 
-        for version, name in reversed(
-                sorted(versionMap, key=lambda pair: pair[0])
-        ):
-            yield version, Path(name)
+        yield from reversed(sorted(versionMap, key=lambda pair: pair[0]))
 
     def first(self) -> tuple[int, Path]:
         return list(self)[-1]
