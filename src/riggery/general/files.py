@@ -45,7 +45,7 @@ class SGStream:
         parentDir = template.parent
         templateBasename = str(template.name)
 
-        templatePat = r"^(.*?)_v#+\.([^\.]+)$"
+        templatePat = r"^(.*?)_v(#+)\.([^\.]+)$"
 
         mt = re.match(templatePat, templateBasename)
 
