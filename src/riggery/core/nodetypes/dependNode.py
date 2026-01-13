@@ -37,20 +37,19 @@ def captureCreateArgsKwargs(f):
     @wraps(f)
     def wrapped(cls, *args, **kwargs):
         node = f(cls, *args, **kwargs)
-        try:
-            args = simplify(args)
-            kwargs = simplify(kwargs)
-        except TypeError as exc:
-            m.warning("Couldn't serialize create() args for {}: {}".format(
-                repr(cls.__name__), exc
-            ))
-            return node
 
-        # Add even if empty, to signal that create() should be used in the
-        # createFromMacro() implementation, rather than createNode()
-        buff = node.addAttr('_createArgsKwargs', dt='string')
-        buff.set(repr((args, kwargs)))
-        buff.lock()
+        if node.__capture_construction__:
+            try:
+                args = simplify(args)
+                kwargs = simplify(kwargs)
+
+                buff = node.addAttr('_createArgsKwargs', dt='string')
+                buff.set(repr((args, kwargs)))
+                buff.lock()
+            except Exception as e:
+                 m.warning("Couldn't serialize create() args for {}: {}".format(
+                    repr(cls.__name__), e
+                ))
 
         return node
     return wrapped
@@ -267,6 +266,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     __typesuffix__ = None
 
     __has_constructor__ = False # automatic; don't override
+    __capture_construction__ = True
 
     tags = _tags.TagsGetter()
     sections = SectionsGetter()
