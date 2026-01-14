@@ -687,7 +687,7 @@ class Chain(list):
         ):
             distance = _mo.distanceFromLine(refPoint,
                                             thisPoint,
-                                            nextPoin-thisPoint)
+                                            nextPoint-thisPoint)
             candidates.append((boneRootIndex, distance))
 
         candidates.sort(key=lambda pair: pair[1])
