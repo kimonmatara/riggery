@@ -68,23 +68,28 @@ class Joint(nodes['Transform']):
 
     #------------------------------------------|    Constraints
 
-    # def attachWithoutSkew(self, slave, decompose=False):
-    #     # This works, but too many damn steps
-    #
-    #     slave = nodes['DagNode'](slave)
-    #     iniPose = slave.getMatrix(worldSpace=True)
-    #     tmtx = (slave.worldPosition()
-    #             ^ self.attr('wm').asOffset()).asTranslateMatrix()
-    #     rmtx = self.attr('wm').pick(r=True)
-    #     smtx = self.attr('inverseScale').asScaleMatrix(
-    #         ).inverse() * self.attr('pm')[0].pick(s=True)
-    #     mtx = smtx * rmtx * tmtx
-    #     if decompose:
-    #         mtx.decomposeAndApply(slave, mo=True, ws=True)
-    #     else:
-    #         mtx.applyViaOpm(slave, mo=True, ws=True)
-    #
-    #     return self
+    def attachWithoutSkew(self, slave, decompose=False):
+        # This works, but too many damn steps
+
+        slave = nodes['DagNode'](slave)
+        iniPose = slave.getMatrix(worldSpace=True)
+
+        tmtx = (slave.worldPosition()
+                ^ self.attr('wm').asOffset()).asTranslateMatrix()
+        rmtx = self.attr('wm').pick(r=True)
+
+        smtx = self.attr('inverseScale').asScaleMatrix(
+            ).inverse() * self.attr('pm')[0].pick(s=True)
+
+        mtx = smtx * rmtx * tmtx
+
+        if decompose:
+            mtx.decomposeAndApply(slave, mo=True, ws=True)
+
+        else:
+            mtx.applyViaOpm(slave, mo=True, ws=True)
+
+        return self
 
     #------------------------------------------|    Skel
 
