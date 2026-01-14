@@ -685,7 +685,7 @@ class Chain(list):
         for boneRootIndex, (thisPoint, nextPoint) in enumerate(
                 zip(self.points, list(self.points)[1:])
         ):
-            closestPoint = _mo.closestPointOneLine(
+            closestPoint = _mo.closestPointOnLine(
                 refPoint,
                 thisPoint,
                 (nextPoint - thisPoint),
