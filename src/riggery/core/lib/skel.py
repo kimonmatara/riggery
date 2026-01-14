@@ -685,17 +685,18 @@ class Chain(list):
         for boneRootIndex, (thisPoint, nextPoint) in enumerate(
                 zip(self.points, list(self.points)[1:])
         ):
-            distance = _mo.distanceFromLine(refPoint,
-                                            thisPoint,
-                                            nextPoint-thisPoint)
-            candidates.append((boneRootIndex, distance))
+            closestPoint = _mo.closestPointOneLine(
+                refPoint,
+                thisPoint,
+                (nextPoint - thisPoint),
+                clamp=True
+            )
+            distance = (refPoint-closestPoint).length()
+            thisBone = Chain([self[boneRootIndex], self[boneRootIndex+1]])
+            candidates.append((distance, thisBone))
 
-        candidates.sort(key=lambda pair: pair[1])
-
-        rootIndex = candidates[0][0]
-        tipIndex = rootIndex + 1
-
-        return Chain([self[rootIndex], self[tipIndex]])
+        candidates.sort(key=lambda x: x[0])
+        return candidates[0][1]
 
     #-------------------------------------------|    Transformations
 
