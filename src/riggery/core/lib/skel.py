@@ -650,6 +650,9 @@ class Chain(list):
     #     raise NotImplementedError
 
     def getClosestJointsOn(self, otherChain, indices:bool=False) -> list:
+        """
+        For each joint on this chain, returns the closest joint on *otherChain*.
+        """
         out = []
 
         otherPoints = list(zip(otherChain,
@@ -673,6 +676,26 @@ class Chain(list):
             return out
 
         return [otherChain[i] for i in indices]
+
+    def getClosestBone(self, refPoint) -> 'Chain':
+        """Returns the closest bone to *refPoint*."""
+        refPoint = data['Point'](refPoint)
+        candidates = []
+
+        for boneRootIndex, (thisPoint, nextPoint) in enumerate(
+                zip(self.points, list(self.points)[1:])
+        ):
+            distance = _mo.distanceFromLine(refPoint,
+                                            thisPoint,
+                                            nextPoin-thisPoint)
+            candidates.append((boneRootIndex, distance))
+
+        candidates.sort(key=lambda pair: pair[1])
+
+        rootIndex = candidates[-1][0]
+        tipIndex = rootIndex + 1
+
+        return Chain([self[rootIndex], self[tipIndex]])
 
     #-------------------------------------------|    Transformations
 
