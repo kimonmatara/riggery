@@ -692,7 +692,7 @@ class Chain(list):
 
         candidates.sort(key=lambda pair: pair[1])
 
-        rootIndex = candidates[-1][0]
+        rootIndex = candidates[0][0]
         tipIndex = rootIndex + 1
 
         return Chain([self[rootIndex], self[tipIndex]])
