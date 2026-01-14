@@ -126,6 +126,7 @@ class Reference(DependNode):
 
         if mt:
             return mt.group(1)
+        
         return filePath
 
     #-------------------------------------|    Destructor
