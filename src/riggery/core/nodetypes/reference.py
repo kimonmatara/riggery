@@ -127,3 +127,14 @@ class Reference(DependNode):
         if mt:
             return mt.group(1)
         return filePath
+
+    #-------------------------------------|    Destructor
+
+    def remove(self) -> None:
+        """Removes this reference node."""
+        path = self.path.as_posix()
+
+        def destroyer():
+            m.file(path, rr=True)
+
+        m.evalDeferred(destroyer)
