@@ -269,6 +269,10 @@ class Number(__pool__['Math']):
             node.attr('epsilon').put(epsilon)
         return node.attr('output')
 
+    def neq(self, other, epsilon=None):
+        out = self.eq(other, epsilon=epsilon)
+        return out.NOT()
+
     def gt(self, other):
         """
         :return: A boolean output for greater-than.
