@@ -102,7 +102,10 @@ class SGStream:
                 str(version).zfill(self.padding),
                 self.extension
                 )
-        raise SGStreamInvalidVersionError("version must be >= 0")
+        elif version == -1:
+            return self.last()
+
+        raise SGStreamInvalidVersionError("version must be >= 0 or -1")
 
     #-------------------------------------|    Actual I/O
 
