@@ -629,13 +629,10 @@ def captureSceneArchive(controls:Optional[Iterable[str]]=None, /,
 
 def applySceneArchive(archive:dict,
                       controls:Optional[Iterable[str]]=None, /,
-                      applyColor:bool=True,
-                      applyVisInput:bool=True) -> list[str]:
+                      applyColor:bool=True) -> list[str]:
     """
     :param applyColor: apply any color information in the macro; defaults to
         True
-    :param applyVisInput: (attempt to) connect any visibility input captured in
-        the macro; defaults to True
     :return: A list of generated shapes.
     """
     out = []
@@ -655,7 +652,7 @@ def applySceneArchive(archive:dict,
                 out += ControlShape.createFromMacro(entryMacro).apply(
                     matches,
                     applyColor=applyColor,
-                    applyVisInput=applyVisInput
+                    applyVisInput=False
                 )
             else:
                 m.warning(f"Skipping '{controlName}': no unambiguous match")
