@@ -9,6 +9,7 @@ import maya.api.OpenMaya as om
 import maya.cmds as m
 
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.modules import LazyModule
 from riggery.internal import str2api as _s2a
 from riggery.internal import apimath as _am
 from riggery.internal import api2str as _a2s
@@ -621,7 +622,8 @@ def captureSceneArchive(controls:Optional[Iterable[str]]=None, /,
         matches = m.ls(key, type='transform')
 
         if matches:
-            out[key] = ControlShape.capture(matches[0]).macro()
+            out[key] = ControlShape.capture(matches[0],
+                                            captureVisInput=False).macro()
 
     return out
 
