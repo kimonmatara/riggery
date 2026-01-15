@@ -828,6 +828,7 @@ class Transform(nodes['DagNode']):
             copyVisInput:bool=False,
             scale=None,
             worldSpace:bool=False,
+            replace:bool=True,
             worldMirrorAxis:Optional[Literal['x', 'y', 'z']]=None
     ) -> list['nodes.NurbsCurve']:
         out =_cs.copyShape(
@@ -837,7 +838,8 @@ class Transform(nodes['DagNode']):
             copyVisInput=copyVisInput,
             worldMirrorAxis=worldMirrorAxis,
             worldSpace=worldSpace,
-            scale=scale
+            scale=scale,
+            replace=replace
         )
         return list(map(nodes['DagNode'], out))
 
