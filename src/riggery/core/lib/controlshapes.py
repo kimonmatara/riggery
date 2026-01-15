@@ -362,6 +362,9 @@ class ControlShape:
             # Attempt to reuse existing user vis input / override col info
             # where things are undefined
 
+            thisApplyColor = applyColor
+            thisApplyVisInput = applyVisInput
+
             existingVisInput = getFirstVisInput(transform)
             existingOverrideColor = getFirstOverrideColor(transform)
 
@@ -373,11 +376,14 @@ class ControlShape:
                         if applyVisInput is False \
                                 or 'visInput' not in curveMacro:
                             curveMacro['visInput'] = existingVisInput
+                            thisApplyVisInput = True
+
 
                     if existingOverrideColor:
                         if applyColor is False \
                                 or 'overrideColor' not in curveMacro:
                             curveMacro['overrideColor'] = existingOverrideColor
+                            thisApplyColor = True
             else:
                 thisInst = self
 
@@ -388,10 +394,12 @@ class ControlShape:
             shapeMObjects = []
 
             for curveMacro in thisInst.curveMacros:
-                shape = createShapeFromCurveMacro(curveMacro,
-                                                  transform,
-                                                  applyColor=applyColor,
-                                                  applyVisInput=applyVisInput)
+                shape = createShapeFromCurveMacro(
+                    curveMacro,
+                    transform,
+                    applyColor=thisApplyColor,
+                    applyVisInput=thisApplyVisInput
+                )
                 shapeMObjects.append(_s2a.getNodeMObject(shape))
 
             if replace:
