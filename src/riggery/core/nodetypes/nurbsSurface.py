@@ -22,14 +22,17 @@ class NurbsSurface(SurfaceShape):
         :param worldSpace/ws: calculate in world-space; defaults to False
         :return: Tuple of point, u param, v param
         """
-        if worldSpace:
-            space = om.MSpace.kWorld
-        else:
-            space = om.MSpace.kObject
+
+        point = _data['Point'](point)
 
         fn = self.__apimfn__(dag=True)
-        result = fn.closestPoint(om.MPoint(point), space=space)
-        return _data['Point'].fromApi(result[0]), result[1], result[2]
+
+        point, u, v = fn.closestPoint(
+            point.api,
+            space=om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        )
+
+        return _data['Point'].fromApi(point), u, v
 
     def numCVs(self) -> int:
         """:return: The number of CVs on this surface."""
