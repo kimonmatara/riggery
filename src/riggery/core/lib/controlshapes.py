@@ -382,7 +382,7 @@ class ControlShape:
                 thisInst = self
 
             if replace:
-                clearControlShapes(transform, includeLocators=True)
+                previousControlShapes = iterShapes('nurbsCurve', transform)
 
             shapeMObjects = []
 
@@ -392,6 +392,13 @@ class ControlShape:
                                                   applyColor=applyColor,
                                                   applyVisInput=applyVisInput)
                 shapeMObjects.append(_s2a.getNodeMObject(shape))
+
+            if replace:
+                for _shape in previousControlShapes:
+                    try:
+                        m.delete(_shape)
+                    except:
+                        continue
 
             conformShapeNames(transform)
             out += [_a2s.fromNodeMObject(x,
