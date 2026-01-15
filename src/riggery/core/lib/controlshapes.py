@@ -388,8 +388,9 @@ class ControlShape:
                 thisInst = self
 
             if replace:
-                previousControlShapes = list(iterShapes('nurbsCurve',
-                                                        transform))
+                previousControlShapes = list(
+                    iterShapes(['nurbsCurve', 'locator'], transform)
+                )
 
             shapeMObjects = []
 
