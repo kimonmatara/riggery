@@ -103,3 +103,18 @@ class NurbsSurface(plugs['Geometry']):
             return [node.attr('outputSurface')[i] for i in keep]
 
         return node.attr('outputSurface')[keep]
+
+    #-------------------------------------|    Curves
+
+    def extractCurve(self, param, v=False):
+        """
+        :param param: the isoparm value
+        :param v: whether to extract in the V rather than the U dimension;
+            defaults to False
+        """
+        node = nodes['CurveFromSurfaceIso'].createNode()
+        self >> node.attr('inputSurface')
+        param >> node.attr('isoparmValue')
+        v >> node.attr('isoparmDirection')
+
+        return node.attr('outputCurve')
