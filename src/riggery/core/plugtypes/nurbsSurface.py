@@ -108,8 +108,12 @@ class NurbsSurface(plugs['Geometry']):
 
     def extractCurve(self, param, v=False):
         """
+        Note that, if you're setting this up from a returned closestPoint, the
+        correspondence between the U, V of the point and the extractor here is
+        reversed, so set *v* accordingly.
+
         :param param: the isoparm value
-        :param v: whether to extract in the V rather than the U dimension;
+        :param v: whether to extract in the V rather than the U direction;
             defaults to False
         """
         node = nodes['CurveFromSurfaceIso'].createNode()
