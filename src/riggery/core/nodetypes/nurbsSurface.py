@@ -27,7 +27,7 @@ class NurbsSurface(SurfaceShape):
         else:
             space = om.MSpace.kObject
 
-        fn = self.__apimfn__()
+        fn = self.__apimfn__(dag=True)
         result = fn.closestPoint(om.MPoint(point), space=space)
         return _data['Point'].fromApi(result[0]), result[1], result[2]
 
