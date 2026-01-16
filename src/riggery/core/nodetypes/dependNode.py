@@ -1285,7 +1285,15 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     def getAttrState(self):
         out = {}
 
-        for attr in self.listAttr(write=True):
+        _self = str(self)
+        attrNames = m.listAttr(_self, write=True)
+
+        for attrName in attrNames:
+            try:
+                attr = self.attr(attrName)
+            except:
+                continue
+
             try:
                 info = {}
 
@@ -1302,7 +1310,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                 info['keyable'] = attr.getFlag('keyable')
                 info['channelBox'] = attr.getFlag('channelBox')
 
-                out[attr.attrName()] = info
+                out[attrName] = info
             except:
                 continue
 
