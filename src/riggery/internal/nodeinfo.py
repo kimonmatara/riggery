@@ -5,6 +5,10 @@ import re
 import maya.cmds as m
 import maya.api.OpenMaya as om
 
+for plugin in ('matrixNodes', 'quatNodes'):
+    if not m.pluginInfo(plugin, q=1, loaded=1):
+        m.loadPlugin(plugin)
+
 cap = lambda x: x[0].upper()+x[1:]
 uncap = lambda x: x[0].lower()+x[1:]
 
