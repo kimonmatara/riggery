@@ -1334,51 +1334,80 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         return out
 
-    def setAttrState(self, state:dict):
+    @short(force='f')
+    def setAttrState(self,
+                     state:dict,
+                     force:bool=False):
         """
         Attempts to set this node's attribute inputs, values and states using
         the type of dictionary returned by :meth:`getAttrState`. Erroring
         attributes are skipped.
+
+        :param force/f: force connections from the macro even when the
+            destination plugs are locked or already connected; defaults to False
         """
-        for attrName, state in state.items():
+        for attrName, attrState in state.items():
             try:
                 attr = self.attr(attrName)
-            except:
+            except AttributeError:
                 continue
 
-            try:
-                attr.unlock()
-            except:
-                continue
+            hasInputs = bool(attr.inputs())
+            wasLocked = attr.isLocked()
 
-            input = state.get('input')
+            if wasLocked:
+                if force:
+                    try:
+                        attr.unlock()
+                        isLocked = False
+                    except:
+                        isLocked = True
+                else:
+                    isLocked = True
+            else:
+                isLocked = False
 
-            if input is not None:
-                try:
-                    attr.connectInput(input, force=True)
-                except:
-                    if '|' in input:
-                        elems = input.split('.')
-                        node = elems[0]
-                        shortName = node.split('|')[-1]
-                        matches = m.ls(shortName)
+            canEditValue = (not isLocked) and (not hasInputs)
+            canEditInput = (not isLocked) and (
+                    (not hasInputs) or (hasInputs and force))
 
-                        if matches and len(matches) == 1:
-                            input = '.'.join([matches[0]] + elems[1:])
+            #----------------------|    Set value or input
+
+            if canEditInput:
+                input = attrState.get('input')
+
+                if input:
+                    _attr = str(attr)
+                    inputNode, inputAttr = input.split('.', 1)
+
+                    if m.objExists(inputNode):
+                        if not (hasInputs and m.isConnected(input, _attr)):
                             try:
-                                attr.connectInput(input, force=True)
+                                m.connectAttr(input, _attr, f=True)
+                                canEditValue = False
                             except:
                                 pass
+                    else:
+                        if '|' in inputNode:
+                            matches = m.ls(inputNode.split('|')[-1])
 
-            try:
-                state['input'] >> attr
-            except:
-                pass
+                            if matches and len(matches) == 1:
+                                input = '.'.join([matches[0], inputAttr])
+                                if not (hasInputs
+                                        and m.isConnected(input, _attr)):
+                                    try:
+                                        m.connectAttr(input, _attr, f=True)
+                                        canEditValue = False
+                                    except:
+                                        pass
 
-            try:
-                attr.set(state['value'])
-            except:
-                pass
+            if canEditValue:
+                try:
+                    attr.set(attrState['value'])
+                except:
+                    pass
+
+            #----------------------|    Set flags
 
             try:
                 if state['keyable']:
@@ -1392,11 +1421,11 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             except:
                 pass
 
-            if state.get('locked', False):
-                try:
-                    attr.lock()
-                except:
-                    pass
+            #----------------------|    Restore lock state
+
+            if force and wasLocked and not isLocked:
+                attr.lock()
+
 
     attrState = property(getAttrState, setAttrState)
 
@@ -1435,7 +1464,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     @classmethod
     def _createFromMacro(cls, macro:dict, **createKwargOverrides):
-        createMethod = builderCls.create
+        createMethod = cls.create
 
         # Get createArgsKwargs, conform kwargs to long form
         createArgs, createKwargs = macro['createArgsKwargs']
