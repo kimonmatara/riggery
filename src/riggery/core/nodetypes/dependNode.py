@@ -286,6 +286,9 @@ class DependNodeMeta(type(Elem)):
         except KeyError:
             pass
 
+        dct.setdefault('__consider_for_serialization__',
+                       'create' in dct or '_deriveCreateArgsKwargs' in dct)
+
         return super().__new__(meta, clsname, bases, dct)
 
 
@@ -294,8 +297,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     __pool__ = nodes
     __typesuffix__ = None
 
-    __has_constructor__ = False # automatic; don't override
-    __capture_construction__ = True
+    __has_constructor__ = False             # auto; don't override
+    __capture_construction__ = True         # forced into False on Reference,
+                                            # since ref nodes can't be edited
+
+    __consider_for_serialization__ = False  # auto; True if has create() or
+                                            # _deriveCreateArgsKwargs
 
     tags = _tags.TagsGetter()
     sections = SectionsGetter()
@@ -1439,23 +1446,38 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         try:
             cakAttr = self.attr('_createArgsKwargs')
         except AttributeError:
-            raise ConstructorDataMacroError
+            cakAttr = None
 
-        val = cakAttr.get()
-
-        try:
-            createArgsKwargs = ast.literal_eval(cakAttr.get())
-        except Exception as e:
-            raise ConstructorDataMacroError(
-                "Can't extract macro for node '{}' of type '{}': {}".format(
-                    str(self), self.__melnode__, e
+        if cakAttr is None:
+            try:
+                createArgsKwargs = self._deriveCreateArgsKwargs()
+            except NotImplementedError:
+                raise ConstructorDataMacroError(
+                    "No embedded create() spec, and"
+                    " '{}' does not implement ".format(self.__class__.__name__),
+                    "_deriveCreateArgsKwargs()."
                 )
-            )
+        else:
+            try:
+                createArgsKwargs = ast.literal_eval(cakAttr.get())
+            except Exception as e:
+                raise ConstructorDataMacroError(
+                    "cant't evaluate embedded create spec"
+                )
 
         return {'nodeType': self.__class__.__melnode__,
                 'name': str(self),
                 'attrs': self.attrState,
                 'createArgsKwargs': createArgsKwargs}
+
+    def _deriveCreateArgsKwargs(self):
+        """
+        Used to reconstruct args / kwargs for create() for nodes that were not
+        created via create(). Must be implemented in subclasses to return a
+        tuple of args, kwargs. Data must be simplified (use
+        :func:`riggery.core.lib.serialize.simplify`).
+        """
+        raise NotImplementedError
 
     @classmethod
     def createFromMacro(cls, macro:dict, **createKwargOverrides):
