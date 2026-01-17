@@ -122,7 +122,8 @@ class Attribute(Elem, metaclass=AttributeMeta):
     def _connect(cls,
                  src:'Attribute',
                  dest:'Attribute',
-                 force:bool):
+                 force:bool,
+                 quiet:bool=False):
         # Important note: this function *used* to implement *quiet* with a check
         # for src.hasOutput(dest), but sometimes this gave false positives
         # (eminently on curve CV inputs), so it's been discarded; remember this
@@ -137,11 +138,18 @@ class Attribute(Elem, metaclass=AttributeMeta):
             if dest.isMulti():
                 dest = dest.nextElement()
 
-        # if src.isMulti():
-        #     src = src[0]
-        #
-        # if dest.isMulti():
-        #     dest = dest.nextElement()
+        _src = str(src)
+        _dest = str(dest)
+
+        if quiet:
+            if dest.isLocked():
+                return
+
+            if force:
+                if m.isConnected(_src, _dest):
+                    return
+            elif bool(dest.inputs()):
+                return
 
         kwargs = {}
 
@@ -152,14 +160,14 @@ class Attribute(Elem, metaclass=AttributeMeta):
             m.connectAttr(str(src), str(dest), **kwargs)
 
     @short(force='f')
-    def connectOutput(self, output, /, force:bool=False):
+    def connectOutput(self, output, /, force:bool=False, quiet:bool=False):
         """
         Connects from this plug into *output*.
 
         :param force/f: replace any existing connection; defaults to False
         :return: self
         """
-        self._connect(self, Attribute(output), force)
+        self._connect(self, Attribute(output), force, quiet=quiet)
         return self
 
     def disconnectOutput(self, output):
@@ -171,14 +179,15 @@ class Attribute(Elem, metaclass=AttributeMeta):
         return self
 
     @short(force='f')
-    def connectInput(self, input, /, force:bool=False):
+    def connectInput(self, input, /, force:bool=False, quiet:bool=False):
         """
         Connects from *input* plug into this plug.
 
         :param force/f: replace any existing connection; defaults to False
+        :param quiet: prevent "already connected" warnings; defaults to False
         :return: self
         """
-        self._connect(Attribute(input), self, force)
+        self._connect(Attribute(input), self, force, quiet=quiet)
         return self
 
     def disconnectInput(self, input):
@@ -198,6 +207,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         if isinstance(input, str):
             input = _s2a.getMPlug(input)
+
         elif isinstance(input, Attribute):
             input = input.__apimplug__()
 
