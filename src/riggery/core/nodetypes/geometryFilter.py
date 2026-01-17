@@ -362,6 +362,13 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    Name
 
+    @classmethod
+    def _deriveNameFromGeo(cls, geo):
+        return "{}_{}".format(
+            str(nodes['DependNode'](geo).toTransform()).split('|')[-1],
+            _nm.TYPESUFFIXES.get(cls.__melnode__, cls.__melnode__)
+        )
+
     def renameFromGeo(self):
         """
         Names this deformer after the transform of the shape it affects.
@@ -369,9 +376,6 @@ class GeometryFilter(DependNode):
         shape = next(self.shapes, None)
 
         if shape is not None:
-            self.rename("{}_{}".format(
-                str(shape.parent).split('|')[-1],
-                _nm.TYPESUFFIXES.get(self.__melnode__, self.__melnode__)
-            ))
+            self.rename(self._deriveNameFromGeo(shape))
 
         return self
