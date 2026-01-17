@@ -1,9 +1,10 @@
+from copy import deepcopy
 import re
 import os
 import shutil
 from tempfile import gettempdir
 from pathlib import Path
-from typing import Literal, Union, Iterator, Optional
+from typing import Literal, Union, Iterator, Optional, Iterable
 import xml.etree.ElementTree as ET
 
 from ..nodetypes import __pool__ as nodes
@@ -19,6 +20,47 @@ from riggery.general.functions import short
 class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Contructors
+
+    @classmethod
+    @short(maximumInfluences='mi',
+           obeyMaxInfluences='omi',
+           skinMethod='sm',
+           weightDistribution='wd',
+           bindMethod='bm',
+           dropoffRate='dr',
+           normalizeWeights='nw',
+           removeUnusedInfluence='rui',
+           toSelectedBones='tsb',
+           name='n')
+    def create(cls,
+               *jointsAndGeo, # geo last, to match Maya
+               name:Optional[str]=None,
+               maximumInfluences:Optional[int]=None,
+               obeyMaxInfluences:Optional[bool]=None,
+               skinMethod:int=0, # linear
+               weightDistribution:int=0, # distance
+               bindMethod:int=0, # closest distance
+               dropoffRate:Optional[float]=None,
+               normalizeWeights:int=1, # interactive,
+               removeUnusedInfluence:bool=False,
+               toSelectedBones:bool=True):
+
+        jointsAndGeo = expand_tuples_lists(jointsAndGeo)
+
+        if name is None:
+            name = cls._deriveNameFromGeo(jointsAndGeo[-1])
+
+        kwargs = {'name': name}
+
+        for k, v in zip(
+                ('maximumInfluences', 'obeyMaxInfluences',
+                 'dropoffRate'),
+                (maximumInfluences, obeyMaxInfluences, dropoffRate)
+        ):
+            if v is not None:
+                kwargs[k] = v
+
+        return r.skinCluster(*jointsAndGeo, **kwargs)[0]
 
     @classmethod
     @short(bindMethod='bm',
@@ -211,99 +253,112 @@ class SkinCluster(GeometryFilter):
 
         return skin
 
-    @classmethod
-    def createFromMacro(cls, macro:dict, **overrides) -> 'SkinCluster':
-        """
-        Recreates a skinCluster using the type of macro returned by
-        :meth:`macro`.
-        """
-        macro = macro.copy()
-        macro.update(overrides)
+    # @classmethod
+    # def createFromMacro(cls, macro:dict, **overrides) -> 'SkinCluster':
+    #     """
+    #     Recreates a skinCluster using the type of macro returned by
+    #     :meth:`macro`.
+    #     """
+    #     macro = macro.copy()
+    #     macro.update(overrides)
+    #
+    #     shape = macro['geometry'][0]
+    #     influences = macro['influence']
+    #
+    #     buildArgs = influences + [shape]
+    #     buildKwargs = {k: macro[k] for k in [
+    #         'bindMethod', 'maximumInfluences', 'obeyMaxInfluences',
+    #         'skinMethod', 'weightDistribution', 'name']}
+    #
+    #     buildKwargs['toSelectedBones'] = True
+    #
+    #     skin = r.skinCluster(*buildArgs, **buildKwargs)[0]
+    #
+    #     config = {k: macro[k] for k in
+    #               ['deformUserNormals', 'useComponents',
+    #                'envelope', 'dqsSupportNonRigid']}
+    #
+    #     for k, v in config.items():
+    #         skin.attr(k).set(v)
+    #
+    #     for attrName, attrInfo in macro['dqsScale'].items():
+    #         input = attrInfo['input']
+    #         value = attrInfo['value']
+    #         plug = skin.attr(attrName)
+    #
+    #         if input:
+    #             try:
+    #                 r.connectAttr(input, plug)
+    #
+    #             except RuntimeError:
+    #                 r.warning(
+    #                     ("Couldn't connect {} into {}; "+
+    #                      "setting the value instead.").format(input, plug)
+    #                 )
+    #
+    #                 plug.set(value)
+    #         else:
+    #             plug.set(value)
+    #
+    #     return skin
 
-        shape = macro['geometry'][0]
-        influences = macro['influence']
+    # def macro(self) -> dict:
+    #     """
+    #     :return: A dictionary representation of this skin cluster that can be
+    #         used to restore it later.
+    #     """
+    #     macro = super().macro()
+    #     _self = macro['name']
+    #     influences = list(map(str, self.influence))
+    #
+    #     if influences:
+    #         macro['influence'] = influences
+    #
+    #     for flag in ['bindMethod',
+    #                  'maximumInfluences',
+    #                  'obeyMaxInfluences',
+    #                  'skinMethod',
+    #                  'weightDistribution']:
+    #         macro[flag] = m.skinCluster(_self, q=True, **{flag:True})
+    #
+    #     macro['geometry'] = [str(next(self.shapes))]
+    #
+    #     for attrName in ['deformUserNormals',
+    #                      'useComponents',
+    #                      'envelope',
+    #                      'dqsSupportNonRigid']:
+    #         macro[attrName] = self.attr(attrName).get()
+    #
+    #     macro['dqsScale'] = dqs = {}
+    #
+    #     wlist = [self.attr('dqsScale')]
+    #     wlist += list(wlist[0].children)
+    #
+    #     for plug in wlist:
+    #         val = plug()
+    #         inputs = plug.inputs(plugs=True)
+    #
+    #         if inputs:
+    #             input = str(inputs[0])
+    #         else:
+    #             input = None
+    #
+    #         dqs[plug.attrName()] = {'value': val, 'input': input}
+    #
+    #     return macro
 
-        buildArgs = influences + [shape]
-        buildKwargs = {k: macro[k] for k in [
-            'bindMethod', 'maximumInfluences', 'obeyMaxInfluences',
-            'skinMethod', 'weightDistribution', 'name']}
-
-        buildKwargs['toSelectedBones'] = True
-
-        skin = r.skinCluster(*buildArgs, **buildKwargs)[0]
-
-        config = {k: macro[k] for k in
-                  ['deformUserNormals', 'useComponents',
-                   'envelope', 'dqsSupportNonRigid']}
-
-        for k, v in config.items():
-            skin.attr(k).set(v)
-
-        for attrName, attrInfo in macro['dqsScale'].items():
-            input = attrInfo['input']
-            value = attrInfo['value']
-            plug = skin.attr(attrName)
-
-            if input:
-                try:
-                    r.connectAttr(input, plug)
-
-                except RuntimeError:
-                    r.warning(
-                        ("Couldn't connect {} into {}; "+
-                         "setting the value instead.").format(input, plug)
-                    )
-
-                    plug.set(value)
-            else:
-                plug.set(value)
-
-        return skin
-
-    def macro(self) -> dict:
-        """
-        :return: A dictionary representation of this skin cluster that can be
-            used to restore it later.
-        """
-        macro = super().macro()
-        _self = macro['name']
-        influences = list(map(str, self.influence))
-
-        if influences:
-            macro['influence'] = influences
-
-        for flag in ['bindMethod',
-                     'maximumInfluences',
-                     'obeyMaxInfluences',
-                     'skinMethod',
-                     'weightDistribution']:
-            macro[flag] = m.skinCluster(_self, q=True, **{flag:True})
-
-        macro['geometry'] = [str(next(self.shapes))]
-
-        for attrName in ['deformUserNormals',
-                         'useComponents',
-                         'envelope',
-                         'dqsSupportNonRigid']:
-            macro[attrName] = self.attr(attrName).get()
-
-        macro['dqsScale'] = dqs = {}
-
-        wlist = [self.attr('dqsScale')]
-        wlist += list(wlist[0].children)
-
-        for plug in wlist:
-            val = plug()
-            inputs = plug.inputs(plugs=True)
-
-            if inputs:
-                input = str(inputs[0])
-            else:
-                input = None
-
-            dqs[plug.attrName()] = {'value': val, 'input': input}
-
-        return macro
+    def _deriveCreateArgsKwargs(self) -> tuple[tuple, dict]:
+        args = list(map(str, self.influence)) + [str(next(self.shapes))]
+        _self = str(self)
+        kwargs = {k: m.skinCluster(_self, q=True, **{k:True})
+                  for k in ('maximumInfluences',
+                            'obeyMaxInfluences',
+                            'skinMethod',
+                            'weightDistribution',
+                            'bindMethod',
+                            'normalizeWeights')}
+        kwargs.update({'toSelectedBones': True, 'name': str(self)})
+        return args, kwargs
 
     #-------------------------------------|    Influences
 
@@ -696,15 +751,21 @@ class SkinCluster(GeometryFilter):
 
         for shape in without_duplicates((nodes['DagNode'](x).toShape()
                                          for x in expand_tuples_lists(geos))):
-
             if replace:
                 for existing in self.fromGeo(shape):
                     r.delete(existing)
 
-            thisMacro = macro.copy()
-            thisMacro['geometry'] = [shape]
+            thisMacro = deepcopy(macro)
+            args, kwargs = thisMacro['createArgsKwargs']
+            args = list(args)
+            args[-1] = shape
+            try:
+                del(kwargs['name'])
+            except KeyError:
+                pass
+            thisMacro['createArgsKwargs'] = args, kwargs
 
-            newSkin = self.createFromMacro(thisMacro).renameFromGeo()
+            newSkin = self.createFromMacro(thisMacro)
 
             if weights:
                 newSkin.copyWeightsFrom(self,
