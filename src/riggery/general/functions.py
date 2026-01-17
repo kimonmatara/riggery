@@ -1,6 +1,8 @@
 """Utilities for functions."""
+import inspect
+from types import FunctionType
 from functools import wraps
-from typing import Callable, Any, Optional, Literal
+from typing import Callable, Any, Optional, Literal, Iterator
 from warnings import warn
 
 
@@ -111,6 +113,70 @@ class short:
         wrapper.__shorthands__ = self.mapping
 
         return wrapper
+
+def get_long_kwargs(kwargs:dict, shorthands:dict) -> dict:
+    rshorts = {v:k for k, v in shorthands.items()}
+    return {rshorts.get(k, k): v for k, v in kwargs.items()}
+
+def get_short_kwargs(kwargs:dict, shorthands:dict) -> dict:
+    return {shorthands.get(k, k): v for k, v in kwargs.items()}
+
+def get_shorthands(f:FunctionType, recurse:bool=False) -> dict:
+    """
+    If no shorthands are discovered at all, an empty dict will be returned. You
+    may get unexpected results if any of the decorators in the stack don't use
+    @wraps.
+
+    :param recurse: if there are multiple @short decorators, dig down to the
+        innermost one and update the returned dictionary in reverse order;
+        defaults to False
+    """
+    if not inspect.isfunction(f):
+        raise TypeError(f"not a function: {f}")
+
+    if recurse:
+        shorthand_dicts = []
+        current = f
+
+        while True:
+            try:
+                shorthand_dicts.append(current.__shorthands__)
+            except AttributeError:
+                pass
+
+            current = getattr(current, '__wrapped__', None)
+
+            if current is None:
+                break
+
+        out = {}
+
+        for d in reversed(shorthand_dicts):
+            out.update(d)
+
+        return out
+    else:
+        return getattr(f, '__shorthands__', {})
+
+def unwrap(f:FunctionType) -> Optional[FunctionType]:
+    """
+    Caution: this only works if the decorator itself used @wraps internally.
+    """
+    return getattr(f, '__wrapped__', None)
+
+def iter_unwrap(f:FunctionType) -> Iterator[FunctionType]:
+    """
+    Returns internal functions; *f* itself is skipped. Caution: this won't work
+    if decorators didn't use @wraps.
+    """
+    current = f
+
+    while True:
+        current = getattr(current, '__wrapped__', None)
+
+        if current is None:
+            break
+        yield current
 
 class lazy_property:
     """
