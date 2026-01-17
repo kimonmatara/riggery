@@ -1,3 +1,4 @@
+import inspect
 import ast
 import json
 from pathlib import Path
@@ -17,7 +18,7 @@ from riggery.internal import cmdinfo as _ci, \
     mfnmatches as _mfm
 import riggery.internal.plugutil.reorder as _reo
 import riggery.internal.str2api as _s2a
-from riggery.general.functions import short
+from riggery.general.functions import short, get_shorthands, get_long_kwargs
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.files import force_ext
 from riggery.general.strings import cap, uncap
@@ -31,28 +32,6 @@ from ..lib import tags as _tags
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem, ElemInstError
-
-
-def captureCreateArgsKwargs(f):
-    @wraps(f)
-    def wrapped(cls, *args, **kwargs):
-        node = f(cls, *args, **kwargs)
-
-        if node.__capture_construction__:
-            try:
-                args = simplify(args)
-                kwargs = simplify(kwargs)
-
-                buff = node.addAttr('_createArgsKwargs', dt='string')
-                buff.set(repr((args, kwargs)))
-                buff.lock()
-            except Exception as e:
-                 m.warning("Couldn't serialize create() args for {}: {}".format(
-                    repr(cls.__name__), e
-                ))
-
-        return node
-    return wrapped
 
 class Section:
 
@@ -238,6 +217,56 @@ class SectionsGetter:
             return self
         return Sections(inst)
 
+#-----------------------------------------|
+#-----------------------------------------|    Serialization
+#-----------------------------------------|
+
+def captureConstructorArgsKwargs(f):
+    @wraps(f)
+    def wrapped(cls, *args, **kwargs):
+        node = f(cls, *args, **kwargs)
+
+        if node.__capture_construction__:
+            # Will save constructor information even if *args / **kwargs is
+            # False, to signal to macro() that create() was used to construct
+            # the node
+
+            try:
+                # May already exist in the case of super() calls to create()
+                cakAttr = node.attr('_createArgsKwargs')
+                cakAttr.unlock()
+            except AttributeError:
+                cakAttr = node.addAttr('_createArgsKwargs', dt='string')
+
+            # Conform to long kwargs
+            kwargs = get_long_kwargs(kwargs, get_shorthands(f))
+
+            try:
+                args = simplify(args)
+                kwargs = simplify(kwargs)
+
+                cakAttr.set(repr((args, kwargs)))
+                cakAttr.lock()
+
+            except Exception as e:
+                 m.warning("Couldn't serialize create() args for {}: {}".format(
+                    repr(cls.__name__), e
+                ))
+
+        return node
+    return wrapped
+
+class MacroError(RuntimeError):
+    ...
+
+class ConstructorDataMacroError(MacroError):
+    """
+    Thrown for nodes that don't carry any embedded constructor data, or data
+    that can't be evaluated.
+    """
+#-----------------------------------------|
+#-----------------------------------------|    Main class
+#-----------------------------------------|
 
 class DependNodeMeta(type(Elem)):
     def __new__(meta, clsname, bases, dct):
@@ -251,7 +280,7 @@ class DependNodeMeta(type(Elem)):
 
         try:
             dct['create'] = classmethod(
-                captureCreateArgsKwargs(dct['create'].__func__)
+                captureConstructorArgsKwargs(dct['create'].__func__)
             )
             dct['__has_constructor__'] = True
         except KeyError:
@@ -1266,23 +1295,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-------------------------------------|    Serialization
 
-    @classmethod
-    def _getMacroBuilderClass(cls, macro):
-        # This is for use by archivers etc. Don't override it on network;
-        # network should delegate inside createFromMacro() instead
-        builder = nodes[cap(macro['nodeType'])]
-
-        if not issubclass(builder, cls):
-            raise TypeError("builder class not a subclass of calling class")
-
-        return builder
-
-    @classmethod
-    def createFromMacro(cls, macro:dict) -> 'DependNode':
-        return cls._getMacroBuilderClass(macro)._createFromMacro(macro)
-
-
-    def getAttrState(self):
+    def getAttrState(self) -> dict:
+        """
+        Attempts to return value, input and state information for all of this
+        node's writeable attributes. Erroring attributes are skipped. Values are
+        stored in simplified form for easy serialization.
+        """
         out = {}
 
         _self = str(self)
@@ -1317,13 +1335,21 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         return out
 
     def setAttrState(self, state:dict):
+        """
+        Attempts to set this node's attribute inputs, values and states using
+        the type of dictionary returned by :meth:`getAttrState`. Erroring
+        attributes are skipped.
+        """
         for attrName, state in state.items():
             try:
                 attr = self.attr(attrName)
             except:
                 continue
 
-            attr.release()
+            try:
+                attr.unlock()
+            except:
+                continue
 
             input = state.get('input')
 
@@ -1374,130 +1400,240 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     attrState = property(getAttrState, setAttrState)
 
+    def macro(self) -> dict:
+        """
+        This should never be overriden without updating the super() output.
+
+        :raises ConstructorDataMacroError: Can't evaluate any constructor data
+            on this node.
+        """
+        try:
+            cakAttr = self.attr('_createArgsKwargs')
+        except AttributeError:
+            raise ConstructorDataMacroError
+
+        val = cakAttr.get()
+
+        try:
+            createArgsKwargs = ast.literal_eval(cakAttr.get())
+        except Exception as e:
+            raise ConstructorDataMacroError(
+                "Can't extract macro for node '{}' of type '{}': {}".format(
+                    str(self), self.__melnode__, e
+                )
+            )
+
+        return {'nodeType': self.__class__.__melnode__,
+                'name': str(self),
+                'attrs': self.attrState,
+                'createArgsKwargs': createArgsKwargs}
+
     @classmethod
-    def _createFromMacro(cls, macro:dict) -> 'DependNode':
-        createArgsKwargs = macro.get('createArgsKwargs')
+    def createFromMacro(cls, macro:dict, **createKwargOverrides):
+        builderCls = cls._resolveMacroBuilderClass(macro)
+        return builderCls._createFromMacro(macro, **createKwargOverrides)
 
-        if createArgsKwargs is None:
-            kwargs = {}
+    @classmethod
+    def _createFromMacro(cls, macro:dict, **createKwargOverrides):
+        createMethod = builderCls.create
 
-            if not _n.Name.__elems__:
-                kwargs['name'] = macro['name']
+        # Get createArgsKwargs, conform kwargs to long form
+        createArgs, createKwargs = macro['createArgsKwargs']
+        shorthands = get_shorthands(createMethod.__func__)
+        createKwargs = get_long_kwargs(createKwargs, shorthands)
 
-            node = cls.createNode(**kwargs)
+        # Apply any kwarg overrides
+        createKwargOverrides = get_long_kwargs(createKwargOverrides, shorthands)
+        createKwargs.update(createKwargOverrides)
+
+        # Manage name
+        explName = macro['name']
+
+        if _n.Name.__elems__:
+            doRename = False
+            try:
+                del(createKwargs['key'])
+            except KeyError:
+                pass
         else:
-            args, kwargs = createArgsKwargs
+            params = list(inspect.signature(
+            createMethod.__func__).parameters.values())[1:]
 
-            if _n.Name.__elems__:
-                kwargs = kwargs.copy()
+            acceptsNameArg = any((param.name == 'name' and param.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY
+            ) for param in params))
 
-                for key in ('n', 'name'):
-                    try:
-                        del(kwargs[key])
-                    except KeyError:
-                        continue
+            if acceptsNameArg:
+                createKwargs.setdefault('name', explName)
+                doRename = False
+            else:
+                doRename = True
 
-            node = cls.create(*args, **kwargs)
+        # Call create() with the right args, kwargs
+        node = createMethod(*createArgs, **createKwargs)
 
+        if doRename:
+            node.rename(explName)
+
+        # Set attrs
         node.attrState = macro['attrs']
 
         return node
 
-    def macro(self) -> dict:
-        out = {'nodeType': self.__class__.__melnode__,
-               'name': str(self),
-               'attrs': self.attrState}
-
-        try:
-            buf = self.attr('_createArgsKwargs')
-        except AttributeError:
-            return out
-
-        try:
-            createArgsKwargs = ast.literal_eval(buf())
-        except:
-            return out
-
-        out['createArgsKwargs'] = createArgsKwargs
-        return out
-
     @classmethod
-    def captureSceneArchive(cls) -> dict:
-        """
-        Traverses the scene for nodes of this type, and returns macros for any
-        nodes that override :meth:`macro`.
-        """
-        out = {'description': 'riggery node macros archive'}
-        entries = out['macros'] = []
+    def _resolveMacroBuilderClass(cls, macro:dict):
+        builderClass = nodes[cap(macro['nodeType'])]
 
-        for node in cls.ls():
-            try:
-                macro = node.macro()
-            except Exception as exc:
-                m.warning(
-                    "Couldn't derive macro for '{}': {}".format(node,
-                                                                exc)
-                )
-                continue
+        if not issubclass(builderClass,cls):
+            raise TypeError("builder class not a subclass of calling class")
 
-            entries.append(macro)
+        return builderClass
 
-        return out
+    # #-------------------------------------|    Serialization
+    #
+    # @classmethod
+    # def _getMacroBuilderClass(cls, macro):
+    #     # This is for use by archivers etc. Don't override it on network;
+    #     # network should delegate inside createFromMacro() instead
+    #     builder = nodes[cap(macro['nodeType'])]
+    #
+    #     if not issubclass(builder, cls):
+    #         raise TypeError("builder class not a subclass of calling class")
+    #
+    #     return builder
+    #
+    # @classmethod
+    # def createFromMacro(cls, macro:dict) -> 'DependNode':
+    #     return cls._getMacroBuilderClass(macro)._createFromMacro(macro)
+    #
+    #
 
-    @classmethod
-    def dumpSceneArchive(cls,
-                         archive:dict,
-                         filePath:str,
-                         overwrite:bool=False) -> Path:
-        filePath = Path(force_ext(filePath, 'json'))
-        pdir = filePath.parent
-
-        if not pdir.is_dir():
-            raise FileNotFoundError(
-                "parent directory does not exist: {}".format(pdir)
-            )
-
-        if (not overwrite) and filePath.exists():
-            raise FileExistsError(filePath)
-
-        _data = json.dumps(archive, indent=2)
-
-        with open(filePath, 'w', encoding='utf-8') as f:
-            f.write(_data)
-
-        print(
-            "Dumped {} macros into: {}".format(len(archive.get('macros', [])),
-                                               filePath)
-        )
-        return filePath
-
-    @classmethod
-    def loadSceneArchive(cls, filePath:str) -> dict:
-        with open(filePath, 'r', encoding='utf-8') as f:
-            _data = f.read()
-        return json.loads(_data)
-
-    @classmethod
-    def applySceneArchive(cls, archive:dict) -> list:
-        macros = archive.get('macros')
-
-        out = []
-
-        for macro in macros:
-            try:
-                builderClass = cls._getMacroBuilderClass(macro)
-                result = builderClass.createFromMacro(macro)
-            except Exception as exc:
-                m.warning(
-                    "Couldn't reconstitute macro for '{}' node: {}".format(
-                        macro['__melnode__'],
-                        exc
-                    )
-                )
-                continue
-            out.append(result)
-
-        return out
+    #
+    # @classmethod
+    # def _createFromMacro(cls, macro:dict) -> 'DependNode':
+    #     createArgsKwargs = macro.get('createArgsKwargs')
+    #
+    #     if createArgsKwargs is None:
+    #         kwargs = {}
+    #
+    #         if not _n.Name.__elems__:
+    #             kwargs['name'] = macro['name']
+    #
+    #         node = cls.createNode(**kwargs)
+    #     else:
+    #         args, kwargs = createArgsKwargs
+    #
+    #         if _n.Name.__elems__:
+    #             kwargs = kwargs.copy()
+    #
+    #             for key in ('n', 'name'):
+    #                 try:
+    #                     del(kwargs[key])
+    #                 except KeyError:
+    #                     continue
+    #
+    #         node = cls.create(*args, **kwargs)
+    #
+    #     node.attrState = macro['attrs']
+    #
+    #     return node
+    #
+    # def macro(self) -> dict:
+    #     out = {'nodeType': self.__class__.__melnode__,
+    #            'name': str(self),
+    #            'attrs': self.attrState}
+    #
+    #     try:
+    #         buf = self.attr('_createArgsKwargs')
+    #     except AttributeError:
+    #         return out
+    #
+    #     try:
+    #         createArgsKwargs = ast.literal_eval(buf())
+    #     except:
+    #         return out
+    #
+    #     out['createArgsKwargs'] = createArgsKwargs
+    #     return out
+    #
+    # @classmethod
+    # def captureSceneArchive(cls) -> dict:
+    #     """
+    #     Traverses the scene for nodes of this type, and returns macros for any
+    #     nodes that override :meth:`macro`.
+    #     """
+    #     out = {'description': 'riggery node macros archive'}
+    #     entries = out['macros'] = []
+    #
+    #     for node in cls.ls():
+    #         try:
+    #             macro = node.macro()
+    #         except Exception as exc:
+    #             m.warning(
+    #                 "Couldn't derive macro for '{}': {}".format(node,
+    #                                                             exc)
+    #             )
+    #             continue
+    #
+    #         entries.append(macro)
+    #
+    #     return out
+    #
+    # @classmethod
+    # def dumpSceneArchive(cls,
+    #                      archive:dict,
+    #                      filePath:str,
+    #                      overwrite:bool=False) -> Path:
+    #     filePath = Path(force_ext(filePath, 'json'))
+    #     pdir = filePath.parent
+    #
+    #     if not pdir.is_dir():
+    #         raise FileNotFoundError(
+    #             "parent directory does not exist: {}".format(pdir)
+    #         )
+    #
+    #     if (not overwrite) and filePath.exists():
+    #         raise FileExistsError(filePath)
+    #
+    #     _data = json.dumps(archive, indent=2)
+    #
+    #     with open(filePath, 'w', encoding='utf-8') as f:
+    #         f.write(_data)
+    #
+    #     print(
+    #         "Dumped {} macros into: {}".format(len(archive.get('macros', [])),
+    #                                            filePath)
+    #     )
+    #     return filePath
+    #
+    # @classmethod
+    # def loadSceneArchive(cls, filePath:str) -> dict:
+    #     with open(filePath, 'r', encoding='utf-8') as f:
+    #         _data = f.read()
+    #     return json.loads(_data)
+    #
+    # @classmethod
+    # def applySceneArchive(cls, archive:dict) -> list:
+    #     macros = archive.get('macros')
+    #
+    #     out = []
+    #
+    #     for macro in macros:
+    #         try:
+    #             builderClass = cls._getMacroBuilderClass(macro)
+    #             result = builderClass.createFromMacro(macro)
+    #         except Exception as exc:
+    #             m.warning(
+    #                 "Couldn't reconstitute macro for '{}' node: {}".format(
+    #                     macro['__melnode__'],
+    #                     exc
+    #                 )
+    #             )
+    #             continue
+    #         out.append(result)
+    #
+    #     return out
 
     #-------------------------------------|    Repr etc.
 
