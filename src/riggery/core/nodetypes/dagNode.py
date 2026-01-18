@@ -223,6 +223,12 @@ class DagNode(DependNode):
 
     parents = property(iterParents)
 
+    @property
+    def stack(self):
+        """Variant of :meth:`iterParents` that includes this node."""
+        yield self
+        yield from self.iterParents()
+
     def getParents(self) -> list:
         """
         Flat version of :meth:`iterParents`.
