@@ -406,24 +406,49 @@ class Namespace(str):
             out += self.getNodes()
 
         if namespaces:
-            childNamespaces = self.getChildNamespaces()
-            for childNamespace in childNamespaces:
+            for childNamespace in self.iterChildren():
                 out.append(childNamespace)
                 if recurse:
                     out += childNamespace.getMembers(nodes=nodes,
                                                      namespace=namespace,
                                                      recurse=True)
         elif recurse and nodes:
-            for childNamespace in self.getChildNamespaces():
+            for childNamespace in self.iterChildren():
                 out += childNamespace.getNodes(recurse=True)
 
         return out
 
+    @short(type='typ', recurse='r')
+    def ls(self, *patterns, type=None, recurse:bool=False):
+        """Yields members of this namespace."""
+
+        patterns = list(without_duplicates(expand_tuples_lists(*patterns)))
+
+        allNodes =  m.namespaceInfo(self,
+                                    listOnlyDependencyNodes=True,
+                                    dagPath=True,
+                                    recurse=recurse)
+
+        if allNodes:
+            if type is None:
+                types = []
+            else:
+                types = expand_tuples_lists(type)
+
+            for node in allNodes:
+                if patterns:
+                    name = node.split('|')[-1]
+                    if not any((fnmatch(name, pat) for pat in patterns)):
+                        continue
+
+                if types:
+                    if not any((m.objectType(node, isAType=x) for x in types)):
+                        continue
+
+                yield Elem(node)
 
     @short(recurse='r', includeInternal='ii')
-    def getChildNamespaces(self,
-                           recurse:bool=False,
-                           includeInternal:bool=False): # -> list['Namespace']:
+    def iterChildren(self, recurse:bool=False, includeInternal:bool=False):
         """
         :param recurse / r: list children of children as well; defaults to
             False
@@ -431,15 +456,14 @@ class Namespace(str):
             ':UI' and ':shared'; defaults to False
         :return: Any namespaces under this one.
         """
-        out = m.namespaceInfo(self,
-                              listOnlyNamespaces=True,
-                              recurse=recurse)
+        out = m.namespaceInfo(self, listOnlyNamespaces=True, recurse=recurse)
+
         if out:
-            out = [Namespace(item) for item in out]
-            if not includeInternal:
-                out = list(filter(lambda x: not x.isInternal(), out))
-            return out
-        return []
+            for item in out:
+                if not ((not includeInternal) and isInternal(item)):
+                    yield Namespace(item)
+
+    children = property(iterChildren)
 
     @short(recurse='r')
     def getNodes(self, recurse:bool=False): # -> list[Elem]
@@ -480,7 +504,7 @@ class Namespace(str):
                     yield Elem(node)
 
         if recurse:
-            for namespace in self.getChildNamespaces():
+            for namespace in self.iterChildren():
                 for item in namespace.findNodes(pattern, recurse=True):
                     yield(item)
 
