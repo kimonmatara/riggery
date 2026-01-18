@@ -1302,7 +1302,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-------------------------------------|    Serialization
 
-    def getAttrState(self) -> dict:
+    @short(includeInputs='ii')
+    def getAttrState(self, includeInputs:bool=False) -> dict:
         """
         Attempts to return value, input and state information for all of this
         node's writeable attributes. Erroring attributes are skipped. Values are
@@ -1325,10 +1326,11 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                 if attr.isLocked():
                     info['locked'] = True
 
-                inputs = attr.inputs(plugs=True)
+                if includeInputs:
+                    inputs = attr.inputs(plugs=True)
 
-                if inputs:
-                    info['input'] = str(inputs[0])
+                    if inputs:
+                        info['input'] = str(inputs[0])
 
                 info['value'] = simplify(attr())
 
@@ -1341,9 +1343,10 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         return out
 
-    @short(force='f')
+    @short(force='f', includeInputs='ii')
     def setAttrState(self,
                      state:dict,
+                     includeInputs:bool=False,
                      force:bool=False):
         """
         Attempts to set this node's attribute inputs, values and states using
@@ -1380,7 +1383,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
             #----------------------|    Set value or input
 
-            if canEditInput:
+            if canEditInput and includeInputs:
                 input = attrState.get('input')
 
                 if input:
