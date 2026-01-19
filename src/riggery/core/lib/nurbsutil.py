@@ -110,7 +110,10 @@ def expandDrawInfo(points:Iterable['_data.Point'], *,
     degree = resolveDegreeFromNumCVs(numCVs, degree, periodic=periodic)
 
     points = list(map(om.MPoint, points))
-    is2D = all((x[2] == 0.0 for x in points))
+
+    # Normally you'll never want this, since it'll lock the curve to the 2D
+    # plane
+    is2D = False
 
     spans, knots = getSpansKnots(numCVs,
                                  degree,
