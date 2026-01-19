@@ -139,3 +139,26 @@ class Reference(DependNode):
             m.file(path, rr=True)
 
         m.evalDeferred(destroyer)
+
+    #-------------------------------------|    Namespace
+
+    # Caution: .namespace returns the *node's* namespace, which is not the same
+    # as the *reference* namespace.
+
+    def getReferenceNamespace(self):
+        """
+        Returns the reference namespace (this is not the same as the namespace
+        of the *reference node*).
+        """
+        return _ns.Namespace(m.referenceQuery(str(self), namespace=True))
+
+    def setReferenceNamespace(self, namespace):
+        """
+        Sets the reference namespace (this is not the same as the namespace
+        of the *reference node*).
+        """
+        path = self.getPath().as_posix()
+        m.file(path, e=True, namespace=str(_ns.Namespace(namespace)))
+
+    referenceNamespace = property(getReferenceNamespace,
+                                  setReferenceNamespace)
