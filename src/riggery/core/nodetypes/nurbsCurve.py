@@ -387,6 +387,9 @@ class NurbsCurve(nodes['CurveShape']):
 
     #----------------------------------------------|    Editing
 
+    # The below is an older implementation that breaks in Maya 2026 due to a
+    # new Maya bug whereby the Z component is ignored on .controlPoints inputs.
+
     def driveCVs(self, points:Iterable):
         """
         Drives the CVs of this curve using point attributes.
@@ -396,9 +399,6 @@ class NurbsCurve(nodes['CurveShape']):
         """
         points = list(points)
         shape = self.newInput().node()
-
-        # Create proxy multi
-        proxyMulti = shape.addPointAttr('proxyControlPoints', multi=True)
 
         for i, point in enumerate(points):
             point >> shape.attr('controlPoints')[i]
@@ -600,3 +600,84 @@ class NurbsCurve(nodes['CurveShape']):
         """
         return self.knots()[::3][anchorIndex]
 
+    #-------------------------------------|    CV driving
+
+    def driveCVsNEW(self, points:Iterable[Union['data.Point', 'plugs.Point']]):
+        """
+        Replaces the older implementation of ``driveCVs``, which conked out in
+        Maya 2026 (which broke curve driving via .controlPoints). This one uses
+        DG clusters and component tags instead.
+        """
+        #---------------------------|    Gather info
+
+        newPoints = [_mm.conform(x, (plugs['Point'], data['Point']), force=True)
+                     for x in points]
+
+        _oldPoints = list(self.iterCVPoints(visible=True))
+
+        origShape = self.getOrigShape(True)
+
+        # origShape.attr('intermediateObject').set(False)
+
+        origInput = self.getHistoryInput()
+
+        # node = origInput.node()
+        # if isinstance(node, nodes.Shape):
+        #     node.attr('intermediateObject').set(False)
+        #
+        # m.refresh()
+
+        #---------------------------|    Loop
+
+        clusters = []
+        incoming = origInput
+
+        #---------------------------|    Loop
+
+        for i, (_oldPoint, newPoint) in enumerate(
+            zip(_oldPoints, newPoints)
+        ) :
+            with _nm.Name(i+1):
+                # Create the cluster node
+                cluster = nodes.Cluster.createNode()
+
+                # Connect origShape into .originalGeometry
+                origShape.attr('local') >> cluster.attr('originalGeometry')
+
+                # Connect last output
+
+                incoming >> cluster.attr('input')[0].attr('inputGeometry')
+
+                #---------------|    Component tags
+
+                # Create the component tag on the base shape
+                tagName = m.componentTag(['{}.cv[{}]'.format(self, i)],
+                                         cr=True,
+                                         ntn='cluster{}'.format(i+1),
+                                         utn=True)
+
+                # Set the component tag expression on the cluster .input
+                cluster.attr('input')[0].attr('componentTagExpression').set(
+                    tagName
+                )
+
+                #---------------|    Drive the cluster
+
+                with _nm.Name('asTmtx'):
+                    tmtx = newPoint.asTranslateMatrix()
+
+                with _nm.Name('asOffset'):
+                    tmtx = tmtx.asOffset()
+
+                tmtx >> cluster.attr('matrix')
+
+                #---------------|    Finalize the loop
+
+                clusters.append(cluster)
+                incoming = cluster.attr('outputGeometry')[0]
+
+        # Connect last cluster into this shape
+
+        incoming >> self.attr('create')
+
+        return self
