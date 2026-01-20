@@ -726,6 +726,8 @@ class Transform(nodes['DagNode']):
 
         proxy.defaultValue = defaultValue
         proxy.value = defaultValue
+        self.attr('ro').disable()
+
         return proxy
 
     @short(maintainOffset='mo',
