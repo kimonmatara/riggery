@@ -107,6 +107,11 @@ class EulerRotation(__pool__['Tensor3']):
             self.order = order
         return self
 
+    #-----------------------------------------|    Conversions
+
+    def asMatrix(self) -> '__pool__.Matrix':
+        return __pool__['Matrix'].fromApi(self.api.asMatrix())
+
     #-----------------------------------------|    Repr
 
     def __repr__(self):
