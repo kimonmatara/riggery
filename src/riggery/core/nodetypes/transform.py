@@ -710,26 +710,6 @@ class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Rigging
 
-    @short(keyable='k', defaultValue='dv', section='s')
-    def createProxyRotateOrder(self,
-                               longName:str='rotationOrder', /,
-                               keyable:bool=False,
-                               defaultValue='xyz',
-                               section:Optional[str]=None):
-        proxy = self.attr('ro').createProxy(self,
-                                            longName=longName,
-                                            section=section)
-        if keyable:
-            proxy.setFlags(cb=False, k=True)
-        else:
-            proxy.setFlags(cb=True, k=False)
-
-        proxy.defaultValue = defaultValue
-        proxy.value = defaultValue
-        self.attr('ro').disable()
-
-        return proxy
-
     @short(maintainOffset='mo',
            afterInput='ai')
     def driveOpm(self,
