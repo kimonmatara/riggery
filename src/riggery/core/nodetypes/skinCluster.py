@@ -11,8 +11,10 @@ from ..nodetypes import __pool__ as nodes
 GeometryFilter = nodes['GeometryFilter']
 
 import maya.cmds as m
+import maya.mel as mel
 
 import riggery.core as r
+from riggery.core.lib.selection import keepsel
 from riggery.core.lib import skinwtio as _sw
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
@@ -489,6 +491,109 @@ class SkinCluster(GeometryFilter):
         return self
 
     #-------------------------------------|    Weights
+
+    def pruneWeightsBelow(self, threshold:float):
+        """Prunes weights below the specified threshold."""
+        _self = str(self)
+        m.skinPercent(_self,
+                      m.skinCluster(_self, q=1, geometry=1)[0], prw=threshold)
+        return self
+
+    def iterInfluencesFromVerts(self, verts:list[str]) -> list['nodes.Joint']:
+        """
+        Returns the influences on this skinCluster that affect the given
+        vertices.
+        """
+        _self = str(self)
+        influences = m.skinCluster(_self, q=True, influence=True)
+        geo = m.skinCluster(_self, q=True, geometry=True)
+
+        if verts and influences and geo:
+            verts = m.ls(verts, flatten=True)
+            shape = geo[0]
+
+            for influence in influences:
+                for vert in verts:
+                    value = m.skinPercent(_self,
+                                          shape,
+                                          vert,
+                                          q=True,
+                                          transform=influence,
+                                          value=True)
+                    if value is None:
+                        continue
+
+                    if value > 0.0:
+                        yield nodes['DependNode'](influence)
+                        break
+
+    def getInfluencesFromVerts(self, verts:list[str]) -> list['nodes.Joint']:
+        """Flat-list version of :meth:`iterInfluencesFromVerts`."""
+        return list(self.iterInfluencesFromVerts(verts))
+
+    @short(iterations='i')
+    def artSmoothInfluencesOnVerts(self, verts, iterations:int=10):
+        """Smooths weights only on the specified vertices. """
+        influences = self.getInfluencesFromVerts(verts)
+        if influences:
+            self.artSmoothInfluences(influences,
+                                     iterations=iterations,
+                                     selection=verts)
+
+    @short(iterations='i')
+    @keepsel
+    def artSmoothInfluences(self,
+                            *influences,
+                            iterations:int=10,
+                            selection=None):
+        """
+        :param \*influences: the influences to smooth; if omitted, defaults to
+            all influences
+        :param iterations/i: the number of times to click the 'Smooth' button;
+            defaults to 10
+        :param selection: if you only want to affect particular components,
+            pass them in here; defaults to None
+        """
+        influences = expand_tuples_lists(*influences)
+
+        influences = list(without_duplicates(
+            (nodes['DependNode'](x) for x in influences)))
+
+        if influences:
+            influences = [x for x in influences if x in self.getInfluence()]
+        else:
+            influences = self.getInfluence()
+
+        if influences:
+            # Switch weight normalization to post temporarily
+            nw = r.skinCluster(self, q=True, nw=True)
+            r.skinCluster(self, e=True, nw=2)
+
+            # Select geo, activate artisan weight painting
+            if selection is None:
+                selection = r.skinCluster(self, q=True, geometry=True)[0]
+
+            r.select(selection)
+
+            initCtx = m.currentCtx()
+            settingsVis = m.workspaceControl('ToolSettings',
+                                             q=True, visible=True)
+
+            mel.eval('ArtPaintSkinWeightsToolOptions')
+
+            mel.eval('artAttrPaintOperation artAttrSkinPaintCtx Smooth;')
+            mel.eval('artAttrSkinPaintCtx -e -opacity 1 `currentCtx`;')
+
+            for infl in influences:
+                mel.eval('setSmoothSkinInfluence {}'.format(infl))
+
+                for x in range(iterations):
+                    mel.eval('artAttrSkinPaintCtx -e -clear `currentCtx`')
+
+            r.skinCluster(self, e=True, fnw=True)
+            r.skinCluster(self, e=True, nw=nw)
+            m.setToolTo(initCtx)
+
 
     @short(maximumInfluences='mi')
     def configInfluencesForRealtimeBETA(self, maximumInfluences:int=4):
