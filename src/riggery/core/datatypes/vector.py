@@ -560,3 +560,15 @@ class Vector(__pool__['Tensor3']):
         matrix = __pool__['Matrix']()
         matrix[12:15] = self[:3]
         return matrix
+
+    def asScaleMatrix(self):
+        """
+        :return: A matrix where the axis vectors have the magnitudes of this
+            vector's elements.
+        """
+        out = __pool__['Matrix']()
+        out.x *= self[0]
+        out.y *= self[1]
+        out.z *= self[2]
+
+        return out
