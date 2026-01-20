@@ -1038,6 +1038,13 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         return om.MFnDependencyNode(
             self.__apimobject__()).isFromReferencedFile
 
+    def getReference(self) -> 'nodes.Reference':
+        out = m.referenceQuery(str(self), referenceNode=True)
+        if out:
+            return DependNode(out)
+
+    reference = property(getReference)
+
     #-----------------------------------------|    Type inspections
 
     def isTransform(self) -> bool:
