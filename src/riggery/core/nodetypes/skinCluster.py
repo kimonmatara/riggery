@@ -38,7 +38,7 @@ class SkinCluster(GeometryFilter):
                *jointsAndGeo, # geo last, to match Maya
                name:Optional[str]=None,
                maximumInfluences:Optional[int]=None,
-               obeyMaxInfluences:Optional[bool]=None,
+               obeyMaxInfluences:Optional[bool]=False,
                skinMethod:int=0, # linear
                weightDistribution:int=0, # distance
                bindMethod:int=0, # closest distance
@@ -56,8 +56,11 @@ class SkinCluster(GeometryFilter):
 
         for k, v in zip(
                 ('maximumInfluences', 'obeyMaxInfluences',
-                 'dropoffRate'),
-                (maximumInfluences, obeyMaxInfluences, dropoffRate)
+                 'skinMethod', 'weightDistribution', 'bindMethod',
+                 'dropoffRate', 'normalizeWeights', 'toSelectedBones'),
+                (maximumInfluences, obeyMaxInfluences, skinMethod,
+                 weightDistribution, bindMethod, dropoffRate,
+                 normalizeWeights, toSelectedBones)
         ):
             if v is not None:
                 kwargs[k] = v
