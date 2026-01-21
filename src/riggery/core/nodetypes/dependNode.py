@@ -286,8 +286,9 @@ class DependNodeMeta(type(Elem)):
         except KeyError:
             pass
 
-        dct.setdefault('__consider_for_serialization__',
-                       'create' in dct or '_deriveCreateArgsKwargs' in dct)
+        dct.setdefault('__consider_for_serialization__', any((k in dct for k in (
+            'create', '_deriveCreateArgsKwargs', '_createFromMacro'
+        ))))
 
         return super().__new__(meta, clsname, bases, dct)
 
