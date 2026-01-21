@@ -1,5 +1,5 @@
 import re
-from typing import Union, Optional
+from typing import Union, Optional, Iterator
 
 from riggery.general.functions import short
 import riggery.core.lib.skel as _sk
@@ -172,3 +172,10 @@ class Joint(nodes['Transform']):
                                 'otherType': desc})
 
         return state
+
+    #------------------------------------------|    Skin clusters
+
+    def getSkinClusters(self) -> Iterator['nodes.SkinCluster']:
+        return self.attr('worldMatrix')[0].outputs(type='skinCluster')
+
+    skinClusters = property(getSkinClusters)
