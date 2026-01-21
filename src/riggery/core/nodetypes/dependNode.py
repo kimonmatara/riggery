@@ -1700,6 +1700,31 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-------------------------------------|    Repr etc.
 
+    def findOppositeNodeByName(self,
+                               checkType:bool=True) -> Optional['DependNode']:
+        """Only works if this node has a prefix of L_ or R_."""
+        name = str(self).split('|')[-1].split(':')[-1]
+        mt = re.match(r"^([LR])_(.*?)$", name)
+
+        if mt:
+            thisSide, thisBasename = mt.groups()
+            otherSide = {'L': 'R', 'R': 'L'}[thisSide]
+            otherName = '{}_{}'.format(otherSide, thisBasename)
+            ns = self.namespace
+
+            if not ns.isRoot():
+                otherName = ns +':'+otherName
+
+            try:
+                otherNode = DependNode(otherName)
+            except:
+                return
+
+            if checkType and otherNode.nodeType() != self.nodeType():
+                return
+
+            return otherNode
+
     def __str__(self):
         return self.getName()
 
