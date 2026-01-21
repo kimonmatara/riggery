@@ -375,48 +375,57 @@ class SkinCluster(GeometryFilter):
         """
         _sw.SkinClusterWeightsWrangler(str(self)).setWeights(weights)
 
-    @short(influenceAssociation='ia', surfaceAssociation='sa',autoLabel='al')
     def mirrorWeights(
             self,
-            influenceAssociation:Literal[
-                "closestJoint",
-                "closestBone",
-                "label",
-                "name",
-                "oneToOne"
-            ]='closestJoint',
+            influenceAssociation:Optional[Union[str, list[str]]]=None,
             surfaceAssociation:Literal[
-                "closestPoint",
-                "rayCast",
-                "closestComponent"
+                'closestPoint', 'rayCast', 'closestComponent'
             ]='closestComponent',
+            alongPositiveX:bool=False,
+            destinationSkin:Optional['SkinCluster']=None,
             autoLabel:bool=False
     ):
         """
-        :param bool autoLabel/al: if this is ``True``, *influenceAssociation*
-            will be overriden to 'label', and joint labels auto-configured
-            based on L_ or R_ prefixes (labels will be reverted after
-            mirroring); defaults to ``False``
-        :return: ``self``
+        :param influenceAssociation/ia: one, or several (as fallbacks) of:
+            'closestJoint', 'closestBone', 'label', 'name', 'oneToOne'; defaults
+            to ['label', 'closestJoint', 'oneToOne'] if *autoLabel* is True,
+            otherwise ['closestJoint', 'oneToOne']
+        :param surfaceAssociation/sa: one of 'closestPoint', 'rayCast',
+            'closestComponent'; defaults to 'closestComponent'
         """
-        if autoLabel:
-            elems = ['label']
-            if influenceAssociation != 'label':
-                elems.append(influenceAssociation)
-            else:
-                elems.append('closestJoint')
+        # Resolve influence association
+        if influenceAssociation is None:
+            influenceAssociation = ['closestJoint', 'oneToOne']
+            if autoLabel:
+                influenceAssociation.insert(0, 'label')
 
-            states = {joint:joint.autoLabel() for joint in self.getInfluence()}
-            influenceAssociation = elems
-
-        r.copySkinWeights(ss=self,
-                          ds=self,
-                          ia=influenceAssociation,
-                          sa=surfaceAssociation,
-                          mm='YZ')
+        # Resolve destination skin
+        if destinationSkin is not None:
+            destinationSkin = SkinCluster(destinationSkin)
 
         if autoLabel:
-            for joint, state in states.items():
+            allJoints = self.getInfluence()
+
+            if destinationSkin is not None:
+                allJoints += destinationSkin.getInfluence()
+                allJoints = without_duplicates(allJoints)
+
+            labelStates = {joint:joint.autoLabel() for joint in allJoints}
+
+        # Run the command
+        if destinationSkin is None:
+            destinationSkin = self
+
+        kwargs = {'ss': self, 'ds': destinationSkin,
+                  'ia': influenceAssociation,
+                  'sa': surfaceAssociation,
+                  'mi': alongPositiveX,
+                  'mm': 'YZ'}
+
+        try:
+            r.copySkinWeights(**kwargs)
+        finally:
+            for joint, state in labelStates.items():
                 joint.setLabelState(state)
 
         return self
