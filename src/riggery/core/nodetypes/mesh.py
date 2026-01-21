@@ -28,3 +28,9 @@ class Mesh(SurfaceShape):
     setCurrentUVSetName = setUVSet # for parity with PyMEL
 
     uvSet = property(getUVSet, setUVSet)
+
+    def getUVSets(self) -> list[str]:
+        out = m.polyUVSet(str(self), q=True, allUVSets=1)
+        if out:
+            return out
+        return []
