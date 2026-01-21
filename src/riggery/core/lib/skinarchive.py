@@ -523,6 +523,5 @@ def findInfoFiles(directories):
 
     return out
 
-def loadMultiFromDir(dr, **kwargs):
-    infoFiles = findInfoFiles(dr)
-    return loadMulti(infoFiles, **kwargs)
+def loadMultiFromDir(dr, onlyForSceneShapes=None, /, **kwargs):
+    return loadMulti(findInfoFiles(dr), onlyForSceneShapes, **kwargs)
