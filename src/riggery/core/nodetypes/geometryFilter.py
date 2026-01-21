@@ -364,10 +364,9 @@ class GeometryFilter(DependNode):
 
     @classmethod
     def _deriveNameFromGeo(cls, geo):
-        return "{}_{}".format(
-            str(nodes['DependNode'](geo).toTransform()).split('|')[-1],
-            _nm.TYPESUFFIXES.get(cls.__melnode__, cls.__melnode__)
-        )
+        geo = nodes.DependNode(geo).toTransform()
+        name = geo.shortName(stripTypeSuffix=True)
+        return "{}_{}".format(name, cls.__typesuffix__)
 
     def renameFromGeo(self):
         """
