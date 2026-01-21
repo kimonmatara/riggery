@@ -99,36 +99,31 @@ class SkinCluster(GeometryFilter):
         """
         :return: Skin clusters driving the specified vertices.
         """
-        verts = list(filter(
-            lambda x: re.match(r"^.*?\.vtx\[.*?]$", x),
-            without_duplicates(expand_tuples_lists(*verts))
-        ))
+        skins = m.ls(type='skinCluster')
 
-        if verts:
-            visited = set()
-            sceneSkinClusters = m.ls(type='skinCluster')
+        if skins:
+            shapes = set()
 
-            if sceneSkinClusters:
-                out = []
-                skinMap = {}
+            for vert in without_duplicates(
+                    map(str, expand_tuples_lists(*verts))
+            ):
+                mt = re.match(r"^(.*?)\.vtx\[.*?]$", vert)
+                if mt:
+                    node = mt.group(1)
 
-                for skinCluster in sceneSkinClusters:
-                    shape = m.skinCluster(skinCluster, q=True, geometry=True)
+                    if m.objectType(node, isAType='shape'):
+                        shapes.add(node)
+                    else:
+                        shapes.add(m.listRelatives(node,
+                                                   shapes=True,
+                                                   noIntermediate=True,
+                                                   path=True)[0])
 
-                    if shape:
-                        shape = shape[0]
+            for skin in skins:
+                shape = m.skinCluster(skin, q=True, geometry=True)[0]
 
-                        if m.nodeType(shape) == 'mesh':
-                            skinMap.setdefault(skinCluster, []
-                                               ).append(shape+'.vtx[:]')
-
-                if skinMap:
-                    for vert in verts:
-                        for skinCluster, skinnedRange in skinMap.items():
-                            if vert in set(m.ls(skinnedRange, flatten=True)):
-                                if skinCluster not in visited:
-                                    visited.add(skinCluster)
-                                    yield nodes['DependNode'](skinCluster)
+                if shape in shapes:
+                    yield nodes['DependNode'](skin)
 
     #-------------------------------------|    Serialization
 
@@ -530,6 +525,25 @@ class SkinCluster(GeometryFilter):
     def getInfluencesFromVerts(self, verts:list[str]) -> list['nodes.Joint']:
         """Flat-list version of :meth:`iterInfluencesFromVerts`."""
         return list(self.iterInfluencesFromVerts(verts))
+
+    # @classmethod
+    # def smoothInfluencesOnVerts(cls,
+    #                             verts:list[str],
+    #                             *skinClusters,
+    #                             iterations:int=10):
+
+    #     if skinClusters:
+    #         skinClusters = list(
+    #             without_duplicates(map(nodes['DependNode'],
+    #                                    expand_tuples_lists(*skinClusters)))
+    #         )
+    #     else:
+    #         skinClusters = list(cls.fromVerts(verts))
+    #
+    #     if skinClusters:
+    #         for skinCluster in skinClusters:
+    #             skinCluster.artSmoothInfluencesOnVerts(verts,
+    #                                                    iterations=iterations)
 
     @short(iterations='i')
     def artSmoothInfluencesOnVerts(self, verts, iterations:int=10):
