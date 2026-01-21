@@ -98,35 +98,79 @@ class SkinCluster(GeometryFilter):
     #-------------------------------------|    Retrievals
 
     @classmethod
-    def fromVerts(cls, *verts:Union[str, list[str]]) -> Iterator['SkinCluster']:
+    def fromAny(cls, *items) -> Iterator['SkinCluster']:
         """
-        :return: Skin clusters driving the specified vertices.
+        Yields skinClusters from any combination of component, geometry,
+        skinCluster or joint.
         """
-        skins = m.ls(type='skinCluster')
+        visited = set()
 
-        if skins:
-            shapes = set()
+        for item in expand_tuples_lists(*items):
+            _item = str(item)
 
-            for vert in without_duplicates(
-                    map(str, expand_tuples_lists(*verts))
-            ):
-                mt = re.match(r"^(.*?)\.vtx\[.*?]$", vert)
+            if '.' in _item:
+                mt = re.match(r"^(.*?)\.(?:vtx|e|f|cv)\[.*$", _item)
+
                 if mt:
                     node = mt.group(1)
+                    for skin in cls.fromGeo(node):
+                        if skin in visited:
+                            continue
+                        visited.add(skin)
+                        yield skin
+            else:
+                try:
+                    item = nodes['DependNode'](item)
+                except:
+                    continue
 
-                    if m.objectType(node, isAType='shape'):
-                        shapes.add(node)
+                if isinstance(item, nodes['Transform']):
+                    if isinstance(item, nodes['Joint']):
+                        for skin in item.skinClusters:
+                            if skin in visited:
+                                continue
+                            visited.add(skin)
+                            yield skin
                     else:
-                        shapes.add(m.listRelatives(node,
-                                                   shapes=True,
-                                                   noIntermediate=True,
-                                                   path=True)[0])
+                        shape = item.getShape(intermediate=False,
+                                              type='deformableShape')
+                        if shape:
+                            for skin in cls.fromGeo(shape):
+                                if skin in visited:
+                                    continue
+                                visited.add(skin)
+                                yield skin
 
-            for skin in skins:
-                shape = m.skinCluster(skin, q=True, geometry=True)[0]
+                elif isinstance(item, nodes['DeformableShape']):
+                    for skin in cls.fromGeo(item):
+                        if skin in visited:
+                            continue
+                        visited.add(skin)
+                        yield skin
 
-                if shape in shapes:
-                    yield nodes['DependNode'](skin)
+                elif isinstance(item, nodes['SkinCluster']):
+                    yield item
+
+    @classmethod
+    def fromVerts(cls, *verts:Union[str, list[str]]) -> Iterator['SkinCluster']:
+        verts = expand_tuples_lists(*verts)
+        verts = m.ls(verts, flatten=True)
+
+        shapes = set()
+
+        for vert in verts:
+            mt = re.match(r"^(.*?)\.vtx\[.*$", vert)
+            if mt:
+                shapes.add(mt.group(1))
+
+        visited = set()
+
+        for shape in shapes:
+            for skin in cls.fromGeo(shape):
+                if skin in visited:
+                    continue
+                visited.add(skin)
+                yield skin
 
     #-------------------------------------|    Serialization
 
@@ -425,8 +469,9 @@ class SkinCluster(GeometryFilter):
         try:
             r.copySkinWeights(**kwargs)
         finally:
-            for joint, state in labelStates.items():
-                joint.setLabelState(state)
+            if autoLabel:
+                for joint, state in labelStates.items():
+                    joint.setLabelState(state)
 
         return self
 
