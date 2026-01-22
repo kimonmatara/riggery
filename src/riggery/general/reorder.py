@@ -122,3 +122,24 @@ class Reorder(list):
         Overrides :meth:`list.copy` to return a :class:`Reorder` instance.
         """
         return type(self)(super().copy())
+
+def bunched_partial_reorder(container, partial_order) -> list:
+    """
+    *partial_order* must be a sublist of *container*.
+
+    Returns a reordered copy of *container* where the items in *partial_order*
+    appear bunched, and in the specified order. The bunch will appear at the
+    first occurence, in *container*, of any element from *partial_order*.
+    """
+    bunchStartIndex = 0
+
+    for member in enumerate(container):
+        if member in partial_order:
+            break
+        bunchStartIndex += 1
+
+    head = [x for x in container[:bunchStartIndex] if x not in partial_order]
+    middle = partial_order
+    tail = [x for x in container if x not in head + middle]
+
+    return head+middle+tail
