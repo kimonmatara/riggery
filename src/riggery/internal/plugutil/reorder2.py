@@ -4,7 +4,7 @@ import maya.api.OpenMaya as om
 
 from .. import str2api as _s2a
 from .parseaac import parseAddAttrCmd
-from riggery.general.reorder import bunched_partial_reorder
+from riggery.general.reorder import bunched_partial_reorder, Reorder as _Reorder
 from riggery.general.iterables import issublist
 
 #---------------------------------|    Attr inspections
@@ -177,8 +177,44 @@ def getSectionNames(node:str) -> list[str]:
     return [attr for attr in getReorderableAttrs(node)
             if attrIsSection(node, attr)]
 
+def hasSection(node:str, sectionName:str):
+    return sectionName in getSectionNames(node)
+
 def getSectionMap(node) -> dict[str:list[str]]:
     return {k: getSectionMembers(node, k) for k in getSectionNames(node)}
+
+def createSection(node, sectionName:str):
+    m.addAttr(node, ln=sectionName, at='enum', k=False, enumName=' ')
+    fullPath = f'{node}.{sectionName}'
+    m.setAttr(fullPath, cb=True)
+    m.setAttr(fullPath, l=True)
+
+def collectIntoSection(node:str, sectionName:str, memberNames:list[str],
+                       atTop:bool=False, force:bool=False):
+    existingMembers = getSectionMembers(node, sectionName)
+    newMembers = [conformToLongName(node, x) for x in memberNames]
+
+    if force:
+        existingMembers = [x for x in existingMembers if x not in newMembers]
+        _newMembers = newMembers[:]
+    else:
+        _newMembers = [x for x in newMembers if x not in existingMembers]
+
+    if _newMembers:
+        if atTop:
+            rebuildList = [sectionName] + _newMembers + existingMembers
+        else:
+            rebuildList = [sectionName] + existingMembers + _newMembers
+
+        reorder(node, rebuildList, expandSections=True)
+
+def removeSection(node:str, sectionName:str):
+    if hasSection(node, sectionName):
+        fullPath = f'{node}.{sectionName}'
+        m.setAttr(fullPath, l=False)
+        m.deleteAttr(fullPath)
+    else:
+        raise AttributeError("section doesn't exist")
 
 #---------------------------------|    Macro
 
@@ -277,3 +313,27 @@ def reorder(node:str, attrs:list[str], expandSections:bool=False):
 
     for macro in macros:
         recreateAttr(node, macro)
+
+def shiftMulti(node:str,
+               attrsToMove:list[str],
+               offset:int, *,
+               expandSections:bool=False,
+               roll:bool=False) -> None:
+    """
+    Shifts multiple attributes up or down in the Channel Box.
+    """
+    attrsToMove = [conformToLongName(node, attr) for attr in attrsToMove]
+    allNames = _Reorder(getReorderableAttrs(node))
+    allNames.shift(attrsToMove, offset, roll)
+    reorder(node, allNames, expandSections=expandSections)
+
+def sendToTop(node:str,
+              attrsToMove:list[str],
+              expandSections:bool=False) -> None:
+    attrsToMove = [conformToLongName(node, x) for x in attrsToMove]
+
+    allNames = [x for x in getReorderableAttrs(node)
+                if x not in attrsToMove]
+
+    reorderList = attrsToMove + allNames
+    reorder(node, reorderList, expandSections=expandSections)

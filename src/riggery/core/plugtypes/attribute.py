@@ -9,7 +9,7 @@ import riggery
 import riggery.internal.api2str as _a2s
 import riggery.internal.hashing as _hsh
 import riggery.internal.plugutil.plugroute as _pr
-import riggery.internal.plugutil.reorder as _reo
+import riggery.internal.plugutil.reorder2 as _reo
 import riggery.internal.str2api as _s2a
 from riggery.core.lib.nativeunits import NativeUnits
 import riggery.internal.mfnmatches as _mfm
@@ -1209,9 +1209,9 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     def sendToTop(self):
         """Moves this attribute to the top of the Channel Box."""
-        thisMObj = self.node().__apimobject__()
-
-        names = list(_reo.getReorderablePlugs(thisMObj))
+        node = self.node()
+        _node = str(node)
+        names = _reo.getReorderableAttrs(_node)
         ourName = self.attrName(longName=True)
 
         if names[0] == ourName:
@@ -1219,8 +1219,12 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
         names.remove(ourName)
         names.insert(0, ourName)
-        out = _reo.reorder(thisMObj, names, expandSections=False)
-        self.__apiobjects__ = {'MPlug': out[0]}
+
+        _reo.reorder(_node, names, expandSections=False)
+
+        self.__apiobjects__ = {
+            'MPlug': _s2a.getMPlugOnNode(node.__apimobject__(), ourName)
+        }
         return self
 
     def sendBelow(self, other):
@@ -1230,11 +1234,15 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param expandSections: treat attribute sections en-bloc; defaults to
             True
         """
+        node = self.node()
+        _node = str(node)
         other = str(other).split('.')[-1]
-        out = _reo.reorder(self.node().__apimobject__(),
-                           [other, self.attrName()],
-                           expandSections=True)
-        self.__apiobjects__ = {'MPlug': out[-1]}
+        ourName = self.attrName(longName=True)
+
+        _reo.reorder(_node, [other, ourName], expandSections=True)
+        self.__apiobjects__ = {
+            'MPlug': _s2a.getMPlugOnNode(node.__apimobject__(), ourName)
+        }
         return self
 
     def sendAbove(self, other, expandSections:bool=True):
@@ -1244,11 +1252,15 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param expandSections: treat attribute sections en-bloc; defaults to
             True
         """
+        node = self.node()
+        _node = str(node)
         other = str(other).split('.')[-1]
-        out = _reo.reorder(self.node().__apimobject__(),
-                           [self.attrName(), other],
-                           expandSections=True)
-        self.__apiobjects__ = {'MPlug': out[-1]}
+        ourName = self.attrName(longName=True)
+
+        _reo.reorder(_node, [ourName, other], expandSections=True)
+        self.__apiobjects__ = {
+            'MPlug': _s2a.getMPlugOnNode(node.__apimobject__(), ourName)
+        }
         return self
 
     def shift(self, offset:int, roll:bool=False, expandSections:bool=True):
@@ -1258,12 +1270,21 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param expandSections: treat attribute sections en-bloc; defaults to
             True
         """
-        result = _reo.shiftMulti(self.node().__apimobject__(),
-                                 [self.attrName()],
-                                 offset,
-                                 expandSections=True,
-                                 roll=roll)[0]
-        self.__apiobjects__ = {'MPlug': result[0]}
+        node = self.node()
+        _node = str(node)
+
+        ourName = self.attrName(longName=True)
+
+        _reo.shiftMulti(_node,
+                        ourName,
+                        offset,
+                        expandSections=True,
+                        roll=roll)
+
+        self.__apiobjects__ = {
+            'MPlug': _s2a.getMPlugOnNode(node.__apimobject__(), ourName)
+        }
+
         return self
 
     #-----------------------------------------|    Sections
@@ -1273,7 +1294,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :return: True if this is a locked enum meant to represent an attribute
             section in the Channel Box.
         """
-        return _reo.plugIsSection(self.__apimplug__())
+        return _reo.attrIsSection(str(self.node()), self.attrName())
 
     #-----------------------------------------|    API
 
@@ -1583,14 +1604,19 @@ class Attribute(Elem, metaclass=AttributeMeta):
             _node = str(node)
             m.addAttr(_node, **kwargs)
             inst = Attribute(f"{_node}.{accessName}")
+
             if section is not None:
                 sectionInst = node.sections.add(section)
-                inst = sectionInst.collect(accessName)[0]
+                inst = node.attr(accessName)
+
             if channelBox:
                 inst.setFlag('channelBox', True)
+
             if locked:
                 inst.setFlag('l', True)
+
             out.append(inst)
+
         return out
 
     @classmethod
@@ -1615,6 +1641,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
             attr.set(axisVec)
             attr.lock()
             attr >> choice.attr('input')[i]
+
         axisAttr >> choice.attr('selector')
         choice.attr('output') >> vectorAttr
         if lock:

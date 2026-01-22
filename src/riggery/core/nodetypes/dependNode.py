@@ -16,7 +16,7 @@ from riggery.internal import cmdinfo as _ci, \
     nodeinfo as _ni, \
     hashing as _hsh, \
     mfnmatches as _mfm
-import riggery.internal.plugutil.reorder as _reo
+import riggery.internal.plugutil.reorder2 as _reo
 import riggery.internal.str2api as _s2a
 from riggery.general.functions import short, get_shorthands, get_long_kwargs
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
@@ -43,7 +43,7 @@ class Section:
 
     def create(self):
         if not self.exists():
-            _reo.createSection(self._node.__apimobject__(), self._name)
+            _reo.createSection(str(self._node), self._name)
         return self
 
     #-------------------------------------|    Reordering
@@ -70,7 +70,7 @@ class Section:
         return self._name
 
     def exists(self) -> bool:
-        return _reo.hasSection(self._node.__apimobject__(), self._name)
+        return _reo.hasSection(str(self._node), self._name)
 
     def attr(self, quiet:bool=False) -> Optional['plugs.Enum']:
         try:
@@ -87,9 +87,7 @@ class Section:
 
     def _memberNames(self) -> list[str]:
         try:
-            return _reo.getSectionMembers(
-                self._node.__apimobject__(), self._name
-            )
+            return _reo.getSectionMembers(str(self._node), self._name)
         except ValueError:
             return []
 
@@ -120,16 +118,11 @@ class Section:
 
         if attrRefs:
             self.create()
-
-            out = _reo.collectIntoSection(self._node.__apimobject__(),
-                                          self._name,
-                                          attrRefs,
-                                          atTop=atTop,
-                                          force=force)
-
-            return [plugs.Attribute.fromMPlug(x) for x in out]
-
-        return [self._node.attr(x) for x in attrRefs]
+            _reo.collectIntoSection(str(self._node),
+                                    self._name,
+                                    attrRefs,
+                                    atTop=atTop,
+                                    force=force)
 
     #-------------------------------------|    Remove
 
@@ -156,10 +149,10 @@ class Sections:
     #-------------------------------------|    Add sections
 
     def add(self, sectionName:str) -> Section:
-        node = self._node.__apimobject__()
+        _node = str(self._node)
 
-        if not _reo.hasSection(node, sectionName):
-            _reo.createSection(node, sectionName)
+        if not _reo.hasSection(_node, sectionName):
+            _reo.createSection(_node, sectionName)
 
         return Section(self._node, sectionName)
 
@@ -169,7 +162,7 @@ class Sections:
         if isinstance(section, Section):
             section = section._name
         try:
-            _reo.removeSection(self._node.__apimobject__(), section)
+            _reo.removeSection(str(self._node), section)
         except AttributeError:
             raise ValueError("section doesn't exist")
 
@@ -177,7 +170,7 @@ class Sections:
 
     def __delitem__(self, sectionName:str):
         try:
-            _reo.removeSection(self._node.__apimobject__(), sectionName)
+            _reo.removeSection(str(self._node), sectionName)
         except AttributeError:
             raise KeyError(sectionName)
 
@@ -187,7 +180,7 @@ class Sections:
         return str(item).split('.')[-1] in self.keys()
 
     def keys(self) -> list[str]:
-        return _reo.getSectionNames(self._node.__apimobject__())
+        return _reo.getSectionNames(str(self._node))
 
     def values(self) -> list[Section]:
         return [self[k] for k in self.keys()]
@@ -500,7 +493,9 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
             if section:
                 section = self.sections.add(section)
-                out = section.collect(out.attrName())[0]
+                attrName = out.attrName()
+                section.collect(attrName)
+                out = self.attr(attrName)
 
             return out
 
@@ -831,9 +826,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         return list(self.iterAttr(**kwargs))
 
     def iterReorderableAttrs(self) -> Iterator['plugs.Attribute']:
-        for attr in self.iterAttr(ud=True):
-            if _reo.plugIsReorderable(attr.__apimplug__()):
-                yield attr
+        for attrName in _reo.getReorderableAttrs(str(self)):
+            yield self.attr(attrName)
 
     def getReorderableAttrs(self) -> list['plugs.Attribute']:
         return list(self.iterReorderableAttrs())
