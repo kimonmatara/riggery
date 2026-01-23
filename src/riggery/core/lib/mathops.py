@@ -478,8 +478,11 @@ def calcChainMatrices(
                                                    upVectors,
                                                    points)]
 
-# Tangent length to get a quadrant of a unit circle
-BEZIER_CIRCLE_CONSTANT = 0.55228474983079
+# Bezier tangent length to get a quadrant of a unit circle
+BEZIER_CIRCLE_CONSTANT = (4/3) * ((2 ** 0.5)-1)
+# Bezier tangent length for a given arc radius
+# kappa = (4/3) * tan(arc_angle / 4)
+# handle_length = radius * kappa
 
 def bezierInterp(points, u):
     """
