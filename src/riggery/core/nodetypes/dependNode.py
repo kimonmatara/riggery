@@ -123,6 +123,8 @@ class Section:
                                     attrRefs,
                                     atTop=atTop,
                                     force=force)
+            return [self._node.attr(x) for x in attrRefs]
+        return []
 
     #-------------------------------------|    Remove
 
