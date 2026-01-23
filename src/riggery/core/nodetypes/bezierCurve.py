@@ -146,3 +146,32 @@ class BezierCurve(NurbsCurve):
                           worldSpace=worldSpace,
                           displayType=displayType,
                           lineWidth=lineWidth)
+
+    # @classmethod
+    # def _createTwoPointArcAllPlugs(cls, p0, p1, normal, radius):
+    #     p0 = _mm.conform(p0, plugs.Point, force=True)
+    #     p1 = _mm.conform(p1, plugs.Point, force=True)
+    #     radius = _mm.conform(radius, plugs.Number)
+    #
+    #     chord = p1 - p0
+    #     chordLength = chord.length()
+
+    @classmethod
+    def createTriFillet(cls,
+                        p1, p2, p3,
+                        bias1=0.5,
+                        bias2=0.5,
+                        parent=None,
+                        name:Optional[str]=None,
+                        worldSpace:bool=False,
+                        displayType=None):
+        p1, p2, p3 = map(
+            lambda x: _mm.conform(x, (data.Point, plugs.Point), force=True),
+            (p1, p2, p3)
+        )
+        return cls.create([p1, p1.blend(p2, weight=bias1),
+                           p3.blend(p2, weight=bias2), p3],
+                          parent=parent,
+                          name=name,
+                          worldSpace=worldSpace,
+                          displayType=displayType)
