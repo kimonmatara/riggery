@@ -206,6 +206,9 @@ class Number(__pool__['Math']):
 
     #-----------------------------------------|    Pow
 
+    def sqrt(self):
+        return self ** 0.5
+
     def __pow__(self, other):
         other, shape, isPlug = _mm.info(other)
 
