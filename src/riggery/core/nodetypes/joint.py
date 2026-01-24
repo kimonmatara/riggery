@@ -6,6 +6,7 @@ import riggery.core.lib.skel as _sk
 from riggery.core.lib import names as _nm
 
 from ..nodetypes import __pool__ as nodes
+from ..datatypes import __pool__ as data
 
 
 class Joint(nodes['Transform']):
@@ -172,6 +173,43 @@ class Joint(nodes['Transform']):
                                 'otherType': desc})
 
         return state
+
+    #------------------------------------------|    Orientation
+
+    @short(worldSpace='ws', freeze='fr')
+    def setJointOrientMatrix(self, matrix,
+                             worldSpace:bool=False,
+                             freeze:bool=True):
+        """
+        Sets the joint orient matrix for this joint. If *freeze* is True (the
+        default), local rotations will be zeroed. Otherwise, they will be edited
+        to compensate. In either case, the pose will be preserved.
+
+        :param matrix: the matrix to use
+        :param worldSpace/ws: indicates that *matrix* is a world-space matrix;
+            defaults to False
+        :param freeze/fr: freeze local rotations; defaults to True
+        """
+        joMatrix = data.Matrix(matrix)
+
+        if worldSpace:
+            joMatrix *= self.attr('pim')[0]()
+
+        joMatrix = joMatrix.pick(r=True)
+
+        pose = self.getMatrix().pick(r=True)
+
+        rMatrix = self.attr('r')().asMatrix()
+        joMatrix = rMatrix.inverse() * joMatrix
+
+        self.attr('jointOrient').set(joMatrix.decompose()['rotate'])
+
+        pose.decomposeAndApply(self, r=True)
+
+        if freeze:
+            self.makeIdentity(r=True, apply=True, jo=False)
+
+        return self
 
     #------------------------------------------|    Skin clusters
 
