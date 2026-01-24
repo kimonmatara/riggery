@@ -406,6 +406,13 @@ class Number(__pool__['Math']):
 
         return node.attr('output')
 
+    def remap(self, oldMin, oldMax, newMin, newMax):
+        """
+        Performs simple linear remapping. The output will be unclamped.
+        """
+        ratio = (self - oldMin) / (oldMax - oldMin)
+        return newMin + ((newMax - newMin) * ratio)
+
     @cache_dg_output
     def abs(self):
         """
