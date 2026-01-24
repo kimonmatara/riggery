@@ -176,8 +176,81 @@ class Joint(nodes['Transform']):
 
     #------------------------------------------|    Orientation
 
+    def reset(self):
+        """
+        Sets this joint's rotations to (0, 0, 0) and its scale to (1, 1, 1).
+        Translation is not edited.
+        """
+        self.attr('r').set((0, 0, 0))
+        self.attr('s').set((1, 1, 1))
+        return self
+
+    @short(worldSpace='ws')
+    def getRestRotateMatrix(self, worldSpace:bool=False):
+        """
+        Returns the rotation matrix at which this joint's rotation will be zero.
+        """
+        mtx = self.attr('jo')().asMatrix()
+
+        if worldSpace:
+            mtx *= self.attr('pm')[0]()
+            mtx = mtx.pick(r=True)
+
+        return mtx
+
+    @short(worldSpace='ws',
+           preserveChildren='pc',
+           resetRotation='rr')
+    def setRestRotateMatrix(self,
+                            matrix,
+                            worldSpace:bool=False,
+                            resetRotation:bool=False,
+                            preserveChildren:bool=True):
+        """
+        Sets the rotation matrix at which this joint's rotations will be zero.
+
+        :param matrix: the matrix to use
+        :param worldSpace/ws: specifies that *matrix* is in world-space;
+            defaults to False
+        :param resetRotation/rr: if this is True, the joint will be zeroed at
+            its current pose; otherwise, the joint will maintain its pose, and
+            its rotations must be zeroed later to reach *matrix*; defaults to
+            False
+        :param preserveChildren/pc: preserve child world-space transformations;
+            defaults to True
+        """
+        # Resolve matrix
+        joMatrix = data.Matrix(matrix)
+
+        if worldSpace:
+            joMatrix *= self.attr('pim')[0]()
+
+        # Gather child info
+        if preserveChildren:
+            childStates = [(child, child.getMatrix(ws=True))
+                           for child in self.iterChildren(type='transform')]
+
+        if not resetRotation:
+            pose = self.getMatrix()
+
+        # Apply matrix
+        joEuler = joMatrix.decompose()['rotate']
+        self.attr('jointOrient').set(joEuler)
+
+        if resetRotation:
+            self.attr('r').set((0, 0, 0))
+        else:
+            self.setMatrix(pose)
+
+        if preserveChildren:
+            for child, childPose in childStates:
+                child.setMatrix(childPose, ws=True)
+
+        return self
+
     @short(worldSpace='ws', freeze='fr')
-    def setJointOrientMatrix(self, matrix,
+    def setJointOrientMatrix(self,
+                             matrix,
                              worldSpace:bool=False,
                              freeze:bool=True):
         """
@@ -217,3 +290,21 @@ class Joint(nodes['Transform']):
         return self.attr('worldMatrix')[0].outputs(type='skinCluster')
 
     skinClusters = property(getSkinClusters)
+
+    #------------------------------------------|    Serialization
+
+    def _deriveCreateArgsKwargs(self) -> tuple[tuple, dict]:
+        kwargs = {'name': self.shortName()}
+
+        kwargs['matrix'] = (self.getRestRotateMatrix()
+                            * self.attr('t')().asTranslateMatrix())
+
+        parent = self.parent
+
+        if parent is not None:
+            kwargs['parent'] = str(parent)
+
+        kwargs['rotateOrder'] = self.attr('rotateOrder').get(asString=True)
+        kwargs['displayLocalAxis'] = self.attr('displayLocalAxis')()
+
+        return tuple(), kwargs
