@@ -20,7 +20,6 @@ from ..lib import namespaces as _ns
 from ..lib import names as _n
 from riggery.internal import str2api as _s2a
 
-
 class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Constructor(s)
@@ -116,6 +115,31 @@ class Transform(nodes['DagNode']):
         return groups[0]
 
     #-----------------------------------------|    Transformations
+
+    class PreserveChildren:
+        def __init__(self, parent):
+            self._parent = parent
+
+        def __enter__(self):
+            self._childStates = [
+                (child, child.getMatrix(ws=True))
+                for child in self._parent.iterChildren(type='transform')
+            ]
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            for child, childPose in self._childStates:
+                try:
+                    child.setMatrix(childPose, ws=True)
+                except:
+                    continue
+            return False
+
+    def preserveChildren(self) -> PreserveChildren:
+        """
+        :return: A context manager that will restore child transformations at
+            the end of the block.
+        """
+        return self.PreserveChildren(self)
 
     @cache_dg_output
     def _getLocalRotateMatrixPlug(self):
