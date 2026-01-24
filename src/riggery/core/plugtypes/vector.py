@@ -309,9 +309,9 @@ class Vector(plugs['Tensor3Float']):
         """
         :return: The length of this vector.
         """
-        node = nodes.DistanceBetween.createNode()
-        self >> node.attr('point2')
-        return node.attr('distance')
+        node = nodes['Length'].createNode()
+        self >> node.attr('input')
+        return node.attr('output')
 
     def withLength(self, length):
         """
