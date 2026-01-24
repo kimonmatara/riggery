@@ -98,3 +98,60 @@ def overlapping_pairs(iterable:Iterable) -> Iterator[tuple]:
     """
     elems = list(iterable)
     return zip(elems, elems[1:])
+
+def pad_nones(items:list, conserve:bool=True) -> list:
+    """
+    Replaces any None members with the nearest non-None member.
+
+    :param conserve: if this is True, then, at each iteration, the last non-None
+        value will be retained unless there is only one looking forwards
+
+    :raises ValueError: need at least two members
+    :raises ValueError: all the items are already None
+    """
+    out = []
+    items = list(items)
+
+    numNones = items.count(None)
+
+    if numNones == 0:
+        return items
+
+    numItems = len(items)
+
+    if numNones == numItems:
+        raise ValueError("all items are None")
+
+    for i, item in enumerate(items):
+        if item is None:
+            if conserve and i > 0 and out[-1] is not None:
+                item = out[-1]
+            else:
+                closestDelta = None
+                closestMember = None
+
+                if backward:
+                    # Look backwards
+                    if i > 0:
+                        for x in reversed(range(i)):
+                            candidate = items[x]
+                            if candidate is not None:
+                                closestDelta = i-x
+                                closestMember = candidate
+                                break
+
+                if forward:
+                    # Look forwards
+                    if i < numItems - 1:
+                        for x in range(i+1, numItems):
+                            candidate = items[x]
+                            if candidate is not None:
+                                delta = x - i
+                                if closestDelta is None or delta < closestDelta:
+                                    closestDelta = delta
+                                    closestMember = candidate
+                                    break
+                item = closestMember
+        out.append(item)
+
+    return out
