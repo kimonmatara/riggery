@@ -1,4 +1,5 @@
 """Defines classes to manage skeletal chains."""
+import re
 import math
 from typing import Iterator, Optional, Union, Iterable, Literal
 
@@ -6,7 +7,7 @@ import riggery.core.lib.mathops as _mo
 import riggery.core.lib.mixedmode as _mm
 import riggery.core.lib.triadutil as _tr
 from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists
+from riggery.general.iterables import expand_tuples_lists, pad_nones
 from riggery.general.numbers import floatrange
 from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
@@ -234,39 +235,43 @@ class Chain(list):
 
     #-------------------------------------------|    Orientation
 
-    def orient(self, boneAxis, curlAxis, refVector, tipMatrix=None):
+    def orient(self,
+               boneAxis:str,
+               curlAxis:str,
+               curlVector,
+               tipMatrix=None):
         """
         Orients this chain. If this chain has defined curvature, then any up
         vectors will follow it (with flips removed), but will be biased
-        towards *refVector*. If this chain is in-line, *refVector* will be
+        towards *curlVector*. If this chain is in-line, *curlVector* will be
         used explicitly as the up vector instead.
 
         :param boneAxis: the axis running down each bone
-        :param curlAxis: the axis that will be aligned towards *refVector*
-        :param refVector: the reference ('up') vector
+        :param curlAxis: the axis that will be aligned towards *curlVector*
+        :param curlVector: the reference 'up' vector
         :param tipMatrix: an optional override for the tip joint; defaults to
             None
         """
         num = len(self)
+
         if num < 2:
             raise RuntimeError("not enough joints")
-        baseVectors, isInline = _mo.calcMatrixChainBaseVectors(self.points,
-                                                               refVector)
-        self.explode()
 
         Matrix = data['Matrix']
+        baseVectors, _ = _mo.calcMatrixChainBaseVectors(self.points, curlVector)
 
-        for i, (joint, (downVec, upVec)) in enumerate(zip(self, baseVectors)):
+        for i, (joint, (boneVector, curlVector)) in enumerate(
+                zip(self, baseVectors)
+        ):
             if i == num -1 and tipMatrix is not None:
                 matrix = tipMatrix
             else:
-                matrix = Matrix.createOrtho(boneAxis, downVec, curlAxis, upVec)
-            joint.setMatrix(matrix, rotate=True, worldSpace=True)
-            joint.makeIdentity(apply=True, rotate=True, jointOrient=False)
+                matrix = Matrix.createOrtho(boneAxis, boneVector,
+                                            curlAxis, curlVector)
 
-        self.compose()
-        self.displayLocalAxis()
-        
+            joint.setRestRotateMatrix(matrix, rr=True, ws=True)
+            joint.attr('displayLocalAxis').set(True)
+
         return self
 
     #-------------------------------------------|    Sampling
@@ -342,23 +347,51 @@ class Chain(list):
         axes.sort(key=lambda x: _axes.count(x))
         return axes[-1]
 
-    def detectCurlAxis(self, curlVector):
+    def detectCurlAxis(self, curlVector=None, /):
         """
-        Returns the joint axis most commonly aligned to *curlVector*. the
-        tip joint is ignored.
-        :raises ValueError: Need at least two joints.
+        Returns the joint axis most commonly aligned to *curlVector*. the tip
+        joint is ignored.
+
+        :raises RuntimeError: need more joints
+        :raises RuntimeError: can't auto-derive curl vector, provide explicitly
         """
-        if len(self) < 2:
-            raise ValueError("need at least two joints")
-        curlVector = data['Vector'](curlVector)
-        _axes = [
-            joint.getMatrix(worldSpace=True).closestAxis(curlVector,
-                                                         includeNegative=True,
-                                                         asString=True) \
-            for joint in self[:-1]
-        ]
-        axes = list(set(_axes))
-        axes.sort(key=lambda x: _axes.count(x))
+        if curlVector is None:
+            if len(self) < 3:
+                raise RuntimeError(
+                    "can't auto-derive curl vector, provide explicitly"
+                )
+
+            vectors = list(self.vectors)
+            curlVectors = []
+
+            for thisVector, nextVector in zip(vectors, vectors[1:]):
+                cross = thisVector.cross(nextVector)
+
+                if cross.length() < 1e-5:
+                    cross = None
+
+                curlVectors.append(cross)
+
+            try:
+                curlVectors = pad_nones(curlVectors,
+                                        conserve=True)
+            except ValueError:
+                raise RuntimeError(
+                    "can't auto-derive curl vector, provide explicitly"
+                )
+            curlVectors.insert(0, curlVectors[0])
+        else:
+            numJoints = len(self)
+
+            if numJoints < 2:
+                raise RuntimeError("need at least two joints")
+
+            curlVectors = [data.Vector(curlVector)] * (numJoints-1)
+
+        axes = [joint.getMatrix(ws=True).closestAxis(curlVector, asString=True,
+                                                     includeNegative=True)
+                for curlVector, joint in zip(curlVectors, self[:-1])]
+        axes.sort(key=lambda x: axes.count(x))
         return axes[-1]
 
     #-------------------------------------------|    Misc
@@ -516,34 +549,92 @@ class Chain(list):
         return self
 
     @short(parent='p',
-           renumber='ren',
-           startNumber='sn',
-           compose='c')
-    def duplicate(self, *, parent=None, startNumber:int=1, compose:bool=False):
+           compose='c',
+           mirror='mir')
+    def duplicate(self, *,
+                  parent=None,
+                  compose:bool=False,
+                  mirror:False):
         """
         :param parent/p: an optional destination parent for the duplicated
             chain
-        :param startNumber/sn: the start number for renumbering; defaults to 1
         :param compose/c: if this chain is disjointed, make the duplicate
             contiguous; defaults to False
         :return: The duplicate chain.
         """
         duplicates = []
 
+        if mirror:
+            boneAxis = self.detectBoneAxis()
+            otherAxis = _mo.nextAxisLetter(boneAxis)
+            mirrorer = data.Matrix()
+            mirrorer.flipAxis('x')
+
         for i, joint in enumerate(self):
             parent = joint.parent
+
             if i > 0 and parent == self[i-1]:
                 parent = duplicates[-1]
+
             macro = joint.macro()
-            with _nm.Name(i+startNumber):
-                duplicate = joint.createFromMacro(macro,
-                                                  parent=parent,
-                                                  worldSpace=False)
+
+            duplicate = joint.createFromMacro(macro,
+                                              parent=parent,
+                                              worldSpace=False)
+
+            if mirror:
+                origName = joint.shortName(sns=True)
+                mt = re.match(r"^([LR])_(.*?)$", origName)
+                if mt:
+                    side, base = mt.groups()
+                    side = {'L':'R', 'R':'L'}[side]
+                    newName = '_'.join([side, base])
+                    origNs = joint.namespace
+
+                    if not origNs.isRoot():
+                        newName = '{}:{}'.format(origNs, newName)
+
+                    duplicate.name = newName
+
+                # Get info
+                origPosition = joint.worldPosition()
+                origWMatrix = joint.getMatrix(ws=True)
+                origBoneVector = origWMatrix.getAxis(boneAxis)
+                origOtherVector = origWMatrix.getAxis(otherAxis)
+
+                # Construct the projected pose matrix
+                mirrorPoseMatrix = data.Matrix.createOrtho(
+                    boneAxis, -(origBoneVector * mirrorer),
+                    otherAxis, -(origOtherVector * mirrorer),
+                    w=origPosition ^ mirrorer
+                ).pick(t=True, r=True)
+
+
+                # Apply the projected pose matrix
+                mirrorPoseMatrix.decomposeAndApply(duplicate, ws=True)
+
+                # Apply the projected rest matrix (without a reset)
+                origWRestMatrix = joint.getRestRotateMatrix(ws=True)
+                origBoneVector = origWRestMatrix.getAxis(boneAxis)
+                origOtherVector = origWRestMatrix.getAxis(otherAxis)
+
+                mirrorRestMatrix = data.Matrix.createOrtho(
+                    boneAxis, -(origBoneVector * mirrorer),
+                    otherAxis, -(origOtherVector * mirrorer)
+                ).pick(r=True)
+
+                duplicate.setRestRotateMatrix(mirrorRestMatrix,
+                                              ws=True,
+                                              pc=False)
+                duplicate.attr('r').set(joint.attr('r')())
+
             duplicates.append(duplicate)
 
         out = type(self)(duplicates)
+
         if compose:
             out.compose()
+
         return out
 
     def compose(self):
@@ -817,9 +908,9 @@ class Chain(list):
 
     #-------------------------------------------|    Naming
 
-    def rename(self, startNumber:int=1):
+    def rename(self):
         for i, joint in enumerate(self):
-            with _nm.Name(i+startNumber, pad=len(str(len(self)))):
+            with _nm.Name(i+1, pad=len(str(len(self)))):
                 del(joint.name)
         return self
 
