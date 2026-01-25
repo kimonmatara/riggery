@@ -641,16 +641,7 @@ class NurbsCurve(nodes['CurveShape']):
         _oldPoints = list(self.iterCVPoints(visible=True))
 
         origShape = self.getOrigShape(True)
-
-        # origShape.attr('intermediateObject').set(False)
-
         origInput = self.getHistoryInput()
-
-        # node = origInput.node()
-        # if isinstance(node, nodes.Shape):
-        #     node.attr('intermediateObject').set(False)
-        #
-        # m.refresh()
 
         #---------------------------|    Loop
 

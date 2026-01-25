@@ -74,9 +74,7 @@ class GeometryFilter(DependNode):
 
     @property
     def shapes(self) -> Iterator['GeometryFilter']:
-        """
-        Iterates over shapes affected by this deformer.
-        """
+        """Iterates over shapes affected by this deformer."""
         out = m.deformer(str(self), q=True, g=True)
 
         if out:

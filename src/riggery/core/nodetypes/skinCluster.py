@@ -18,6 +18,7 @@ from riggery.core.lib.selection import keepsel
 from riggery.core.lib import skinwtio as _sw
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
+from riggery.internal.typeutil import UNDEFINED
 
 class SkinCluster(GeometryFilter):
 
@@ -583,25 +584,6 @@ class SkinCluster(GeometryFilter):
         """Flat-list version of :meth:`iterInfluencesFromVerts`."""
         return list(self.iterInfluencesFromVerts(verts))
 
-    # @classmethod
-    # def smoothInfluencesOnVerts(cls,
-    #                             verts:list[str],
-    #                             *skinClusters,
-    #                             iterations:int=10):
-
-    #     if skinClusters:
-    #         skinClusters = list(
-    #             without_duplicates(map(nodes['DependNode'],
-    #                                    expand_tuples_lists(*skinClusters)))
-    #         )
-    #     else:
-    #         skinClusters = list(cls.fromVerts(verts))
-    #
-    #     if skinClusters:
-    #         for skinCluster in skinClusters:
-    #             skinCluster.artSmoothInfluencesOnVerts(verts,
-    #                                                    iterations=iterations)
-
     @short(iterations='i')
     def artSmoothInfluencesOnVerts(self, verts, iterations:int=10):
         """Smooths weights only on the specified vertices. """
@@ -836,16 +818,9 @@ class SkinCluster(GeometryFilter):
             if replace:
                 for existing in self.fromGeo(shape):
                     r.delete(existing)
-
             thisMacro = deepcopy(macro)
-            args, kwargs = thisMacro['createArgsKwargs']
-            args = list(args)
-            args[-1] = shape
-            try:
-                del(kwargs['name'])
-            except KeyError:
-                pass
-            thisMacro['createArgsKwargs'] = args, kwargs
+            thisMacro['geometry'] = str(shape)
+            del(thisMacro['createKwargs']['name'])
 
             newSkin = self.createFromMacro(thisMacro)
 
@@ -891,3 +866,60 @@ class SkinCluster(GeometryFilter):
             print(f"Removed temporary file: {fullpath}")
 
         return newSkin
+
+    #-------------------------------------|    Serialization
+
+    __macro_attrs__ = ('dqsScale',
+                       'dqsSupportNonRigid',
+                       'deformUserNormals',
+                       'lockWeights')
+
+    def macro(self) -> dict:
+        out = super().macro()
+        _self = str(self)
+        out['influence'] = [x.split('|')[-1]
+                            for x in m.skinCluster(_self,
+                                                   q=True, influence=True)]
+        out['geometry'] = next(self.shapes).parent.shortName()
+        out['createKwargs'] = {x: m.skinCluster(_self, q=True, **{x: True})
+                               for x in ('maximumInfluences',
+                                         'obeyMaxInfluences',
+                                         'skinMethod',
+                                         'weightDistribution',
+                                         'bindMethod',
+                                         'normalizeWeights',
+                                         'toSelectedBones')}
+        out['createKwargs']['name'] = _self
+        return out
+
+    @classmethod
+    def _getCreateArgsKwargsFromMacro(cls, macro):
+        args = []
+        kwargs = {}
+
+        geometry = macro['geometry']
+        matches = r.ls(geometry, type='dagNode')
+
+        if len(matches) == 0:
+            raise RuntimeError("no match for geometry '{}'".format(geometry))
+
+        influence = macro['influence']
+
+        for x in influence:
+            matches = r.ls(x, type='joint')
+            numMatches = len(matches)
+
+            if numMatches == 0:
+                r.createNode('joint', name=x)
+                args.append(x)
+
+                if not m.objExists('missing_joints_SET'):
+                    m.sets(name='missing_joints_SET')
+
+                m.sets(str(x), fe='missing_joints_SET')
+            else:
+                args.append(matches[0])
+
+        args.append(geometry)
+
+        return tuple(args), macro['createKwargs']

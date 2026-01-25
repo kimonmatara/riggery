@@ -1,3 +1,4 @@
+from copy import deepcopy
 import inspect
 import ast
 import json
@@ -1285,6 +1286,61 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         :return: True if this node exists.
         """
         return om.MObjectHandle(self.__apiobjects__['MObject']).isValid()
+
+    #-------------------------------------|    Serialization
+
+    __macro_attrs__ = None
+
+    def macro(self) -> dict:
+        out = {}
+
+        if self.__macro_attrs__:
+            out['__attrs__'] = {
+                attrName: self.attr(attrName).getState()
+                for attrName in self.__macro_attrs__
+            }
+
+        return out
+
+    @classmethod
+    def _getCreateArgsKwargsFromMacro(cls, macro:dict) -> tuple:
+        raise NotImplementedError
+
+    @classmethod
+    @short(restoreInputs='ri',
+           restoreValues='rv',
+           restoreFlags='rf',
+           createArgsOverride='cao',
+           createKwargsOverride='cko')
+    def createFromMacro(cls,
+                        macro:dict,
+                        restoreInputs:bool=False,
+                        restoreValues:bool=True,
+                        restoreFlags:bool=True,
+                        createArgsOverride:Optional[Union[tuple, list]]=None,
+                        createKwargsOverride:Optional[dict]=None):
+        args, kwargs = cls._getCreateArgsKwargsFromMacro(macro)
+
+        if createArgsOverride is not None:
+            args = createArgsOverride
+
+        if createKwargsOverride is not None:
+            kwargs = kwargs.copy()
+            kwargs.update(createKwargsOverride)
+
+        inst = cls.create(*args, **kwargs)
+
+        for attrName, attrState in macro.get('__attrs__', {}).items():
+            try:
+                attr = inst.attr(attrName)
+                attr.setState(attrState,
+                              value=restoreValues,
+                              input=restoreInputs,
+                              flags=restoreFlags)
+            except:
+                continue
+
+        return inst
 
     #-------------------------------------|    Repr etc.
 

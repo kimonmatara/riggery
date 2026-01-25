@@ -1,12 +1,17 @@
+from copy import deepcopy
 import re
 from typing import Union, Optional, Iterator
 
+from riggery.core.lib.serialize import simplify
 from riggery.general.functions import short
+from riggery.internal.typeutil import UNDEFINED
 import riggery.core.lib.skel as _sk
 from riggery.core.lib import names as _nm
 
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
+
+import maya.cmds as m
 
 
 class Joint(nodes['Transform']):
@@ -80,7 +85,7 @@ class Joint(nodes['Transform']):
         rmtx = self.attr('wm').pick(r=True)
 
         smtx = self.attr('inverseScale').asScaleMatrix(
-            ).inverse() * self.attr('pm')[0].pick(s=True)
+        ).inverse() * self.attr('pm')[0].pick(s=True)
 
         mtx = smtx * rmtx * tmtx
 
@@ -293,18 +298,48 @@ class Joint(nodes['Transform']):
 
     #------------------------------------------|    Serialization
 
-    def _deriveCreateArgsKwargs(self) -> tuple[tuple, dict]:
-        kwargs = {'name': self.shortName()}
+    __macro_attrs__ = ('offsetParentMatrix',
+                       'rotateOrder',
+                       'jointOrient',
+                       'rotateAxis',
+                       'radius',
+                       'side',
+                       'preferredAngle',
+                       'stiffness',
+                       'segmentScaleCompensate',
+                       'type',
+                       'otherType',
+                       'drawLabel',
+                       'displayLocalAxis',
+                       'displayHandle',
+                       'drawStyle',
+                       'jointTypeX',
+                       'jointTypeY',
+                       'jointTypeZ')
 
-        kwargs['matrix'] = (self.getRestRotateMatrix()
-                            * self.attr('t')().asTranslateMatrix())
-
+    def macro(self) -> dict:
+        out = super().macro()
         parent = self.parent
+        if parent:
+            out['parent'] = parent.shortName()
+
+        out['matrix'] = self.getMatrix()
+        out['name'] = self.shortName()
+        return out
+
+    @classmethod
+    def _getCreateArgsKwargsFromMacro(cls, macro):
+        kwargs = {'name': macro['name'],
+                  'rotateOrder': macro['__attrs__']['rotateOrder']['value'],
+                  'matrix': macro['matrix'],
+                  'freezeRotate': False} # rely on attr setting for jo after
+
+        parent = macro.get('parent')
 
         if parent is not None:
-            kwargs['parent'] = str(parent)
+            matches = m.ls(parent, type='transform')
 
-        kwargs['rotateOrder'] = self.attr('rotateOrder').get(asString=True)
-        kwargs['displayLocalAxis'] = self.attr('displayLocalAxis')()
+            if len(matches) == 1:
+                kwargs['parent'] = matches[0]
 
         return tuple(), kwargs

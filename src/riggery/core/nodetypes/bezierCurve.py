@@ -1,9 +1,11 @@
 from typing import Iterable, Optional
+from copy import deepcopy
 
 import maya.cmds as m
 
 from riggery.general.functions import short
 from riggery.core.lib.serialize import simplify
+from riggery.internal.typeutil import UNDEFINED
 
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
@@ -151,61 +153,47 @@ class BezierCurve(NurbsCurve):
     #----------------------------------------------|    Serialization
 
     def macro(self) -> dict:
-        """All info returned in local-space."""
-
-        out = {'name': self.shortName(),
-               'parent': self.parent.shortName(),
-               'points': list(self.iterCVPoints(visible=True))}
+        out = super().macro()
+        out.update({'points': list(self.iterCVPoints(visible=True)),
+                    'name': self.shortName(),
+                    'parent': self.parent.shortName()})
 
         cvDrivers = next(self.iterCVDrivers(simple=True), None)
 
         if cvDrivers is not None:
-            out['pointInputs'] = cvDrivers[1]
+            out['cvDrivers'] = cvDrivers[1]
 
-        out['attrStates'] = {attrName: self.attr(attrName).getState()
-                             for attrName in ('overrideEnabled',
-                                              'overrideDisplayType',
-                                              'visibility',
-                                              'overrideColor',
-                                              'lineWidth',
-                                              'anchorSmoothness',
-                                              'anchorWeighting',
-                                              'dispCV')}
         return out
 
     @classmethod
-    @short(parent='p',
-           name='n',
-           worldSpace='ws',
-           displayType='dt',
-           lineWidth='lw')
-    def createFromMacro(cls, macro:dict, **createOverrides):
-        """
-        Recreates a bezier curve using the type of macro produced by
-        :meth:`macro`.
+    def _getCreateArgsKwargsFromMacro(cls, macro:dict) -> tuple:
+        points = macro['points']
+        cvDrivers = macro.get('cvDrivers')
 
-        :param \*\*createOverrides: overrides for the :meth:`create`
-            constructor
-        """
+        if cvDrivers is not None:
+            for cvIndex, cvInput in cvDrivers:
+                _node, _attr = cvInput.split('.', 1)
+                matches = m.ls(_node)
+                if len(matches) == 1:
+                    if m.objExists(cvInput):
+                        points[cvIndex] = matches[0]+'.'+_attr
+
+        args = (points,)
         kwargs = {'name': macro['name']}
-
         parent = macro['parent']
+
         matches = m.ls(parent, type='transform')
 
-        if matches and len(matches) == 1:
+        if len(matches) == 1:
             kwargs['parent'] = matches[0]
 
-        points = macro['points']
+        return args, kwargs
 
-        if 'pointInputs' in macro:
-            for index, pointInput in macro['pointInputs']:
-                if m.objExists(pointInput):
-                    points[index] = pointInput
-
-        kwargs.update(**createOverrides)
-        inst = cls.create(points, **kwargs)
-
-        for attrName, attrState in macro['attrStates'].items():
-            inst.attr(attrName).setState(attrState)
-
-        return inst
+    __macro_attrs__ = ('overrideEnabled',
+                       'overrideDisplayType',
+                       'visibility',
+                       'overrideColor',
+                       'lineWidth',
+                       'anchorSmoothness',
+                       'anchorWeighting',
+                       'dispCV')
