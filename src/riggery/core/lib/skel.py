@@ -635,6 +635,9 @@ class Chain(list):
         if compose:
             out.compose()
 
+        if _nm.Name.__elems__:
+            out.rename()
+
         return out
 
     def compose(self):
