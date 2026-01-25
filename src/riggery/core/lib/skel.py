@@ -554,7 +554,7 @@ class Chain(list):
     def duplicate(self, *,
                   parent=None,
                   compose:bool=False,
-                  mirror:False):
+                  mirror:bool=False):
         """
         :param parent/p: an optional destination parent for the duplicated
             chain
