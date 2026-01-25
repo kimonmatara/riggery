@@ -3,6 +3,7 @@ from typing import Iterable, Optional
 import maya.cmds as m
 
 from riggery.general.functions import short
+from riggery.core.lib.serialize import simplify
 
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
@@ -147,31 +148,64 @@ class BezierCurve(NurbsCurve):
                           displayType=displayType,
                           lineWidth=lineWidth)
 
-    # @classmethod
-    # def _createTwoPointArcAllPlugs(cls, p0, p1, normal, radius):
-    #     p0 = _mm.conform(p0, plugs.Point, force=True)
-    #     p1 = _mm.conform(p1, plugs.Point, force=True)
-    #     radius = _mm.conform(radius, plugs.Number)
-    #
-    #     chord = p1 - p0
-    #     chordLength = chord.length()
+    #----------------------------------------------|    Serialization
+
+    def macro(self) -> dict:
+        """All info returned in local-space."""
+
+        out = {'name': self.shortName(),
+               'parent': self.parent.shortName(),
+               'points': list(self.iterCVPoints(visible=True))}
+
+        cvDrivers = next(self.iterCVDrivers(simple=True), None)
+
+        if cvDrivers is not None:
+            out['pointInputs'] = cvDrivers[1]
+
+        out['attrStates'] = {attrName: self.attr(attrName).getState()
+                             for attrName in ('overrideEnabled',
+                                              'overrideDisplayType',
+                                              'visibility',
+                                              'overrideColor',
+                                              'lineWidth',
+                                              'anchorSmoothness',
+                                              'anchorWeighting',
+                                              'dispCV')}
+        return out
 
     @classmethod
-    def createTriFillet(cls,
-                        p1, p2, p3,
-                        bias1=0.5,
-                        bias2=0.5,
-                        parent=None,
-                        name:Optional[str]=None,
-                        worldSpace:bool=False,
-                        displayType=None):
-        p1, p2, p3 = map(
-            lambda x: _mm.conform(x, (data.Point, plugs.Point), force=True),
-            (p1, p2, p3)
-        )
-        return cls.create([p1, p1.blend(p2, weight=bias1),
-                           p3.blend(p2, weight=bias2), p3],
-                          parent=parent,
-                          name=name,
-                          worldSpace=worldSpace,
-                          displayType=displayType)
+    @short(parent='p',
+           name='n',
+           worldSpace='ws',
+           displayType='dt',
+           lineWidth='lw')
+    def createFromMacro(cls, macro:dict, **createOverrides):
+        """
+        Recreates a bezier curve using the type of macro produced by
+        :meth:`macro`.
+
+        :param \*\*createOverrides: overrides for the :meth:`create`
+            constructor
+        """
+        kwargs = {'name': macro['name']}
+
+        parent = macro['parent']
+        matches = m.ls(parent, type='transform')
+
+        if matches and len(matches) == 1:
+            kwargs['parent'] = matches[0]
+
+        points = macro['points']
+
+        if 'pointInputs' in macro:
+            for index, pointInput in macro['pointInputs']:
+                if m.objExists(pointInput):
+                    points[index] = pointInput
+
+        kwargs.update(**createOverrides)
+        inst = cls.create(points, **kwargs)
+
+        for attrName, attrState in macro['attrStates'].items():
+            inst.attr(attrName).setState(attrState)
+
+        return inst

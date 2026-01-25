@@ -387,9 +387,6 @@ class NurbsCurve(nodes['CurveShape']):
 
     #----------------------------------------------|    Editing
 
-    # The below is an older implementation that breaks in Maya 2026 due to a
-    # new Maya bug whereby the Z component is ignored on .controlPoints inputs.
-
     def driveCVs(self, points:Iterable):
         """
         Drives the CVs of this curve using point attributes.
@@ -404,6 +401,34 @@ class NurbsCurve(nodes['CurveShape']):
             point >> shape.attr('controlPoints')[i]
 
         return self
+
+    def iterCVDrivers(self, simple:bool=False) -> Iterator:
+        """
+        Yields tuples where each tuple comprises
+        ``(shape, [(cvIndex, cvDriver]])``. Shapes that do not share a parent
+        with this shape are ignored.
+
+        :param simple: return strings instead of Elem instances; defaults to
+            False
+        """
+        thisParent = self.parent
+
+        for shape in self.history:
+            if isinstance(shape, NurbsCurve):
+                if shape.parent == thisParent:
+                    out = []
+                    for i in shape.attr('controlPoints').indices():
+                        slot = shape.attr('controlPoints')[i]
+                        inputs = slot.inputs(plugs=True)
+                        if inputs:
+                            input = inputs[0]
+                            if simple:
+                                input = str(input)
+                            out.append((i, input))
+                    if out:
+                        if simple:
+                            shape = str(shape)
+                        yield (shape, out)
 
     @short(collocated='col', tolerance='tol')
     def clusterAll(self, *, collocated:bool=False, tolerance=1e-6) -> list:

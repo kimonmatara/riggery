@@ -1,22 +1,25 @@
+from typing import Union, Optional, Iterator, Iterable, Any
 from functools import cached_property
 import re
 import os
-from typing import Union, Optional, Iterator, Iterable, Any
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
 import riggery
+
 import riggery.internal.api2str as _a2s
 import riggery.internal.hashing as _hsh
 import riggery.internal.plugutil.plugroute as _pr
 import riggery.internal.plugutil.reorder2 as _reo
 import riggery.internal.str2api as _s2a
-from riggery.core.lib.nativeunits import NativeUnits
 import riggery.internal.mfnmatches as _mfm
-from riggery.general.functions import short, resolve_flags
-from riggery.general.iterables import expand_tuples_lists, \
-    without_duplicates
 from riggery.internal.plugutil.parseaac import parseAddAttrCmd
+
+from riggery.core.lib.nativeunits import NativeUnits
+from riggery.core.lib.serialize import simplify
+
+from riggery.general.functions import short, resolve_flags
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
 
 from ..elem import Elem, ElemInstError
 from ..nodetypes import __pool__ as _nodes
@@ -384,7 +387,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
             if types:
                 thisNodeType \
-                        = om.MFnDependencyNode(destNodeMObj).typeName
+                    = om.MFnDependencyNode(destNodeMObj).typeName
 
                 if exactType:
                     if thisNodeType not in types:
@@ -662,7 +665,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         # This is our base / fallback implementation, so some checks are
         # warranted
         if isinstance(value, (list, tuple)) \
-            and all((isinstance(member, (float, int)) for member in value)):
+                and all((isinstance(member, (float, int)) for member in value)):
             tensorShape = len(value)
 
             if tensorShape in (2, 3, 4):
@@ -1415,14 +1418,14 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :return: True if this is a typed attribute.
         """
         return self.__apiobjects__['MPlug'
-            ].attribute().hasFn(om.MFn.kTypedAttribute)
+        ].attribute().hasFn(om.MFn.kTypedAttribute)
 
     def isGeneric(self) -> bool:
         """
         :return: True if this is a generic attribute.
         """
         return self.__apiobjects__['MPlug'
-            ].attribute().hasFn(om.MFn.kGenericAttribute)
+        ].attribute().hasFn(om.MFn.kGenericAttribute)
 
     def isDynamic(self) -> bool:
         """
@@ -1456,7 +1459,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         pname = cls.mro()[1].__name__
         lines = [
             'from ..plugtypes import __pool__ as plugs', '', '', ''
-            f"class {clsname}(plugs['{pname}']):", '',
+                                                                 f"class {clsname}(plugs['{pname}']):", '',
             '    ...'
         ]
         return '\n'.join(lines)
@@ -1647,6 +1650,167 @@ class Attribute(Elem, metaclass=AttributeMeta):
         if lock:
             vectorAttr.lock(recurse=True)
 
+    #-----------------------------------------|    Serialization
+
+    def getState(self, *, flags=None, input=None, value=None) -> dict:
+        flags, input, value = resolve_flags(flags, input, value)
+
+        out = {}
+
+        if flags:
+            for flag in ('keyable', 'channelBox', 'lock'):
+                try:
+                    out[flag] = self.getFlag(flag)
+                except:
+                    continue
+
+        if input:
+            _input = next(self.iterInputs(plugs=True), None)
+            if _input is None:
+                out['input'] = None
+            else:
+                out['input'] = str(_input).split('|')[-1]
+
+        if self.isMulti():
+            elementStates = []
+            for i in self.indices():
+                slot = self[i]
+                try:
+                    elementStates.append((i, slot.getState(flags=flags,
+                                                           input=input,
+                                                           value=value)))
+                except:
+                    continue
+            out['elementStates'] = elementStates
+        else:
+            if value:
+                try:
+                    out['value'] = simplify(self())
+                except:
+                    pass
+
+            if self.isCompound():
+                childStates = {}
+                for child in self.children:
+                    try:
+                        childStates[
+                            child.attrName(longName=True)
+                        ] = child.getState(flags=flags,
+                                           input=input,
+                                           value=value)
+                    except:
+                        continue
+                out['childStates'] = childStates
+
+        return out
+
+    @short(force='f')
+    def setState(self,
+                 state:dict, *,
+                 input=None,
+                 value=None,
+                 flags=None,
+                 force=False,
+                 disconnectIfNoInput:bool=False):
+        input, value, flags = resolve_flags(input, value, flags)
+
+        wasLocked = self.isLocked()
+
+        if force and (input or value):
+            if wasLocked:
+                self.unlock()
+
+        existingInput = next(self.iterInputs(plugs=True), None)
+
+        if input:
+            if 'input' in state:
+                newInput = state['input']
+                if newInput is None:
+                    if existingInput and disconnectIfNoInput:
+                        if not (wasLocked and not force):
+                            try:
+                                m.disconnectAttr(str(existingInput), str(self))
+                            except:
+                                pass
+                else:
+                    if m.objExists(newInput):
+                        if not ((existingInput or wasLocked) and not force):
+                            try:
+                                newInput >> self
+                            except:
+                                pass
+
+        if value:
+            if 'value' in state:
+                if not ((wasLocked or existingInput) and not force):
+                    try:
+                        self.set(state['value'])
+                    except:
+                        pass
+
+        if 'childStates' in state and self.isCompound():
+            for childName, childState in state['childStates'].items():
+                try:
+                    child = self.attr(childName)
+                except AttributeError:
+                    continue
+
+                child.setState(childState,
+                               value=value,
+                               input=input,
+                               flags=flags,
+                               force=force)
+        elif 'elementStates' in state and self.isMulti():
+            for index, slotState in state['elementStates']:
+                try:
+                    slot = self[index]
+                except:
+                    continue
+
+                slot.setState(slotState,
+                              value=value,
+                              input=input,
+                              flags=flags,
+                              force=force)
+        if flags:
+            try:
+                if 'channelBox' in state:
+                    if self.getFlag('channelBox'):
+                        if not state['channelBox']:
+                            self.setFlag('channelBox', False)
+                    elif state['channelBox']:
+                        if self.getFlag('keyable'):
+                            self.setFlag('keyable', False)
+                        self.setFlag('channelBox', True)
+            except:
+                pass
+
+            try:
+                if 'keyable' in state:
+                    if self.getFlag('keyable'):
+                        if not state['keyable']:
+                            self.setFlag('keyable', False)
+                    elif state['keyable']:
+                        if self.getFlag('channelBox'):
+                            self.setFlag('channelBox', False)
+                        self.setFlag('keyable', True)
+            except:
+                pass
+
+            try:
+                if 'lock' in state:
+                    if self.isLocked():
+                        if not state['locked']:
+                            self.unlock()
+                    elif state['locked']:
+                        self.lock()
+            except:
+                pass
+        elif force and wasLocked:
+            self.lock()
+
+        return self
+
     #-----------------------------------------|    Repr
 
     def attrName(self, longName:bool=False) -> str:
@@ -1656,6 +1820,14 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         fn = om.MFnAttribute(self.__apimobject__())
         return fn.name if longName else fn.shortName
+
+    def attrPath(self, longName:bool=False) -> str:
+        return self.__apimplug__().partialName(includeNodeName=False,
+                                               includeNonMandatoryIndices=False,
+                                               includeInstancedIndices=True,
+                                               useAlias=False,
+                                               useFullAttributePath=True,
+                                               useLongNames=longName)
 
     def shortName(self) -> str:
         """

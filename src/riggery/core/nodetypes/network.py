@@ -50,26 +50,6 @@ class Network(DependNode, metaclass=NetworkMeta):
             if isinstance(network, cls):
                 yield network
 
-    #-------------------------------------|    Serialization
-
-    def macro(self) -> dict:
-        out = super().macro()
-
-        T = type(self)
-
-        if T is not Network:
-            out['networkType'] = T.__name__
-
-        return out
-
-    @classmethod
-    def _getMacroBuilderClass(cls, macro:dict) -> type:
-        try:
-            networkType = macro['networkType']
-        except KeyError:
-            return Network
-        return cls.__subtype_pool__[networkType]
-
     #-------------------------------------|    Type wrangling
 
     def updateType(self):
