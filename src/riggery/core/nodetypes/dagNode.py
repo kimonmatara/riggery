@@ -229,6 +229,15 @@ class DagNode(DependNode):
         yield self
         yield from self.iterParents()
 
+    @property
+    def root(self):
+        """
+        Returns the root transform in this node's DAG hierarchy. This may be the
+        node itself.
+        """
+        stack = list(self.stack)
+        return next(reversed(list(self.stack)))
+
     def getParents(self) -> list:
         """
         Flat version of :meth:`iterParents`.
