@@ -14,8 +14,11 @@ import maya.cmds as m
 import maya.mel as mel
 
 import riggery.core as r
+
 from riggery.core.lib.selection import keepsel
+import riggery.core.lib.names as _nm
 from riggery.core.lib import skinwtio as _sw
+
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
 from riggery.internal.typeutil import UNDEFINED
@@ -319,13 +322,14 @@ class SkinCluster(GeometryFilter):
         """
         return list(self.influence)
 
-    @property
-    def influence(self) -> Iterator['nodes.Joint']:
+    def iterInfluence(self) -> Iterator['nodes.Joint']:
         out = m.skinCluster(str(self), q=True, influence=True)
 
         if out:
             for x in out:
                 yield nodes['DependNode'](x)
+
+    influence = property(iterInfluence)
 
     def addInfluence(self, *influences, preserveWeights:bool=False):
         """
@@ -819,8 +823,9 @@ class SkinCluster(GeometryFilter):
                 for existing in self.fromGeo(shape):
                     r.delete(existing)
             thisMacro = deepcopy(macro)
-            thisMacro['geometry'] = str(shape)
-            del(thisMacro['createKwargs']['name'])
+            thisMacro['geoShape'] = shape
+            thisMacro['geoTransform'] = shape.parent
+            del(thisMacro['cmdFlags']['name'])
 
             newSkin = self.createFromMacro(thisMacro)
 
@@ -869,57 +874,139 @@ class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Serialization
 
-    __macro_attrs__ = ('dqsScale',
-                       'dqsSupportNonRigid',
-                       'deformUserNormals',
-                       'lockWeights')
-
     def macro(self) -> dict:
-        out = super().macro()
-        _self = str(self)
-        out['influence'] = [x.split('|')[-1]
-                            for x in m.skinCluster(_self,
-                                                   q=True, influence=True)]
-        out['geometry'] = next(self.shapes).parent.shortName()
-        out['createKwargs'] = {x: m.skinCluster(_self, q=True, **{x: True})
-                               for x in ('maximumInfluences',
-                                         'obeyMaxInfluences',
-                                         'skinMethod',
-                                         'weightDistribution',
-                                         'bindMethod',
-                                         'normalizeWeights',
-                                         'toSelectedBones')}
-        out['createKwargs']['name'] = _self
-        return out
+        """
+        Returns a dictionary that can serialized and used to recreate the
+        skinCluster (but without the original weight information).
+        """
+        name = str(self)
+        influence = [x.shortName() for x in self.influence]
+        geoShape = next(self.shapes)
+        geoTransform = geoShape.parent
+        geoShape = geoShape.shortName()
+        geoTransform = geoTransform.shortName()
+
+        cmdFlags = {x: m.skinCluster(name, q=True, **{x: True})
+                    for x in ('maximumInfluences',
+                              'obeyMaxInfluences',
+                              'skinMethod',
+                              'weightDistribution',
+                              'bindMethod',
+                              'normalizeWeights')}
+
+        cmdFlags['toSelectedBones'] = True
+        cmdFlags['dropoffRate'] = 4.0
+        cmdFlags['name'] = name
+
+        attrStates = {x: self.attr(x).getState()
+                      for x in ('dqsScale',
+                                'dqsSupportNonRigid',
+                                'deformUserNormals',
+                                'lockWeights')}
+
+        return {'influence': influence, 'geoShape': geoShape,
+                'geoTransform': geoTransform, 'cmdFlags': cmdFlags,
+                'attrStates': attrStates}
 
     @classmethod
-    def _getCreateArgsKwargsFromMacro(cls, macro):
-        args = []
-        kwargs = {}
+    @short(restoreInputs='ri',
+           restoreValues='rv',
+           createMissingInfluence='cmi')
+    def createFromMacro(cls,
+                        macro:dict,
+                        restoreInputs:bool=False,
+                        restoreValues:bool=True,
+                        createMissingInfluence:bool=True,
+                        replace:bool=False):
+        """
+        :param macro: the macro to use
+        :param restoreInputs/ri: restore attribute inputs; defaults to False
+        :param restoreValues/rv: restore attribute values; defaults to True
+        :param replace: if True, replaces any existing skinCluster; defaults to
+            False
+        :param createMissingInfluence/cmi: recreates missing influences at the
+            origin, and adds them to a 'missing_influences_OBST' set
+        :raises RuntimeError: the geometry is already bound, and *replace* was
+            False
+        :raises RuntimeError: no matches found for the geometry
+        :raises RuntimeError: no matches found for some, or any, of the
+            influences, and *createMissingInfluence* was Falses
+        """
+        # Resolve influences
+        joints = []
 
-        geometry = macro['geometry']
-        matches = r.ls(geometry, type='dagNode')
+        restoredInfluences = []
 
-        if len(matches) == 0:
-            raise RuntimeError("no match for geometry '{}'".format(geometry))
+        for joint in macro['influence']:
+            matches = r.ls(joint, type='joint')
 
-        influence = macro['influence']
-
-        for x in influence:
-            matches = r.ls(x, type='joint')
-            numMatches = len(matches)
-
-            if numMatches == 0:
-                r.createNode('joint', name=x)
-                args.append(x)
-
-                if not m.objExists('missing_joints_SET'):
-                    m.sets(name='missing_joints_SET')
-
-                m.sets(str(x), fe='missing_joints_SET')
+            if len(matches) == 0:
+                if createMissingInfluence:
+                    newJoint = r.createNode('joint', name=joint)
+                    restoredInfluences.append(newJoint)
+                    joints.append(newJoint)
+                else:
+                    raise RuntimeError("no match for '{}'".format(joint))
             else:
-                args.append(matches[0])
+                joints.append(matches[0])
 
-        args.append(geometry)
+        if restoredInfluences:
+            if not r.objExists('missing_joints_OBST'):
+                oset = r.sets(empty=True, name='missing_joints_OBST')
+            r.sets(joints, fe=oset)
 
-        return tuple(args), macro['createKwargs']
+        # Resolve geometry
+        geometry = None
+        usedLookups = []
+
+        for key in ('geoShape', 'geoTransform'):
+            try:
+                lookup = macro[key]
+                usedLookups.append(lookup)
+            except KeyError:
+                continue
+            matches = r.ls(lookup, type='dagNode')
+
+            if len(matches) > 0:
+                geometry = matches[0]
+                break
+
+        if geometry is None:
+            if usedLookups:
+                raise RuntimeError(
+                    "no matches for any of: {}".format(
+                        ', '.join(usedLookups)
+                    )
+                )
+            else:
+                raise RuntimeError("missing geo info in macro")
+
+        existing = next(SkinCluster.fromGeo(geometry), None)
+
+        if existing is not None:
+            if replace:
+                r.delete(existing)
+            else:
+                raise RuntimeError(
+                    "geometry '{}' is already bound".format(geometry)
+                )
+
+        # Init the skin cluster
+        args = joints + [geometry]
+        kwargs = macro['cmdFlags'].copy()
+
+        if _nm.Name.__elems__:
+            del(kwargs['name'])
+
+        inst = r.skinCluster(*args, **kwargs)[0]
+
+        # Configure attributes
+        for attrName, attrState in macro['attrStates'].items():
+            try:
+                inst.attr(attrName).setState(attrState,
+                                             input=restoreInputs,
+                                             value=restoreValues)
+            except:
+                continue
+
+        return inst

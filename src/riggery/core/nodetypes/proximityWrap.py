@@ -39,7 +39,7 @@ class ProximityWrap(WeightGeometryFilter):
                softNormalization=False,
                name:Optional[str]=None,
                useBindTags:bool=False,
-               scaleCompensation=None,
+               scaleCompensation=None, # use this for global scale
                maxDrivers:int=10):
         m.select(driven)
 
@@ -74,6 +74,13 @@ class ProximityWrap(WeightGeometryFilter):
 
     def setDriverDetails(self, driver, **details):
         """
+        Allows you to specify different values or inputs for the child
+        attributes under ``.drivers[x]`` where x is the index that matches the
+        specified driver.
+
+        Examples of attributes include: driverBindGeometry,
+        driverReferenceGeometry, driverStrength, and so on.
+
         :param \*\*details: attribute name: attribute value or input for every
             child attribute of the driver slot (e.g. ``driverBindGeometry``)
         """
@@ -82,11 +89,30 @@ class ProximityWrap(WeightGeometryFilter):
             for k, v in details.items():
                 v >> slot.attr(k)
 
+    @short(worldSpace='ws')
+    def setDriverBindGeometry(self, driver, geometry, worldSpace:bool=False):
+        """
+        Sets the 'bind' geometry (the 'base') for the specified driver.
+
+        :param worldSpace/ws: ignored if *driver* is an attribute; pull the
+            world-space output; defaults to False
+        """
+        geometry = r.Elem(geometry)
+
+        if not isinstance(geometry, plugs.Attribute):
+            geometry = getattr(geometry,
+                               'worldOutput' if worldSpace else 'localOutput')
+
+        slot = self.getDriverSlot(driver)
+        geometry >> slot.attr('driverBindGeometry')
+
+        return self
+
     def getDriverSlot(self, driver) -> Optional['plugs.Attribute']:
         shape = r.Elem(driver).toShape()
 
-        for attr in ('worldMesh[0]', 'outMesh'):
-            for output in shape.attr(attr).outputs(plugs=True):
+        for attr in ('worldOutput', 'localOutput'):
+            for output in getattr(shape, attr).outputs(plugs=True):
                 if output.node() == self:
                     if output.attrName(longName=True) == 'driverGeometry':
                         return output.parent
@@ -113,7 +139,7 @@ class ProximityWrap(WeightGeometryFilter):
 
     def getDrivenIndex(self, driven):
         shape = r.Elem(driven).toShape()
-        inputs = shape.attr('inMesh').inputs(plugs=True)
+        inputs = shape.input.inputs(plugs=True)
 
         for input in inputs:
             if (
@@ -124,5 +150,6 @@ class ProximityWrap(WeightGeometryFilter):
 
     def setDrivenOrigGeo(self, driven, origGeo):
         index = self.getDrivenIndex(driven)
-        r.Elem(origGeo).toShape().attr('worldMesh'
-                                    )[0] >> self.attr('originalGeometry')[index]
+
+        r.Elem(origGeo).toShape().worldOutput \
+            >> self.attr('originalGeometry')[index]

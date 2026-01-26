@@ -17,6 +17,8 @@ from ..lib import nurbsutil as _nut
 
 NurbsCurve = nodes['NurbsCurve']
 
+import maya.cmds as m
+
 
 class BezierCurve(NurbsCurve):
 
@@ -153,47 +155,73 @@ class BezierCurve(NurbsCurve):
     #----------------------------------------------|    Serialization
 
     def macro(self) -> dict:
-        out = super().macro()
-        out.update({'points': list(self.iterCVPoints(visible=True)),
-                    'name': self.shortName(),
-                    'parent': self.parent.shortName()})
+        points = list(self.iterCVPoints(visible=True))
+        inputs = next(self.iterCVDrivers(simple=True))
 
-        cvDrivers = next(self.iterCVDrivers(simple=True), None)
+        if inputs is not None:
+            # Discard shape, keep (index, input) pairs
+            inputs = inputs[1]
+            inputs = [(index, input.split('|')[-1]) for index, input in inputs]
 
-        if cvDrivers is not None:
-            out['cvDrivers'] = cvDrivers[1]
+        name = self.shortName()
+        parent = self.parent.shortName()
+
+        out = {'points': points,
+               'name': name,
+               'parent': parent}
+
+        if inputs:
+            out['inputs'] = inputs
+
+        out['attrStates'] = {
+            x: self.attr(x).getState() for x in ('overrideEnabled',
+                                                 'overrideDisplayType',
+                                                 'visibility',
+                                                 'overrideColor',
+                                                 'lineWidth',
+                                                 'anchorSmoothness',
+                                                 'anchorWeighting',
+                                                 'dispCV')
+        }
 
         return out
 
     @classmethod
-    def _getCreateArgsKwargsFromMacro(cls, macro:dict) -> tuple:
+    @short(restoreInputs='ri',
+           restoreValues='rv',
+           restoreParent='rp')
+    def createFromMacro(cls,
+                        macro:dict,
+                        restoreInputs:bool=False,
+                        restoreValues:bool=True,
+                        restoreParent:bool=True) -> 'BezierCurve':
+
+        createKwargs = {'name': macro['name']}
         points = macro['points']
-        cvDrivers = macro.get('cvDrivers')
 
-        if cvDrivers is not None:
-            for cvIndex, cvInput in cvDrivers:
-                _node, _attr = cvInput.split('.', 1)
-                matches = m.ls(_node)
-                if len(matches) == 1:
-                    if m.objExists(cvInput):
-                        points[cvIndex] = matches[0]+'.'+_attr
+        if 'inputs' in macro:
+            for index, input in macro['inputs']:
+                # Look for a match
+                _node, _attr = input.split('.', 1)
+                nodeMatches = m.ls(_node)
 
-        args = (points,)
-        kwargs = {'name': macro['name']}
-        parent = macro['parent']
+                if len(nodeMatches) > 0:
+                    points[index] = '.'.join([nodeMatches[0], _attr])
 
-        matches = m.ls(parent, type='transform')
+        createArgs = (points,)
 
-        if len(matches) == 1:
-            kwargs['parent'] = matches[0]
+        if restoreParent:
+            parent = macro['parent']
+            matches = m.ls(parent, type='transform')
 
-        return args, kwargs
+            if len(matches) > 0:
+                createKwargs['parent'] = matches[0]
 
-    __macro_attrs__ = ('overrideEnabled',
-                       'overrideDisplayType',
-                       'visibility',
-                       'overrideColor',
-                       'lineWidth',
-                       'anchorSmoothness',
-                       'anchorWeighting',
-                       'dispCV')
+        inst = cls.create(*createArgs, **createKwargs)
+
+        for x, state in macro['attrStates'].items():
+            inst.attr(x).setState(state,
+                                  input=restoreInputs,
+                                  value=restoreValues)
+
+        return inst

@@ -298,48 +298,63 @@ class Joint(nodes['Transform']):
 
     #------------------------------------------|    Serialization
 
-    __macro_attrs__ = ('offsetParentMatrix',
-                       'rotateOrder',
-                       'jointOrient',
-                       'rotateAxis',
-                       'radius',
-                       'side',
-                       'preferredAngle',
-                       'stiffness',
-                       'segmentScaleCompensate',
-                       'type',
-                       'otherType',
-                       'drawLabel',
-                       'displayLocalAxis',
-                       'displayHandle',
-                       'drawStyle',
-                       'jointTypeX',
-                       'jointTypeY',
-                       'jointTypeZ')
-
     def macro(self) -> dict:
-        out = super().macro()
+        out = {'name': self.shortName(),
+               'attrStates': {x: self.attr(x).getState() for x in (
+                   't', 'r', 's', 'shear',
+                   'offsetParentMatrix',
+                   'rotateOrder',
+                   'jointOrient',
+                   'rotateAxis',
+                   'radius',
+                   'side',
+                   'preferredAngle',
+                   'stiffness',
+                   'segmentScaleCompensate',
+                   'type',
+                   'otherType',
+                   'drawLabel',
+                   'displayLocalAxis',
+                   'displayHandle',
+                   'drawStyle',
+                   'jointTypeX',
+                   'jointTypeY',
+                   'jointTypeZ'
+               )}}
         parent = self.parent
+
         if parent:
             out['parent'] = parent.shortName()
 
-        out['matrix'] = self.getMatrix()
-        out['name'] = self.shortName()
         return out
 
     @classmethod
-    def _getCreateArgsKwargsFromMacro(cls, macro):
-        kwargs = {'name': macro['name'],
-                  'rotateOrder': macro['__attrs__']['rotateOrder']['value'],
-                  'matrix': macro['matrix'],
-                  'freezeRotate': False} # rely on attr setting for jo after
+    @short(restoreInputs='ri',
+           restoreValues='rv',
+           restoreParent='rp')
+    def createFromMacro(cls,
+                        macro:dict,
+                        restoreInputs:bool=False,
+                        restoreValues:bool=True,
+                        restoreParent:bool=False):
+        kwargs = {}
 
-        parent = macro.get('parent')
+        if not _nm.Name.__elems__:
+            kwargs['name'] = macro['name']
 
-        if parent is not None:
-            matches = m.ls(parent, type='transform')
+        joint = Joint(m.createNode('joint', **kwargs))
 
-            if len(matches) == 1:
-                kwargs['parent'] = matches[0]
+        if restoreParent:
+            parent = macro.get('parent')
+            if parent:
+                matches = m.ls(parent, type='transform')
 
-        return tuple(), kwargs
+                if len(matches) > 0:
+                    joint.parent = matches[0]
+
+        for x, state in macro['attrStates'].items():
+            joint.attr(x).setState(state,
+                                   input=restoreInputs,
+                                   value=restoreValues)
+
+        return joint
