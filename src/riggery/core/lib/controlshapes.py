@@ -99,7 +99,7 @@ def getCurveMacro(curveShape:str,
     out['knots'] = list(fn.knots())
     out['degree'] = fn.degree
     out['form'] = fn.form
-    out['is2D'] = all([point[2] == 0.0 for point in points])
+    out['is2D'] = False
     rational = False
 
     for i in range(fn.numCVs):

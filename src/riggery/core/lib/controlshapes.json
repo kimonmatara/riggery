@@ -6741,7 +6741,7 @@
           ],
           "degree": 1,
           "form": 1,
-          "is2D": true,
+          "is2D": false,
           "rational": false,
           "lineWidth": -1.0
         }
