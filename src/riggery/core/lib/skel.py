@@ -578,9 +578,7 @@ class Chain(list):
 
             macro = joint.macro()
 
-            duplicate = joint.createFromMacro(macro,
-                                              parent=parent,
-                                              worldSpace=False)
+            duplicate = joint.createFromMacro(macro, parent=parent)
 
             if mirror:
                 origName = joint.shortName(sns=True)

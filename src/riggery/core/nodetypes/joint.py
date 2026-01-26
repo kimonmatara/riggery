@@ -331,12 +331,19 @@ class Joint(nodes['Transform']):
     @classmethod
     @short(restoreInputs='ri',
            restoreValues='rv',
-           restoreParent='rp')
+           restoreParent='rp',
+           parent='p')
     def createFromMacro(cls,
                         macro:dict,
+                        parent=UNDEFINED,
                         restoreInputs:bool=False,
                         restoreValues:bool=True,
                         restoreParent:bool=False):
+        """
+        :param parent/p: an optional override for the destination parent
+        :param restoreParent/rp: ignored if *parent* has been provided; restore
+            the parent embedded in the macro; defaults to False
+        """
         kwargs = {}
 
         if not _nm.Name.__elems__:
@@ -344,7 +351,9 @@ class Joint(nodes['Transform']):
 
         joint = Joint(m.createNode('joint', **kwargs))
 
-        if restoreParent:
+        if parent is not UNDEFINED:
+            joint.parent = parent
+        elif restoreParent:
             parent = macro.get('parent')
             if parent:
                 matches = m.ls(parent, type='transform')
