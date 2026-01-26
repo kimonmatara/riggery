@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
 import os
 from typing import Iterator, Union, Optional, Literal
 
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
+from riggery.general.strings import cap
 
 from riggery.core.lib import names as _nm
 from riggery.core.lib import xmlweights as _xw
@@ -357,6 +359,94 @@ class GeometryFilter(DependNode):
                  positionTolerance=positionTolerance)
 
         return self
+
+    __archive_extra_attrs__ = None
+
+    @classmethod
+    @short(method='m')
+    def createFromArchive(cls,
+                          infoFile:Union[str, Path],
+                          method:Literal[
+                              'index', 'nearest', 'barycentric',
+                              'bilinear', 'over'
+                          ]='index'):
+        """
+        Recreates a deformer using the type of archive produced using
+        :meth:`dumpArchive`.
+
+        :param infoFile: the archive info file (see :meth:`dumpArchive`)
+        :param method/m: the weight-loading method (one of 'index', 'nearest',
+            'barycentric', 'bilinear' or 'over'); defaults to 'index'
+        """
+        infoFile = Path(infoFile)
+        with open(infoFile, 'r', encoding='utf-8') as f:
+            _data = f.read()
+
+        info = json.loads(_data)
+
+        macro = info['macro']
+        builderClass = nodes[cap(info['nodeType'])]
+
+        inst = builderClass.createFromMacro(macro)
+
+        if 'geometries' in info:
+            for transform, shape in info['geometries']:
+                xmlFileName = '{}_on_{}.xml'.format(
+                    info['name'].split(':')[-1],
+                    shape
+                )
+                xmlFilePath = infoFile.parent / xmlFileName
+
+                if xmlFilePath.is_file():
+                    inst.loadWeights(xmlFilePath, shape=shape, method=method)
+
+        return inst
+
+    def dumpArchive(self, directory:Union[str, Path]):
+        """
+        Dumps the following files into *directory*:
+            <deformer_name>_archive_info.json
+            <deformer_name>_on_<shape_name>.xml
+            <deformer_name>_on_<shape_name>.xml...
+        """
+        shapes = list(self.shapes)
+
+        archiveInfo = {'macro': self.macro(),
+                       'nodeType': self.__melnode__,
+                       'name': str(self),
+                       'description': 'single deformer archive'}
+
+        if shapes:
+            archiveInfo['geometries'] = [(shape.parent.shortName(),
+                                          shape.shortName())
+                                         for shape in shapes]
+
+        directory = Path(directory)
+        shortName = self.shortName(sns=True)
+        infoFileName = '{}_archive_info.json'.format(shortName)
+        infoFilePath = directory / infoFileName
+
+        _data = json.dumps(archiveInfo, indent=4)
+
+        with open(infoFilePath, 'w', encoding='utf-8') as f:
+            f.write(_data)
+
+        kwargs = {}
+
+        if self.__archive_extra_attrs__:
+            kwargs['attribute'] = self.__archive_extra_attrs__
+
+        for shape in shapes:
+            xmlFileName = '{}_on_{}.xml'.format(shortName,
+                                                shape.shortName(sns=True))
+            xmlFilePath = directory / xmlFileName
+
+            self.dumpWeights(xmlFilePath,
+                             shape=shape,
+                             vertexConnections=True,
+                             **kwargs)
+
+        print(f"Dumped archive for deformer '{shortName}' into: {directory}")
 
     #-------------------------------------|    Name
 
