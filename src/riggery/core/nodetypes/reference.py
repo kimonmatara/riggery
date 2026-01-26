@@ -109,7 +109,23 @@ class Reference(DependNode):
         """Equivalent to ``getPath(withoutCopyNumber=True)``."""
         return self.getPath(withoutCopyNumber=True)
 
-    basePath = property(getBasePath)
+    def setBasePath(self, newPath:Union[str, Path]):
+        """
+        Swaps the base path of the reference. If the path is the same as the
+        current base path, no reload will be triggered.
+        """
+        newPath = Path(newPath)
+
+        if newPath != self.basePath:
+            longType = {'.ma':'mayaAscii', '.mb':'mayaBinary'}[newPath.suffix]
+            m.file(newPath.as_posix(),
+                   loadReference=str(self),
+                   type=longType,
+                   options='v=0;')
+
+        return self
+
+    basePath = property(getBasePath, setBasePath)
 
     #-------------------------------------|    Util
 
