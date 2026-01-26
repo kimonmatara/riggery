@@ -23,6 +23,10 @@ from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
 from riggery.internal.typeutil import UNDEFINED
 
+if not m.pluginInfo('invertShape', loaded=1, q=1):
+    m.loadPlugin('invertShape')
+
+
 class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Contructors
@@ -1010,3 +1014,25 @@ class SkinCluster(GeometryFilter):
                 continue
 
         return inst
+
+    def invertShape(
+            self,
+            sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform']
+    ) -> 'nodes.Shape':
+        """
+        :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
+            currently at
+        :return: a reversed version of the sculpted geo, that can be used as a
+            pre-bind blend shape
+        """
+        thisShape = next(self.shapes)
+        xform = nodes.Transform(m.invertShape(str(thisShape),
+                                              str(sculptGeo)))
+        if _nm.Name.__elems__:
+            xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
+        else:
+            xform.name = "{}_inversion_{}".format(
+                thisShape.parent.shortName(sts=True),
+                thisShape.__typesuffix__
+            )
+        return xform
