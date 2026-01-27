@@ -722,6 +722,8 @@ class NurbsCurve(plugs['Geometry']):
             2 ('Extrapolate')
         :param removeMultipleKnots/rmk: used for the extension methods; remove
             multiple knots after extending; defaults to False
+        :param scalePivot: if this is provided, all other parameters will be
+            ignored, and the length will be set by scaling the curve
         """
         targetLength = _mm.conform(length, (float, plugs['Number']))
         currentLen = self.length()
