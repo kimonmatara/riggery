@@ -82,6 +82,27 @@ class Vector(__pool__['Tensor3']):
 
         return sorted(dotsmap, key=lambda pair: pair[1])[-1][0]
 
+    def closestAxis(self, asString:bool=False, includeNegative=False):
+        axes = ['x', 'y', 'z']
+        vectors = [Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))]
+
+        if includeNegative:
+            axes += ['-x', '-y', '-z']
+            vectors += [v * -1 for v in vectors]
+
+        bestDot = None
+        bestAxis = None
+        bestVector = None
+
+        for axis, vector in zip(axes, vectors):
+            thisDot = vector.dot(self, normalize=True)
+            if bestDot is None or thisDot > bestDot:
+                bestDot = thisDot
+                bestAxis = axis
+                bestVector = vector
+
+        return bestAxis if asString else bestVector
+
     def inventPerpendicular(self) -> 'Vector':
         """
         Finds the closest letter axis matching this vector, and returns a
