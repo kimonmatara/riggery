@@ -135,10 +135,19 @@ class SGStream:
 
         for item in os.scandir(self.parent):
             name = item.name
+            print('on item ', name)
             mt = re.match(pat, name)
 
             if mt:
+                print("matched ", name)
                 versionMap.append((int(mt.group(1)), pdir / name))
+            else:
+                print("no match for ", name)
+
+        versionMap.sort(key=lambda pair: pair[0])
+        print("sorted: ")
+        for x in versionMap:
+            print(x)
 
         yield from reversed(sorted(versionMap, key=lambda pair: pair[0]))
 
