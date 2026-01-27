@@ -361,7 +361,10 @@ class SkinCluster(GeometryFilter):
             kw['wt'] = 0.0
 
         for infl in influencesToAdd:
-            m.skinCluster(skin, e=True, ai=infl, **kw)
+            try:
+                m.skinCluster(skin, e=True, ai=infl, **kw)
+            except:
+                continue
 
             if preserveWeights:
                 m.setAttr('{}.liw'.format(infl), 0)
