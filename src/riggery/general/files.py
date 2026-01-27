@@ -127,7 +127,7 @@ class SGStream:
 
     def __iter__(self) -> Iterator[tuple[int, Path]]:
         """:raises FileNotFoundError: the parent directory doesn't exist"""
-        pat = re.compile("^" + self.name + "_v([0-9])+" + r"\."
+        pat = re.compile("^" + self.name + "_v([0-9]+)" + r"\."
                              + self.extension + r"$")
         versionMap = []
 
@@ -144,10 +144,10 @@ class SGStream:
             else:
                 print("no match for ", name)
 
-        versionMap.sort(key=lambda pair: pair[0])
-        print("sorted: ")
-        for x in versionMap:
-            print(x)
+        # versionMap.sort(key=lambda pair: pair[0])
+        # print("sorted: ")
+        # for x in versionMap:
+        #     print(x)
 
         yield from reversed(sorted(versionMap, key=lambda pair: pair[0]))
 
