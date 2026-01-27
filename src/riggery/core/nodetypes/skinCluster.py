@@ -747,6 +747,8 @@ class SkinCluster(GeometryFilter):
         kwargs = {}
 
         if includeBlendWeights:
+            print("include blend weights is on!")
+
             if attribute is None:
                 attribute = []
             else:
@@ -754,6 +756,8 @@ class SkinCluster(GeometryFilter):
 
             attribute.append('blendWeights')
             indicesToRemove = self._padBlendWeights()
+
+            print("attribute resolved as:")
 
             kwargs['at'] = attribute
 
