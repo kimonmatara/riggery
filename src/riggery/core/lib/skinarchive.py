@@ -254,15 +254,14 @@ def loadSkinCluster(infoFilePath,
 
         joints.append(joint)
 
-    kwargs = {
-        'obeyMaxInfluences': info['obeyMaxInfluences'],
-        'skinMethod': info['skinMethod'],
-        'toSelectedBones': True,
-        'bindMethod': 0,
-        'dropoffRate': 4.5,
-        'weightDistribution': 0,
-        'normalizeWeights': 1
-    }
+    kwargs = {'name': info['skinCluster'],
+              'obeyMaxInfluences': info['obeyMaxInfluences'],
+              'skinMethod': info['skinMethod'],
+              'toSelectedBones': True,
+              'bindMethod': 0,
+              'dropoffRate': 4.5,
+              'weightDistribution': 0,
+              'normalizeWeights': 1}
 
     args = joints + [sceneShape]
     skinCluster = r.skinCluster(*args, **kwargs)[0]
