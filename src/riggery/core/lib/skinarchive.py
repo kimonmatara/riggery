@@ -102,14 +102,12 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
 
     #--------------------------|    Collect & dump info
 
-    info = {
-        'obeyMaxInfluences': r.skinCluster(skinCluster, q=True, omi=True),
-        'skinMethod': r.skinCluster(skinCluster, q=True, skinMethod=True),
-        'joints': [joint.shortName() for joint in skinCluster.influence],
-        'shape': _shapeName,
-        'transform': _xformName,
-        'skinCluster': _skinClusterName
-    }
+    info = {'obeyMaxInfluences': r.skinCluster(skinCluster, q=True, omi=True),
+            'skinMethod': r.skinCluster(skinCluster, q=True, skinMethod=True),
+            'joints': [joint.shortName() for joint in skinCluster.influence],
+            'shape': _shapeName,
+            'transform': _xformName,
+            'skinCluster': _skinClusterName}
 
     infoFileName = '{}_info.json'.format(prefix)
     infoFilePath = destDir / infoFileName
@@ -131,6 +129,17 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
                             vertexConnections=True)
 
     out = {'info': infoFilePath, 'weights': xmlFilePath}
+
+    #--------------------------|    Dump blend weights separately, as iffy
+
+    if info['skinMethod'] == 2:
+        skinCluster._padBlendWeights()
+        weights = m.getAttr(f'{skinCluster}.blendWeights')[0]
+        blendWeightsPath = destDir / '{}_blend_weights.json'.format(prefix)
+        _data = json.dumps(weights)
+
+        with open(blendWeightsPath, 'w', encoding='utf-8') as f:
+            f.write(_data)
 
     #--------------------------|    Dump geometry archive
 
