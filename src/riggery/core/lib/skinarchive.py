@@ -141,6 +141,8 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
         with open(blendWeightsPath, 'w', encoding='utf-8') as f:
             f.write(_data)
 
+        print("Wrote: {}".format(blendWeightsPath))
+
     #--------------------------|    Dump geometry archive
 
     if captureGeometry:
@@ -399,6 +401,20 @@ def loadSkinCluster(infoFilePath,
                                 method=method,
                                 worldSpace=True,
                                 **kwargs)
+
+        # Load blend weights from separate dump
+
+        if method == 'index' and info['skinMethod'] == 2:
+            blendWeightsPath = parentDir / '{}_blend_weights.json'.format(prefix)
+            if blendWeightsPath.is_file():
+                with open(blendWeightsPath, 'r') as f:
+                    data = f.read()
+
+                data = json.loads(data)
+                _skin = str(skinCluster)
+
+                for i in range(len(data)):
+                    m.setAttr(f'{_skin}.blendWeights[{i}]', data[i])
 
     # Normalize weights
     r.skinCluster(skinCluster, e=True, fnw=True)
