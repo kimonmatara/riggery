@@ -29,7 +29,7 @@ class DeltaMush(WeightGeometryFilter):
             kw['name'] = name
 
         m.select(str(geo))
-        node = _nodes['DependNode'](m.deltaMush(**kw))
+        node = _nodes['DependNode'](m.deltaMush(**kw)[0])
 
         node.attr("smoothingIterations").put(iterations)
 
