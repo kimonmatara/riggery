@@ -12,12 +12,11 @@ class DeltaMush(WeightGeometryFilter):
     #-------------------------------------|    Constructor
     
     @classmethod
-    @short(name='n',
-           globalScale='gs')
+    @short(name='n', s='s')
     def create(cls,
                geo,
                iterations=20, *,
-               globalScale=None,
+               scale=None,
                name:Optional[str]=None):
 
         if name is None and _nm.Name.__elems__:
@@ -31,8 +30,7 @@ class DeltaMush(WeightGeometryFilter):
 
         node.attr("smoothingIterations").put(iterations)
 
-        if globalScale is not None:
-            for child in node.attr('scale').children:
-                globalScale >> child
+        if scale is not None:
+            node.attr('scale').put(scale)
 
         return node
