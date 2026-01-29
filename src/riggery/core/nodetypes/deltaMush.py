@@ -20,6 +20,8 @@ class DeltaMush(WeightGeometryFilter):
                scale=None,
                name:Optional[str]=None):
 
+        kw = {}
+
         if name is None and _nm.Name.__elems__:
             name = _nm.Name.evaluate(typeSuffix=cls.__typesuffix__)
 
