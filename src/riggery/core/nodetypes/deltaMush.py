@@ -1,3 +1,4 @@
+from typing import Optional
 from ..nodetypes import __pool__ as nodes
 WeightGeometryFilter = nodes['WeightGeometryFilter']
 
