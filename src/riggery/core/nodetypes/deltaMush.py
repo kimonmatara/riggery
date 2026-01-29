@@ -4,6 +4,7 @@ WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
 from ..lib import names as _nm
+from . import __pool__ as _nodes
 from riggery.general.functions import short
 
 
@@ -25,8 +26,8 @@ class DeltaMush(WeightGeometryFilter):
         if name:
             kw['name'] = name
 
-        r.select(geo)
-        node = r.deltaMush(**kw)
+        m.select(str(geo))
+        node = _nodes['DependNode'](m.deltaMush(**kw))
 
         node.attr("smoothingIterations").put(iterations)
 
