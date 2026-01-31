@@ -314,12 +314,19 @@ class Chain(list):
             interp[ratio] = point
         return data['Point'](interp[atRatio])
 
+    @short(plug='p')
     def iterVectors(self, plug=False):
         points = list(self.iterPoints(plug=plug))
         for thisPoint, nextPoint in zip(points, points[1:]):
             yield nextPoint - thisPoint
 
     vectors = property(fget=iterVectors)
+
+    @short(plug='p')
+    def getChordVector(self, plug=False):
+        return self[-1].worldPosition(p=plug) - self[0].worldPosition(p=plug)
+
+    chordVector = property(getChordVector)
 
     def length(self):
         """
