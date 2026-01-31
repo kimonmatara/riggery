@@ -616,6 +616,34 @@ class Matrix(data['Tensor']):
         """
         return self.copy().normalizeAxes()
 
+    @short(worldSpace='ws')
+    def mostPerpendicularAxis(self,
+                              refVector,
+                              asString:bool=False,
+                              worldSpace:bool=False):
+        refVector = data['Vector'](refVector).normal()
+
+        bestDot = None
+        bestAxis = None
+        bestVector = None
+
+        for axis in 'xyz':
+            refAxis = self.getAxis(axis).normal()
+            dot = abs(refAxis.dot(refVector))
+
+            if bestDot is None or dot < bestDot:
+                bestDot = dot
+                bestAxis = axis
+                bestVector = refAxis
+
+        if asString:
+            return bestAxis
+
+        if worldSpace:
+            bestVector = bestVector * self
+
+        return bestVector
+
     @short(includeNegative='ing')
     def closestAxis(self,
                     refVector,
