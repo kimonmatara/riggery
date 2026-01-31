@@ -11,6 +11,9 @@ Elem
                     Enum
                 Bool
             Tensor
+                Tensor1
+                    Tensor1Float
+                        Tensor1FloatAngle
                 Tensor2
                     Tensor2Float
                     Tensor2Int
@@ -30,36 +33,36 @@ Elem
                 BezierCurve
             Mesh
             NurbsSurface
-            SubdSurface
-            PluginGeometry
             Lattice
+            PluginGeometry
+            SubdSurface
         Array
-            VectorArray
-            StringArray
             PointArray
-            MatrixArray
             IntArray
+            MatrixArray
             FloatArray
-        CharacterMapping
-        WeightFunction
-        Box
-        FalloffFunction
-        DynSweptGeometry
-        String
-        Generic
-        Plugin
-        Binary
-        NurbsTrimface
-        Cone
-        Message
-        Sphere
-        PolyComponent
-        PolyFaces
-        ComponentList
-        Fluid
-        SelectionList
+            StringArray
+            VectorArray
         NObject
-        NId
-        LightData
-        DynArrayAttrs
         AttributeAlias
+        Plugin
+        CharacterMapping
+        FalloffFunction
+        PolyFaces
+        Binary
+        DynArrayAttrs
+        DynSweptGeometry
+        WeightFunction
+        Message
+        PolyComponent
+        Generic
+        NId
+        String
+        ComponentList
+        NurbsTrimface
+        Box
+        Cone
+        Sphere
+        SelectionList
+        LightData
+        Fluid

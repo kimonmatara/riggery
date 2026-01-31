@@ -43,6 +43,9 @@ def _generate():
                             Enum
                         Bool
                     Tensor
+                        Tensor1
+                            Tensor1Float
+                                Tensor1FloatAngle
                         Tensor2
                             Tensor2Float
                             Tensor2Int
