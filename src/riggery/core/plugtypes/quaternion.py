@@ -256,6 +256,12 @@ class Quaternion(__pool__['Tensor4']):
     def atten(self, weight, angleInterpolation=0):
         """
         Equivalent to ``data.Quaternion().slerp(self, weight=weight...)``.
+
+        :param angleInterpolation/ai: the angle interpolation; one of:
+            0 - 'Shortest'
+            1 - 'Positive'
+            2 - 'Negative';
+            defaults to 0 - 'Shortest'
         """
         return _data.Quaternion().slerp(self,
                                         weight=weight,
