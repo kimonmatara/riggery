@@ -504,7 +504,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             asDistance:bool=False,
             section:Optional[str]=None,
             lock:bool=False,
-            multi=False
+            multi=False,
+            hidden=False
     ):
         """
         Creates a triple compound that mimics the standard ``translate`` /
@@ -527,10 +528,15 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         _self = str(self)
 
         kwargs = {}
+
         if multi:
             kwargs['multi'] = True
 
+        if hidden:
+            kwargs['hidden'] = True
+
         m.addAttr(_self, ln=basename, at='double3', nc=3, **kwargs)
+
         childType = 'doubleLinear' if asDistance \
             else 'doubleAngle' if asAngle \
             else 'double'
@@ -542,6 +548,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                       parent=basename)
 
         root = self.attr(basename)
+
         if multi:
             attr = root[0]
         else:
