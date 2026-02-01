@@ -1,3 +1,4 @@
+import math
 from typing import Iterable, Optional
 from copy import deepcopy
 
@@ -23,6 +24,90 @@ import maya.cmds as m
 class BezierCurve(NurbsCurve):
 
     #----------------------------------------------|    Constructor(s)
+
+    @classmethod
+    def createCornerFillet_Plugs(cls, point1, point2, point3):
+
+        #---------------|    Gather basics
+
+        with _nm.Name('patchbay'):
+            pb = nodes.Network.createNode()
+
+        p0, p1, p2 = map(plugs.Attribute, (point1, point2, point3))
+        rays = [p0 - p1, p2 - p1]
+
+        normal, externalAngle = rays[0].axisAngleTo(rays[1])
+
+        #---------------|    Solve at origin
+
+        #---|    Visualize
+
+        oRay0 = data.Vector((0, 0, 1))
+        oRay1 = oRay0.rotateByAxisAngle((0, 1, 0), externalAngle)
+        # oRay0.loc(name='ray0')
+        # oRay1.loc(name='ray1')
+
+        # Half chord length
+        chordLength = ((-(oRay0)) + oRay1).length()
+        halfChordLength = chordLength * 0.5
+
+        # External height
+        externalHeight = (1 - (halfChordLength ** 2)) ** 0.5
+
+        # Internal height
+        internalAngle = math.radians(180) - externalAngle
+        halfInternalAngle = internalAngle * 0.5
+        internalHeight = halfChordLength / halfInternalAngle.tan()
+
+        # Circle centre
+        kiteHeight = externalHeight + internalHeight
+        kiteVectorN = (oRay0 + oRay1).normal()
+        circleCentre = kiteVectorN * kiteHeight
+
+        # Radius
+        radius = ((halfChordLength ** 2) + (internalHeight ** 2)) ** 0.5
+
+        # Draw
+        kappa = (4/3) * (internalAngle / 4).tan()
+        handleLength = radius * kappa
+
+        _p0 = data.Point(oRay0)
+        _p1 = _p0 - (oRay0 * handleLength)
+        _p3 = oRay1.asType(plugs.Point)
+        _p2 = _p3 - (oRay1 * handleLength)
+
+        #---------------|    Draw
+
+        outShape = cls.create((_p0, _p1, _p2, _p3))
+
+        #---------------|    Create skew matrix, transform
+
+        """
+        In origin space:
+            ray0 is Z
+            ray1 is X
+            normal is Y
+        """
+        ff = nodes.FourByFourMatrix.createNode()
+        ff.z.put(rays[0])
+        ff.x.put(rays[1])
+        ff.y.put(normal)
+        ff.w.put(p1)
+
+        skew = ff.attr('output')
+
+        ff1 = nodes.FourByFourMatrix.createNode()
+        ff1.z.put(oRay0)
+        ff1.x.put(oRay1)
+        ff1.y.put((0, 1, 0))
+
+        orig = ff1.attr('output')
+        delta = orig.inverse() * skew
+
+        (outShape.newInput() * delta) >> outShape.input
+
+        return outShape
+
 
     @classmethod
     @short(parent='p',
