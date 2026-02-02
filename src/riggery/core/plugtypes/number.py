@@ -1,5 +1,5 @@
 from functools import reduce
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -392,7 +392,7 @@ class Number(__pool__['Math']):
 
     def blend(self, other, weight=0.5, *, swap:bool=False):
         """
-        Blends this number towards *other*.
+        Blends this number towards *other*. Basically lerp.
 
         :param other: the number towards which to blend
         :param weight: the blending weight; defaults to 0.5
@@ -508,43 +508,51 @@ class Number(__pool__['Math']):
 
         return floor
 
-    def slowDownAndStop(self, ceiling, spreadFactor=1.0, power=2):
+    def dampedClimb(self, dampingStart, ceiling, damping=2):
         """
-        :param ceiling: the max clamp value; can be a plug
-        :param spreadFactor: higher values will make the slowdown slower; lower
-            values will make the slowdown faster; experiment in the range of
-            0.5 -> 1.5 at first; defaults to 1.0
-        :param power: the easing power; must be one of 2, 3 or 4; higher powers
-            work better with higher spread factors; defaults to 2
-        :return: The constrained value.
+        Yields an output that will never overshoot an incrementing input.
+
+        Note that 'ceiling' should be a *heigher* number than 'dampingStart'.
+
+        :param dampingStart: the value on this plug (the 'master') when the
+            modified output should start slowing down
+        :param ceiling: the maximum value that the output should ever reach
+        :param damping: the amount of damping; 1 yields a regular 'clamp';
+            higher values 'spread out' the damping more; defaults to 2
         """
-        assert power in (2, 3, 4), "power must be one of 2, 3, 4"
+        below = self.le(dampingStart)
 
-        ceiling = _mm.info(ceiling)[0]
-        spreadFactor = _mm.info(spreadFactor)[0]
+        regularRange = ceiling - dampingStart
+        expandedRange = regularRange * damping
 
-        easeStart = ceiling / (2 ** spreadFactor)
-        easeEnd = ceiling * (2 ** spreadFactor)
+        ratio = ((self - dampingStart) / expandedRange).clamp(0, 1)
+        ratio = 1 - (1 - ratio) ** damping
+        solution = dampingStart + (regularRange * ratio)
 
-        t = (self - easeStart) / (easeEnd - easeStart)
-        s = (1.0 - t)
-        easedT = 1.0 - s ** power
+        return self.le(dampingStart).ifElse(self, solution, type(self))
 
-        out = easeStart + easedT * (ceiling - easeStart)
-        out = self.ge(easeEnd).ifElse(
-            ceiling,
-            self.le(easeStart).ifElse(
-                self,
-                out
-            )
-        )
-        return out.asType(type(self))
+    def dampedDrop(self, dampingStart, floor, damping=2):
+        """
+        Yields an output that will never overshoot a *decrementing* input.
 
-    def pickUpAndStart(self, floor, spreadFactor=1.0, power=2):
-        """Reverse of :meth:`slowDownAndStop`."""
-        out = 1 / self
-        out = out.slowDownAndStop(floor ** -1, spreadFactor, power)
-        return 1 / out
+        Note that 'floor' should be a *lower* number than 'dampingStart'.
+
+        :param dampingStart: the value on this plug (the 'master') when the
+            modified output should start slowing down
+        :param floor: the minimum value that the output should ever reach
+        :param damping: the amount of damping; 1 yields a regular 'clamp';
+            higher values 'spread out' the damping more; defaults to 2
+        """
+        above = self.ge(dampingStart)
+
+        regularRange = dampingStart - floor
+        expandedRange = regularRange * damping
+
+        ratio = ((dampingStart - self) / expandedRange).clamp(0, 1)
+        ratio = 1 - (1 - ratio) ** damping
+        solution = dampingStart - (regularRange * ratio)
+
+        return self.ge(dampingStart).ifElse(self, solution, type(self))
 
     #-----------------------------------------|    Expression utils
 
