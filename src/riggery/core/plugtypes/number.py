@@ -516,7 +516,7 @@ class Number(__pool__['Math']):
             0.5 -> 1.5 at first; defaults to 1.0
         :param power: the easing power; must be one of 2, 3 or 4; higher powers
             work better with higher spread factors; defaults to 2
-        :return: The constrained vector.
+        :return: The constrained value.
         """
         assert power in (2, 3, 4), "power must be one of 2, 3, 4"
 
@@ -538,10 +538,13 @@ class Number(__pool__['Math']):
                 out
             )
         )
+        return out.asType(type(self))
 
-        out = out.asType(type(self))
-
-        return out
+    def pickUpAndStart(self, floor, spreadFactor=1.0, power=2):
+        """Reverse of :meth:`slowDownAndStop`."""
+        out = 1 / self
+        out = out.slowDownAndStop(floor ** -1, spreadFactor, power)
+        return 1 / out
 
     #-----------------------------------------|    Expression utils
 
