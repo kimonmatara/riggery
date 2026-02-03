@@ -22,6 +22,7 @@ from riggery.general.functions import short, resolve_flags
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 
 from ..elem import Elem, ElemInstError
+from ..lib import mixedmode as _mm
 from ..nodetypes import __pool__ as _nodes
 from ..plugtypes import __pool__
 
@@ -703,6 +704,20 @@ class Attribute(Elem, metaclass=AttributeMeta):
         return self
 
     set = setValue
+
+    @short(force='f')
+    def setOrConnect(self, valueOrInput, force:bool=False):
+        item, _, itemIsPlug = _mm.info(valueOrInput)
+
+        if force:
+            self.release(r=1)
+
+        if itemIsPlug:
+            self.connectInput(item, force=force)
+        else:
+            self.set(item)
+
+        return self
 
     @short(recurse='r')
     def setFlag(self, flagName:str, flagValue):
