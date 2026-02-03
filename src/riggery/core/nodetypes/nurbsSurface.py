@@ -1,3 +1,4 @@
+from typing import Optional, Literal
 from ..datatypes import __pool__ as _data
 from ..nodetypes import __pool__ as nodes
 SurfaceShape = nodes['SurfaceShape']
@@ -6,6 +7,7 @@ import maya.api.OpenMaya as om
 import maya.cmds as m
 
 from riggery.general.functions import short
+from riggery.general.numbers import floatrange
 
 
 class NurbsSurface(SurfaceShape):
@@ -22,7 +24,6 @@ class NurbsSurface(SurfaceShape):
         :param worldSpace/ws: calculate in world-space; defaults to False
         :return: Tuple of point, u param, v param
         """
-
         point = _data['Point'](point)
 
         fn = self.__apimfn__(dag=True)
@@ -52,3 +53,50 @@ class NurbsSurface(SurfaceShape):
         return cvsU * cvsV
 
     numVertices = numCVs
+
+    def knotDomainInU(self) -> tuple[float, float]:
+        """Returns the min / max U parameters."""
+
+        return self.__apimfn__().knotDomainInU
+
+    def knotDomainInV(self) -> tuple[float, float]:
+        """Returns the min / max V parameters."""
+
+        return self.__apimfn__().knotDomainInV
+
+    def formInU(self) -> Literal[1, 2, 3]:
+        """
+        kOpen: 1
+        kClosed: 2
+        kPeriodic: 3
+        """
+        return self.__apimfn__().formInU
+
+    def formInV(self) -> Literal[1, 2, 3]:
+        """
+        kOpen: 1
+        kClosed: 2
+        kPeriodic: 3
+        """
+        return self.__apimfn__().formInV
+
+    def degreeInU(self) -> 3:
+        return self.__apimfn__().degreeInU
+
+    def degreeInV(self) -> 3:
+        return self.__apimfn__().degreeInV
+
+    #-------------------------------------|    Misc sampling
+
+    # @short(minU='mnu',
+    #        maxU='mxu',
+    #        minV='mnv',
+    #        maxV='mxv')
+    # def distributeParams(self,
+    #                      numU,
+    #                      numV,
+    #                      minU:Optional[float]=None,
+    #                      maxU:Optional[float]=None,
+    #                      minV:Optional[float]=None,
+    #                      maxV:Optional[float]=None):
+    #     ...
