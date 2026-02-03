@@ -1,5 +1,5 @@
 from functools import reduce
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, Iterable
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -9,6 +9,7 @@ from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 from ..plugtypes import __pool__
 from ..lib import mixedmode as _mm
+from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
 
 
@@ -21,6 +22,7 @@ class Number(__pool__['Math']):
         :return: The sum of this and *others*.
         """
         others = expand_tuples_lists(others)
+
         if others:
             node = nodes['Sum'].createNode()
             self >> node.attr('input')[0]
@@ -508,9 +510,11 @@ class Number(__pool__['Math']):
 
         return floor
 
-    def dampedClimb(self, dampingStart, ceiling, damping=2):
+    def dampCeiling(self, dampingStart, ceiling, damping=2):
         """
-        Yields an output that will never overshoot an incrementing input.
+        Directional max-clamping. Yields an output that will never overshoot an
+        incrementing input. In other words, the 'driver' will always keep
+        climbing as the output slows down to a stop at *ceiling*.
 
         Note that 'ceiling' should be a *heigher* number than 'dampingStart'.
 
@@ -531,9 +535,11 @@ class Number(__pool__['Math']):
 
         return self.le(dampingStart).ifElse(self, solution, type(self))
 
-    def dampedDrop(self, dampingStart, floor, damping=2):
+    def dampFloor(self, dampingStart, floor, damping=2):
         """
-        Yields an output that will never overshoot a *decrementing* input.
+        Directional min-clamping. Yields an output that will never overshoot a
+        *decrementing* input. In other words, the 'driver' will always keep
+        dropping as the output slows down to a stop at *floor*.
 
         Note that 'floor' should be a *lower* number than 'dampingStart'.
 
