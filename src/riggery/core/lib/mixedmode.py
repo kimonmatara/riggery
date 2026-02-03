@@ -1,7 +1,7 @@
 """Miscellaneous tools for maths operations that mix values and attributes."""
 
 from pprint import pprint
-from typing import Union, Any, Optional
+from typing import Union, Any, Optional, TypeAlias, Iterable
 
 from .nurbsutil import cvIndexToAnchorIndex
 from ..datatypes import __pool__ as _data
@@ -15,6 +15,16 @@ from riggery.general.iterables import expand_tuples_lists
 from riggery.internal.str2api import getMPlug
 from .nativeunits import nativeunits
 
+#-----------------------------------------|
+#-----------------------------------------|    TYPE ALIASES
+#-----------------------------------------|
+
+MixedScalar:TypeAlias = Union[float, int, '_plugs.Number']
+MixedVector:TypeAlias = Union[
+    tuple[float, float, float],
+    '_data.Vector',
+    '_plugs.Vector'
+]
 #-----------------------------------------|
 #-----------------------------------------|    BASELINE TOOLS
 #-----------------------------------------|
