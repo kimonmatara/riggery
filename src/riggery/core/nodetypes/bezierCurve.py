@@ -44,8 +44,6 @@ class BezierCurve(NurbsCurve):
 
         oRay0 = data.Vector((0, 0, 1))
         oRay1 = oRay0.rotateByAxisAngle((0, 1, 0), externalAngle)
-        # oRay0.loc(name='ray0')
-        # oRay1.loc(name='ray1')
 
         # Half chord length
         chordLength = ((-(oRay0)) + oRay1).length()
@@ -78,7 +76,8 @@ class BezierCurve(NurbsCurve):
 
         #---------------|    Draw
 
-        outShape = cls.create((_p0, _p1, _p2, _p3))
+        _oPoints = [_p0, _p1, _p2, _p3]
+        outShape = cls.create(_oPoints)
 
         #---------------|    Create skew matrix, transform
 
