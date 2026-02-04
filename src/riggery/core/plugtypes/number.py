@@ -529,8 +529,8 @@ class Number(__pool__['Math']):
         hasNoRange = regularRange <= 1e-5
 
         with _nm.Name('patchbay'):
-            one = r.nodes.Network.createNode().addAttr('one', k=1, at='double',
-                                                       dv=1, l=True)
+            one = nodes.Network.createNode().addAttr('one', k=1, at='double',
+                                                     dv=1, l=True)
 
         expandedRange = regularRange * damping
         safeDivisor = hasNoRange.ifElse(one, expandedRange)
@@ -567,8 +567,8 @@ class Number(__pool__['Math']):
         hasNoRange = regularRange <= 1e-5
 
         with _nm.Name('patchbay'):
-            one = r.nodes.Network.createNode().addAttr('one', k=1, at='double',
-                                                       dv=1, l=True)
+            one = nodes.Network.createNode().addAttr('one', k=1, at='double',
+                                                     dv=1, l=True)
 
         expandedRange = regularRange * damping
         safeDivisor = hasNoRange.ifElse(one, expandedRange)
