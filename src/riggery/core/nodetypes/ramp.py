@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Iterable, Union, Optional, Literal
 
 from ..nodetypes import __pool__ as nodes
@@ -198,9 +199,10 @@ class Ramp(Texture2d):
                 "can only perform sampling if 'type' is set to u or v"
             )
 
-        node = self.duplicate()[0]
+        clone = self.duplicate()[0]
+        self.array.jolt()
 
-        for name in ('interpolation',
+        attrNames = ('interpolation',
                      'colorEntryList',
                      'uWave',
                      'vWave',
@@ -217,16 +219,12 @@ class Ramp(Texture2d):
                      'colorOffset',
                      'alphaGain',
                      'alphaOffset',
-                     'invert',
-                     'uvCoord'):
-            src = self.attr(name)
-            dest = node.attr(name)
-            state = src.getState(input=True, value=True)
-            dest.setState(state, input=True, value=True)
+                     'invert')
 
-        node.attr(f'{dimension}Coord').setOrConnect(position, f=1).lock()
+        self.linkAttrs([clone], attrNames)
+        clone.attr(f'{dimension}Coord').setOrConnect(position, f=1).lock()
         cloneList = self.tags.get('clones', [])
-        cloneList.append(node)
+        cloneList.append(clone)
         self.tags['clones'] = cloneList
 
-        return node
+        return clone
