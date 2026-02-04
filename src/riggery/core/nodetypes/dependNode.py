@@ -835,6 +835,42 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             raise exc
         return self
 
+    def linkAttrs(self,
+                  destNodes:Iterable[Union[str, 'DependNode']],
+                  attrNames:Iterable[str],
+                  quiet:bool=False):
+        """
+        Bulk-connects attributes on this node into namesake attributes on the
+        specified destination nodes.
+        """
+        destNodes = without_duplicates(map(nodes['DependNode'],
+                                       expand_tuples_lists(*destNodes)))
+
+        attrNames = list(without_duplicates(attrNames))
+
+        for destNode in destNodes:
+            for attrName in attrNames:
+                try:
+                    srcAttr = self.attr(attrName)
+                    destAttr = destNode.attr(attrName)
+
+                    if srcAttr.isMulti():
+                        for index in srcAttr.indices():
+                            srcSlot = srcAttr[index]
+                            destSlot = destAttr[index]
+
+                            destSlot.release(r=True)
+                            srcSlot >> destSlot
+                    else:
+                        destAttr.release(r=True)
+                        srcAttr >> destAttr
+                except Exception as e:
+                    if quiet:
+                        continue
+                    raise e
+
+        return self
+
     @short(keyable='k', channelBox='cb')
     def maskAnimAttrs(self, keyable=None, channelBox=None):
         """
