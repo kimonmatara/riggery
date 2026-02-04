@@ -783,7 +783,8 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
 
         atZero = total < 1e-4
 
-        return [atZero.ifElse(1 / num, w / total) for w in weights]
+        return [atZero.ifElse(1 / num, w / total, plugs['Float'])
+                for w in weights]
 
     total = sum(weights)
 
