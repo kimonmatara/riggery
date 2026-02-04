@@ -532,14 +532,14 @@ class Number(__pool__['Math']):
             one = nodes.Network.createNode().addAttr('one', k=1, at='double',
                                                      dv=1, l=True)
 
+        T = type(self)
+
         expandedRange = regularRange * damping
-        safeDivisor = hasNoRange.ifElse(one, expandedRange)
+        safeDivisor = hasNoRange.ifElse(one, expandedRange, T)
 
         ratio = ((self - dampingStart) / safeDivisor).clamp(0, 1)
         ratio = 1 - (1 - ratio) ** damping
         solution = dampingStart + (regularRange * ratio)
-
-        T = type(self)
 
         return isBelow.ifElse(self,
                               hasNoRange.ifElse(self.maxClamp(ceiling),
@@ -571,13 +571,13 @@ class Number(__pool__['Math']):
                                                      dv=1, l=True)
 
         expandedRange = regularRange * damping
-        safeDivisor = hasNoRange.ifElse(one, expandedRange)
+
+        T = type(self)
+        safeDivisor = hasNoRange.ifElse(one, expandedRange, T)
 
         ratio = ((dampingStart - self) / safeDivisor).clamp(0, 1)
         ratio = 1 - (1 - ratio) ** damping
         solution = dampingStart - (regularRange * ratio)
-
-        T = type(self)
 
         return isAbove.ifElse(self,
                               hasNoRange.ifElse(self.minClamp(floor),
