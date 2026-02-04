@@ -560,6 +560,13 @@ class Number(__pool__['Math']):
 
         return self.ge(dampingStart).ifElse(self, solution, type(self))
 
+    def splitBias(self) -> 'Number':
+        """
+        Takes a value in the -1 to 1 range and re-expresses it as two positive
+        values, where the first value will be the inverted range below 0.0.
+        """
+        return self.maxClamp(0.0) * -1, self.minClamp(0.0)
+
     #-----------------------------------------|    Expression utils
 
     def unaryExpr(self, operation):
