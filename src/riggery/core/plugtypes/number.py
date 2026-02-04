@@ -510,7 +510,7 @@ class Number(__pool__['Math']):
 
         return floor
 
-    def dampCeiling(self, dampingStart, ceiling, damping=2):
+    def dampCeiling(self, dampingStart, ceiling, damping=2, /):
         """
         Directional max-clamping. Yields an output that will never overshoot an
         incrementing input. In other words, the 'driver' will always keep
@@ -524,18 +524,30 @@ class Number(__pool__['Math']):
         :param damping: the amount of damping; 1 yields a regular 'clamp';
             higher values 'spread out' the damping more; defaults to 2
         """
-        below = self.le(dampingStart)
-
+        isBelow = self.le(dampingStart)
         regularRange = ceiling - dampingStart
-        expandedRange = regularRange * damping
+        hasNoRange = regularRange <= 1e-5
 
-        ratio = ((self - dampingStart) / expandedRange).clamp(0, 1)
+        with _nm.Name('patchbay'):
+            one = r.nodes.Network.createNode().addAttr('one', k=1, at='double',
+                                                       dv=1, l=True)
+
+        expandedRange = regularRange * damping
+        safeDivisor = hasNoRange.ifElse(one, expandedRange)
+
+        ratio = ((self - dampingStart) / safeDivisor).clamp(0, 1)
         ratio = 1 - (1 - ratio) ** damping
         solution = dampingStart + (regularRange * ratio)
 
-        return self.le(dampingStart).ifElse(self, solution, type(self))
+        T = type(self)
 
-    def dampFloor(self, dampingStart, floor, damping=2):
+        return isBelow.ifElse(self,
+                              hasNoRange.ifElse(self.maxClamp(ceiling),
+                                                solution,
+                                                T),
+                              T)
+
+    def dampFloor(self, dampingStart, floor, damping=2, /):
         """
         Directional min-clamping. Yields an output that will never overshoot a
         *decrementing* input. In other words, the 'driver' will always keep
@@ -549,23 +561,43 @@ class Number(__pool__['Math']):
         :param damping: the amount of damping; 1 yields a regular 'clamp';
             higher values 'spread out' the damping more; defaults to 2
         """
-        above = self.ge(dampingStart)
+        isAbove = self.ge(dampingStart)
 
         regularRange = dampingStart - floor
-        expandedRange = regularRange * damping
+        hasNoRange = regularRange <= 1e-5
 
-        ratio = ((dampingStart - self) / expandedRange).clamp(0, 1)
+        with _nm.Name('patchbay'):
+            one = r.nodes.Network.createNode().addAttr('one', k=1, at='double',
+                                                       dv=1, l=True)
+
+        expandedRange = regularRange * damping
+        safeDivisor = hasNoRange.ifElse(one, expandedRange)
+
+        ratio = ((dampingStart - self) / safeDivisor).clamp(0, 1)
         ratio = 1 - (1 - ratio) ** damping
         solution = dampingStart - (regularRange * ratio)
 
-        return self.ge(dampingStart).ifElse(self, solution, type(self))
+        T = type(self)
+
+        return isAbove.ifElse(self,
+                              hasNoRange.ifElse(self.minClamp(floor),
+                                                solution,
+                                                T),
+                              T)
 
     def splitBias(self) -> 'Number':
         """
         Takes a value in the -1 to 1 range and re-expresses it as two positive
-        values, where the first value will be the inverted range below 0.0.
+        weights (one for each side) that will always add up to 1.0.
+
+        No clamping is performed. You'll get nonsensical results if this plug
+        escapes the -1 to 1 range.
         """
-        return self.maxClamp(0.0) * -1, self.minClamp(0.0)
+        grain = 0.5 * self
+        weight1 = 0.5 + grain
+        weight2 = 0.5 - grain
+
+        return weight1, weight2
 
     #-----------------------------------------|    Expression utils
 
