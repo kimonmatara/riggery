@@ -747,3 +747,47 @@ def intersectLinesValues(p1, p2, p3, p4, tolerance:float=1e-6) -> 'data.Point':
         return None
 
     return point1
+
+def splitBias(bias:Union[float, int, _mm.MixedScalar]):
+    """
+    Takes a value in the -1 to 1 range and re-expresses it as two positive
+    weights (one for each side) that will always add up to 1.0.
+    """
+    grain = 0.5 * bias
+    weight1 = 0.5 + grain
+    weight2 = 0.5 - grain
+
+    return weight1, weight2
+
+def normalizeWeights(weights:Iterable[_mm.MixedScalar],
+                     ) -> Union[list[float], list[plugs['Float']]]:
+    """
+    Normalizes all the weights into the 0.0 -> 1.0 range. If all the weights
+    are at zero, sets them all to 1.0.
+
+    If there are any plugs in *weights*, the output will be a list of plugs.
+    Otherwise, the output will be a list of floats.
+    """
+
+    weightInfo = [_mm.info(weight) for weight in weights]
+    num = len(weights)
+    weights = [x[0] for x in weightInfo]
+    hasPlugs = any((x[2] for x in weightInfo))
+
+    if hasPlugs:
+        total = weights[0].sum(*weights[1:])
+
+        with _nm.Name('patchbay'):
+            pb = nodes['Network'].createNode()
+            one = pb.addAttr('one', k=1, dv=1, l=True, at='double')
+
+        atZero = total < 1e-4
+
+        return [atZero.ifElse(1 / num, w / total) for w in weights]
+
+    total = sum(weights)
+
+    if total <= 0.0:
+        return [1 / num] * num
+
+    return [x / total for x in weights]
