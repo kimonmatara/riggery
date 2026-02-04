@@ -585,19 +585,21 @@ class Number(__pool__['Math']):
                                                 T),
                               T)
 
-    def splitBias(self) -> 'Number':
+    def splitBias(self,
+                  minRange:_mm.MixedScalar,
+                  maxRange:_mm.MixedScalar
+                  ) -> tuple[_mm.MixedScalar, _mm.MixedScalar]:
         """
-        Takes a value in the -1 to 1 range and re-expresses it as two positive
-        weights (one for each side) that will always add up to 1.0.
+        Returns two weights, (both in the 0 -> 1 range). The first weight
+        represents the deviation of *self* towards *minRange*. The second weight
+        represents the deviation of *self* towards *maxRange*.
 
-        No clamping is performed. You'll get nonsensical results if this plug
-        escapes the -1 to 1 range.
+        In other words, if *self* is at the exact midpoint between *minRange*
+        and *maxRange*, the output weights will be 0.5, 0.5. If *self* is at
+        *maxRange*, the weights will be 0.0, 1.0.
         """
-        grain = 0.5 * self
-        weight1 = 0.5 + grain
-        weight2 = 0.5 - grain
-
-        return weight1, weight2
+        ratio = (self - minRange) / (maxRange - minRange)
+        return 1 - ratio, ratio
 
     #-----------------------------------------|    Expression utils
 

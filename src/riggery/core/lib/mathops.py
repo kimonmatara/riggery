@@ -748,16 +748,21 @@ def intersectLinesValues(p1, p2, p3, p4, tolerance:float=1e-6) -> 'data.Point':
 
     return point1
 
-def splitBias(bias:Union[float, int, _mm.MixedScalar]):
+def splitBias(bias,
+              minRange:_mm.MixedScalar,
+              maxRange:_mm.MixedScalar
+              ) -> tuple[_mm.MixedScalar, _mm.MixedScalar]:
     """
-    Takes a value in the -1 to 1 range and re-expresses it as two positive
-    weights (one for each side) that will always add up to 1.0.
-    """
-    grain = 0.5 * bias
-    weight1 = 0.5 + grain
-    weight2 = 0.5 - grain
+    Returns two weights, (both in the 0 -> 1 range). The first weight represents
+    the deviation of *bias* towards *minRange*. The second weight represents the
+    deviation of *bias* towards *maxRange*.
 
-    return weight1, weight2
+    In other words, if *bias* is at the exact midpoint between *minRange* and
+    *maxRange*, the output weights will be 0.5, 0.5. If *bias* is at *maxRange*,
+    the weights will be 0.0, 1.0.
+    """
+    ratio = (bias - minRange) / (maxRange - minRange)
+    return 1 - ratio, ratio
 
 def normalizeWeights(weights:Iterable[_mm.MixedScalar],
                      ) -> Union[list[float], list[plugs['Float']]]:
