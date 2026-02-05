@@ -1043,6 +1043,14 @@ class Attribute(Elem, metaclass=AttributeMeta):
             return plug.evaluateNumElements()
         return plug.numElements()
 
+    def setNumElements(self, number:int):
+        """
+        Only works if the array is empty. Call :meth:`clearMulti` first if in
+        doubt.
+        """
+        self.__apimplug__().setNumElements(number)
+        return self
+
     def lastElement(self):
         return self[self.numElements()-1]
 
