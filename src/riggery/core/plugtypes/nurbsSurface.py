@@ -114,7 +114,7 @@ class NurbsSurface(plugs['Geometry']):
     @short(keep='k')
     def detach(self,
                parameter,
-               direction=1,
+               direction:Literal[0, 1, 'U', 'V']=1,
                keep:Optional[Iterable]=None) -> list:
 
         node = nodes['DetachSurface'].createNode()
@@ -265,8 +265,8 @@ class NurbsSurface(plugs['Geometry']):
             resetLengths:bool=False
     ):
         """
-        If three axis, ref pairs are provided, a *skew* matrix will be returned.
-        Otherwise, the matrix will be orthogonal.
+        If three (axis, ref pairs) are provided, a *skew* matrix will be
+        returned. Otherwise, the matrix will be orthogonal.
 
         :param paramU: the U parameter (value or plug)
         :param paramV: the V parameter (value or plug)
