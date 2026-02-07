@@ -25,6 +25,11 @@ MixedVector:TypeAlias = Union[
     '_data.Vector',
     '_plugs.Vector'
 ]
+MixedPoint:TypeAlias = Union[
+    tuple[float, float, float],
+    '_data.Point',
+    '_plugs.Point'
+]
 #-----------------------------------------|
 #-----------------------------------------|    BASELINE TOOLS
 #-----------------------------------------|
