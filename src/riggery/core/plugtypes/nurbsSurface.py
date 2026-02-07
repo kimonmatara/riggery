@@ -4,6 +4,7 @@ import maya.api.OpenMaya as om
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from riggery.general.functions import short
+from ..lib import mathops as _mo
 from ..lib import mixedmode as _mm
 from riggery.general.iterables import expand_tuples_lists
 
@@ -243,69 +244,132 @@ class NurbsSurface(plugs['Geometry']):
             'normalizedTangentV' if normalize else 'tangentV'
         )
 
+    @short(manageScale='ms',
+           normalLength='nl',
+           resetLengths='rl')
     def matrixAtParam(
             self,
             paramU:_mm.MixedScalar,
             paramV:_mm.MixedScalar,
+
             axis1:Literal['x', 'y', 'z', '-x', '-y', '-z'],
             ref1:Literal['u', 'v', 'n'],
             axis2:Literal['x', 'y', 'z', '-x', '-y', '-z'],
             ref2:Literal['u', 'v', 'n'],
 
             axis3:Optional[Literal['x', 'y', 'z', '-x', '-y', '-z']]=None,
-            ref3:Optional[Literal['u', 'v', 'n']]=None, /
-    ) -> 'plugs.Matrix':
-        """
-        Note that, currently, constructed matrices are not pre-cooked or
-        re-accessed. If only two axis / ref pairs are provided, the matrix will
-        be orthonormal. If three axis / ref pairs are provided, the matrix will
-        be a skew matrix.
+            ref3:Optional[Literal['u', 'v', 'n']]=None, /,
 
-        In both cases, component scale will be preserved.
-
-        :param paramU: a float or plug for the U parameter
-        :param paramV: a float or plug for the V parameter
-        :param axis1: the 'aiming' axis; one of 'x', 'y', 'z', '-x', '-y', '-z'
-        :param ref1: the component to map to *axis1*; one of 'u' (U tangent),
-            'v' (V tangent) or 'N' (normal)
-        :param axis2: the 'up' axis; one of 'x', 'y', 'z', '-x', '-y', '-z'
-        :param ref2: the component to map to *axis2*; one of 'u' (U tangent),
-            'v' (V tangent) or 'N' (normal)
-        :return: An orthonormal matrix using information at the specified u, v.
+            manageScale:bool=True,
+            normalLength:Optional[_mm.MixedScalar]=None,
+            resetLengths:bool=False
+    ):
         """
+        If three axis, ref pairs are provided, a *skew* matrix will be returned.
+        Otherwise, the matrix will be orthogonal.
+
+        :param paramU: the U parameter (value or plug)
+        :param paramV: the V parameter (value or plug)
+        :param axis1: the axis to map *ref1* to, one of 'x', 'y', 'z', '-x',
+            '-y', '-z'
+        :param ref1: the surface component to use for *axis1*; one of 'u', 'v',
+            'n'
+        :param axis2: the axis to map *ref2* to, one of 'x', 'y', 'z', '-x',
+            '-y', '-z'
+        :param ref2: the surface component to use for *axis2*; one of 'u', 'v',
+            'n'
+        :param axis3: the axis to map *ref1* to, one of 'x', 'y', 'z', '-x',
+            '-y', '-z'; defaults to None
+        :param ref3: the surface component to use for *axis1*; one of 'u', 'v',
+            'n'; defaults to None
+        :param manageScale/ms: set this to False if you're not interested in
+            axis lengths at all, and want to save on some calcs; defaults to
+            True
+        :param normalLength/nl: ignored if *manageScale* is False; sets the
+            length of axis mapped to the surface normal (reference 'n');
+            defaults to None (1.0)
+        :param resetLength/rl: ignored if *manageScale* is False; normalizes the
+            axis vectors *once*, but preserves dynamic scaling; defaults to
+            False
+        """
+        #--------------------|    Gather info
+
+        ortho = axis3 is None or ref3 is None
+        refToAttr = {'u': 'tangentU', 'v': 'tangentV', 'n': 'normal'}
+
         info = self.infoAtParam(paramU, paramV)
-        attrNames = {'u': 'tangentU', 'v': 'tangentV', 'n': 'normal'}
 
-        ortho = (axis3 is None or ref3 is None)
+        # 1
+        ref1Content = info.attr(refToAttr[ref1])
 
-        ref1Content = info.attr(attrNames[ref1])
-        ref2Content = info.attr(attrNames[ref2])
+        if '-' in axis1:
+            axis1 = axis1.strip('-')
+            ref1Content = ref1Content * -1
 
-        if ref3 is None:
-            ref3 = next((ref for ref in 'uvn' if ref not in (ref1, ref2)))
+        # 2
+        ref2Content = info.attr(refToAttr[ref2])
 
-        ref3Content = info.attr(attrNames[ref3])
+        if '-' in axis2:
+            axis2 = axis2.strip('-')
+            ref2Content = ref2Content * -1
+
+        # 3
+        if ortho:
+            ref3 = next(iter({'u', 'v', 'n'} - {ref1, ref1}))
+            axis3 = next(iter({'x', 'y', 'z'} - {axis1, axis2}))
+
+        ref3Content = info.attr(refToAttr[ref3])
+
+        if '-' in axis3:
+            axis3 = axis.strip('-')
+            ref3Content = ref3Content * -1
+
+        #--------------------|    Ortho base matrix construction
 
         if ortho:
-            factors = {axis1.strip('-'): ref1Content.length(),
-                       axis2.strip('-'): ref2Content.length()}
+            matrix = _mo.createOrthoMatrix(axis1, ref1Content,
+                                           axis2, ref2Content,
+                                           w=info.attr('position'))
+        else:
+            ff = nodes['FourByFourMatrix'].createNode()
+            ref1Content >> getattr(ff, axis1)
+            ref2Content >> getattr(ff, axis2)
+            ref3Content >> getattr(ff, axis3)
+            info.attr('position') >> ff.w
+            matrix = ff.attr('output')
 
-            axis3 = next((ax for ax in 'xyz' if ax not in factors))
-            factors[axis3] = ref3Content.length()
+        #--------------------|    Scale management
+
+        if manageScale:
+            matrix = matrix.pick(t=True,
+                                 r=True,
+                                 s=False,
+                                 sh=not ortho)
+            factors = {}
+
+            for axis, ref, refContent in zip(
+                    (axis1, axis2, axis3),
+                    (ref1, ref2, ref3),
+                    (ref1Content, ref2Content, ref3Content)
+            ):
+                if ref in 'uv':
+                    mag = refContent.length()
+
+                    if resetLengths:
+                        mag = mag / mag()
+                else:
+                    if normalLength is None:
+                        mag = 1.0
+                    else:
+                        mag = _mm.conform(normalLength)
+
+                        if resetLengths:
+                            mag = mag / mag()
+
+                factors[axis] = mag
 
             factors = [factors[k] for k in 'xyz']
             smtx = _mm.createScaleMatrix(*factors)
+            matrix = smtx * matrix
 
-            return smtx * _mm.createOrthoMatrix(axis1, ref1Content,
-                                                axis2, ref2Content,
-                                                w=info.attr('position')
-                                                ).pick(t=True, r=True)
-
-        ff = nodes['FourByFourMatrix'].createNode()
-
-        ref1Content >> getattr(ff, axis1)
-        ref2Content >> getattr(ff, axis2)
-        ref3Content >> getattr(ff, axis3)
-        info.attr('position') >> ff.w
-
-        return ff.attr("output")
+        return matrix
