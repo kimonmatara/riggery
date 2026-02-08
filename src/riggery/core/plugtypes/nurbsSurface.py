@@ -134,6 +134,50 @@ class NurbsSurface(plugs['Geometry']):
 
         return node.attr('outputSurface')[keep]
 
+    def trimStart(self,
+                  parameter,
+                  direction:Literal[0, 1, 'V', 'U', 'v', 'u']) -> 'NurbsSurface':
+        """
+        Possibly-more-intuitive alternative to :meth:`detach`, which was
+        designed to match Maya's interface.
+        """
+        node = nodes['DetachSurface'].createNode()
+        self >> node.attr('inputSurface')
+        parameter >> node.attr('parameter')[0]
+
+        if isinstance(direction, str):
+            direction = direction.upper()
+            direction = 'VU'.index(direction)
+
+        node.attr('direction').set(direction)
+
+        node.attr('keep')[0].set(False)
+        node.attr('keep')[1].set(True)
+
+        return node.attr('outputSurface')[1]
+
+    def trimEnd(self,
+                parameter,
+                direction:Literal[0, 1, 'V', 'U', 'v', 'u']) -> 'NurbsSurface':
+        """
+        Possibly-more-intuitive alternative to :meth:`detach`, which was
+        designed to match Maya's interface.
+        """
+        node = nodes['DetachSurface'].createNode()
+        self >> node.attr('inputSurface')
+        parameter >> node.attr('parameter')[0]
+
+        if isinstance(direction, str):
+            direction = direction.upper()
+            direction = 'VU'.index(direction)
+
+        node.attr('direction').set(direction)
+
+        node.attr('keep')[0].set(True)
+        node.attr('keep')[1].set(False)
+
+        return node.attr('outputSurface')[0]
+
     #-------------------------------------|    Curves
 
     def extractCurve(self, param, v=False):
@@ -321,7 +365,7 @@ class NurbsSurface(plugs['Geometry']):
         ref3Content = info.attr(refToAttr[ref3])
 
         if '-' in axis3:
-            axis3 = axis.strip('-')
+            axis3 = axis3.strip('-')
             ref3Content = ref3Content * -1
 
         #--------------------|    Ortho base matrix construction
