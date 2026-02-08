@@ -374,46 +374,57 @@ class NurbsSurface(plugs['Geometry']):
             matrix = _mo.createOrthoMatrix(axis1, ref1Content,
                                            axis2, ref2Content,
                                            w=info.attr('position'))
-        else:
-            ff = nodes['FourByFourMatrix'].createNode()
-            ref1Content >> getattr(ff, axis1)
-            ref2Content >> getattr(ff, axis2)
-            ref3Content >> getattr(ff, axis3)
-            info.attr('position') >> ff.w
-            matrix = ff.attr('output')
+            if manageScale:
+                factors = {}
 
-        #--------------------|    Scale management
-
-        if manageScale:
-            matrix = matrix.pick(t=True,
-                                 r=True,
-                                 s=False,
-                                 sh=not ortho)
-            factors = {}
-
-            for axis, ref, refContent in zip(
-                    (axis1, axis2, axis3),
-                    (ref1, ref2, ref3),
-                    (ref1Content, ref2Content, ref3Content)
-            ):
-                if ref in 'uv':
-                    mag = refContent.length()
-
-                    if resetLengths:
-                        mag = mag / mag()
-                else:
-                    if normalLength is None:
-                        mag = 1.0
-                    else:
-                        mag = _mm.conform(normalLength)
+                for ref, refContent, axis in zip(
+                        (ref1, ref2, ref3),
+                        (ref1Content, ref2Content, ref3Content),
+                        (axis1, axis2, axis3)
+                ):
+                    if ref in 'uv':
+                        mag = refContent.length()
 
                         if resetLengths:
                             mag = mag / mag()
 
-                factors[axis] = mag
+                        factors[axis] = mag
+                    else:
+                        if normalLength is None:
+                            factors[axis] = 1.0
+                        else:
+                            factors[axis] = normalLength
 
-            factors = [factors[k] for k in 'xyz']
-            smtx = _mm.createScaleMatrix(*factors)
-            matrix = smtx * matrix
+                factors = [factors[k] for k in 'xyz']
+                smtx = r.createScaleMatrix(*factors)
+                matrix = smtx * matrix.pick(t=1, r=1)
+        else:
+            ff = nodes['FourByFourMatrix'].createNode()
+
+            for ref, refContent, axis in zip(
+                    (ref1, ref2, ref3),
+                    (ref1Content, ref2Content, ref3Content),
+                    (axis1, axis2, axis3)
+            ):
+                inp = refContent
+
+                if manageScale:
+                    if ref in 'uv':
+                        if resetLengths:
+                            _mag = inp().length()
+                            inp = inp / _mag
+                    else:
+                        if normalLength is not None:
+                            normalLength = _mm.conform(normalLength)
+
+                            if resetLengths:
+                                normalLength = normalLength / normalLength()
+
+                            inp = inp * normalLength
+
+                inp >> getattr(ff, axis)
+
+            info.attr('position') >> ff.w
+            matrix = ff.attr('output')
 
         return matrix
