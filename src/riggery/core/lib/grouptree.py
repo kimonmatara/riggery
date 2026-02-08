@@ -1,9 +1,10 @@
 """Contains utility classes for quick construction of DAG hierarchies."""
 
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 
 from ..elem import Elem
 from ..nodetypes import __pool__ as nodes
+from ...general.functions import short
 from ..lib import names as _nm
 
 
@@ -74,7 +75,8 @@ class GroupTree:
     def stack(self) -> list:
         return list(reversed(list(self.parents))) + [self]
 
-    def node(self, **xformAttrs):
+    @short(displayType='dt')
+    def node(self, displayType:Optional[Union[int, str]]=None, **xformAttrs):
         """
         Retrieves, or creates, a node at this tree depth.
 
@@ -83,7 +85,13 @@ class GroupTree:
         """
         if self.isRoot():
             return self._node
+
         out = nodes['Transform'].createFromDagPath(str(self))
+
+        if displayType is not None:
+            out.attr('overrideEnabled').set(True)
+            out.attr('overrideDisplayType').set(displayType)
+
         if xformAttrs:
             out.setAttrs(**xformAttrs)
         return out
