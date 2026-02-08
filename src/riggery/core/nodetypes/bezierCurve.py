@@ -103,7 +103,9 @@ class BezierCurve(NurbsCurve):
             else:
                 outShape.name = name
         else:
-            if name is not None:
+            if name is None:
+                outShape.conformShapeName()
+            else:
                 outShape.name = name
 
         #-----------------|    Drive
