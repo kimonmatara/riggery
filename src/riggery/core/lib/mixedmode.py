@@ -511,6 +511,7 @@ def createOrthoMatrix(*args, w=None):
     :return: The matrix.
     """
     num = len(args)
+
     if num == 2:
         return _createOrthoMatrixFromTwoVectors(*args, w=w)
 
