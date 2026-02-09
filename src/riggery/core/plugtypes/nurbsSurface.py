@@ -1,4 +1,4 @@
-from typing import Iterable, Literal, Optional, Iterator
+from typing import Iterable, Literal, Optional, Iterator, Union
 import maya.api.OpenMaya as om
 
 from ..plugtypes import __pool__ as plugs
@@ -305,6 +305,8 @@ class NurbsSurface(plugs['Geometry']):
             ref3:Optional[Literal['u', 'v', 'n']]=None, /,
 
             manageScale:bool=True,
+            uTangentLength:Optional[_mm.MixedScalar]=None,
+            vTangentLength:Optional[_mm.MixedScalar]=None,
             normalLength:Optional[_mm.MixedScalar]=None,
             resetLengths:bool=False
     ):
@@ -371,7 +373,7 @@ class NurbsSurface(plugs['Geometry']):
         #--------------------|    Ortho base matrix construction
 
         if ortho:
-            matrix = _mo.createOrthoMatrix(axis1, ref1Content,
+            matrix = _mm.createOrthoMatrix(axis1, ref1Content,
                                            axis2, ref2Content,
                                            w=info.attr('position'))
             if manageScale:
@@ -382,21 +384,38 @@ class NurbsSurface(plugs['Geometry']):
                         (ref1Content, ref2Content, ref3Content),
                         (axis1, axis2, axis3)
                 ):
-                    if ref in 'uv':
-                        mag = refContent.length()
+                    if ref == 'u':
+                        if uTangentLength is None:
+                            mag = refContent.length()
 
-                        if resetLengths:
-                            mag = mag / mag()
+                            if resetLengths:
+                                mag = mag / mag()
+                        else:
+                            mag = uTangentLength
+                            if resetLengths:
+                                mag = mag / mag()
+                    elif ref == 'v':
+                        if vTangentLength is None:
+                            mag = refContent.length()
 
-                        factors[axis] = mag
+                            if resetLengths:
+                                mag = mag / mag()
+                        else:
+                            mag = vTangentLength
+                            if resetLengths:
+                                mag = mag / mag()
                     else:
                         if normalLength is None:
-                            factors[axis] = 1.0
+                            mag = 1.0
                         else:
-                            factors[axis] = normalLength
+                            mag = normalLength
+                            if resetLengths:
+                                mag = mag / mag()
+
+                    factors[axis] = mag
 
                 factors = [factors[k] for k in 'xyz']
-                smtx = r.createScaleMatrix(*factors)
+                smtx = _mm.createScaleMatrix(*factors)
                 matrix = smtx * matrix.pick(t=1, r=1)
         else:
             ff = nodes['FourByFourMatrix'].createNode()
@@ -409,10 +428,26 @@ class NurbsSurface(plugs['Geometry']):
                 inp = refContent
 
                 if manageScale:
-                    if ref in 'uv':
-                        if resetLengths:
-                            _mag = inp().length()
-                            inp = inp / _mag
+                    if ref == 'u':
+                        if uTangentLength is None:
+                            if resetLengths:
+                                _mag = inp().length()
+                                inp = inp / _mag
+                        else:
+                            if resetLengths:
+                                uTangentLength = (uTangentLength
+                                                  / uTangentLength())
+                            inp = inp.normal() * uTangentLength
+                    elif ref == 'v':
+                        if vTangentLength is None:
+                            if resetLengths:
+                                _mag = inp().length()
+                                inp = inp / _mag
+                        else:
+                            if resetLengths:
+                                vTangentLength = (vTangentLength
+                                                  / vTangentLength())
+                            inp = inp.normal() * vTangentLength
                     else:
                         if normalLength is not None:
                             normalLength = _mm.conform(normalLength)
@@ -428,3 +463,23 @@ class NurbsSurface(plugs['Geometry']):
             matrix = ff.attr('output')
 
         return matrix
+
+    def tessellateGeneral(self,
+                          uNumber:int,
+                          vNumber:int,
+                          polygonType=1, # quads
+                          uType=2, # per surf # of isoparms (non slidy)
+                          vType=2):
+        node = nodes['NurbsTessellate'].createNode()
+
+        for k, v in {'inputSurface': self,
+                     'explicitTessellationAttributes': True,
+                     'format': 2,
+                     'uNumber': uNumber,
+                     'vNumber': vNumber,
+                     'polygonType': polygonType,
+                     'uType': uType,
+                     'vType': vType}.items():
+            v >> node.attr(k)
+
+        return node.attr('outputPolygon')
