@@ -982,7 +982,35 @@ class Attribute(Elem, metaclass=AttributeMeta):
         :param reuse/re: return the first existing element index which is free
             to connect; defaults to False
         """
+        # Using a mixed cmds / API approach, as pure API on an empty array can
+        # lead to crashes if the plug is incompletely specified
+
+        _self = str(self)
+        existingIndices = m.getAttr(str(self), multiIndices=True)
+
+        if existingIndices is None:
+            return 0
+
+        if reuse:
+            plug = self.__apimplug__()
+
+            for index in existingIndices:
+                elem = plug.elementByLogicalIndex(index)
+
+                if elem.isFreeToChange() == 0:
+                    return index
+
+        if contiguous:
+            if len(existingIndices) > 2:
+                fullRange = list(range(indices[-1]+1))
+                for index in fullRange:
+                    if index not in existingIndices:
+                        return index
+
+        return existingIndices[-1] + 1
+
         plug = self.__apimplug__()
+        plug.evaluateNumElements()
         indices = plug.getExistingArrayAttributeIndices()
 
         if indices:
