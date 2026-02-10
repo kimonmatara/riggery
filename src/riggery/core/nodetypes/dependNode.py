@@ -755,7 +755,6 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         return attr
 
-
     def setAttrs(self, **kwargs):
         """
         Convenience method. Sets multiple attributes at once via keyword
@@ -809,6 +808,19 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         if result:
             for item in result:
                 yield self.attr(item)
+
+    def iterAttrAliases(self) -> Iterator[tuple[str, str]]:
+        """
+        Note that this yields pairs of aliasName: short attr name, rather than
+        attribute instances.
+        """
+        aliases = m.aliasAttr(str(self), q=True)
+
+        if aliases:
+            for alias, attrName in zip(aliases[::2], aliases[1::2]):
+                yield alias, attrName
+
+    attrAliases = property(iterAttrAliases)
 
     def listAttr(self, **kwargs):
         """
