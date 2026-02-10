@@ -30,11 +30,7 @@ def forMPlug(mPlug:om.MPlug) -> int:
 
     elems = [nodeHash, attrHash]
 
-    # Look for multi context
-    ctx = getArrayContext(mPlug)
-
-    if ctx is not None:
-        index, array = ctx
+    for index, array in getArrayContext(mPlug):
         elems.append(index)
         elems.append(om.MObjectHandle(array).hashCode())
 

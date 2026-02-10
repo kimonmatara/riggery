@@ -236,19 +236,31 @@ def getMPlugOnNode(node:om.MObject,
 
     return plug
 
-def getArrayContext(mPlug) -> Optional[tuple[int, om.MObject]]:
+def getArrayContext(mPlug) -> list[tuple[int, om.MObject]]:
     """
-    :return: The index of the array this MPlug belongs to, and the array itself
-        as an MObject.
+    :return: A list of index, attr MObject pairs (from top attribute to
+        innermost).
     """
-    current = mPlug
-    while True:
-        if current.isElement:
-            return current.logicalIndex(), current.attribute()
-        elif current.isChild:
-            current = current.parent()
-        else:
-            break
+    path = mPlug.partialName(includeNodeName=False,
+                             includeInstancedIndices=True,
+                             useFullAttributePath=True)
+
+    elems = path.split('.')
+
+    out = []
+    node = mPlug.node()
+    nodeFn = om.MFnDependencyNode(node)
+
+    for elem in elems:
+        mt = re.match(r"^(.*?)\[([0-9]+)\]$", elem)
+
+        if mt:
+            attrName, attrIndex = mt.groups()
+            attrIndex = int(attrIndex)
+            attrMObject = nodeFn.attribute(attrName)
+            out.append((attrIndex, attrMObject))
+
+    return list(reversed(out))
 
 def getMPlugOnMPlug(thisMPlug, attrName):
     node = thisMPlug.node()
@@ -257,11 +269,9 @@ def getMPlugOnMPlug(thisMPlug, attrName):
 
     outMPlug = om.MPlug(node, attr)
 
-    # Look for multi context
-    ctx = getArrayContext(thisMPlug)
+    for index, attrMObj in getArrayContext(thisMPlug):
+        outMPlug.selectAncestorLogicalIndex(index, attrMObj)
 
-    if ctx is not None:
-        outMPlug.selectAncestorLogicalIndex(*ctx)
     return outMPlug
 
 def getComponentBundle(lookup:str) -> tuple[om.MDagPath, om.MObject]:
