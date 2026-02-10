@@ -211,7 +211,7 @@ class BlendShape(WeightGeometryFilter):
     #     Adds an inbetween shape.
     #
     #     :param geo: the target geometry
-    #     :param index: the index of the main target
+    #     :param index: the index of the main target (0-based)
     #     :param weight: the weight at which to create the inbetween target
     #     :param connect/c: keep the target connected; defaults to False if the
     #         main target is a 'tangentSpace' or 'transform' target, otherwise
