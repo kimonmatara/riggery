@@ -1029,8 +1029,8 @@ class SkinCluster(GeometryFilter):
             pre-bind blend shape
         """
         thisShape = next(self.shapes)
-        xform = nodes.Transform(m.invertShape(str(thisShape),
-                                              str(sculptGeo)))
+        xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
+
         if _nm.Name.__elems__:
             xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
         else:
@@ -1038,4 +1038,7 @@ class SkinCluster(GeometryFilter):
                 thisShape.parent.shortName(sts=True),
                 thisShape.__typesuffix__
             )
+
+        xform.assignDefaultShader()
+
         return xform
