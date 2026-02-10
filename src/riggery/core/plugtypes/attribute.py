@@ -1834,6 +1834,28 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
         return self
 
+    #-----------------------------------------|    Aliases
+
+    def getAlias(self) -> Optional[str]:
+        """:return: The alias for this attribute, if any."""
+        return m.aliasAttr(str(self), q=True)
+
+    def setAlias(self, alias:Optional[str]) -> 'Attribute':
+        """Sets the alias for this attribute."""
+        currentAlias = self.getAlias()
+        if alias != currentAlias:
+            if alias is None:
+                return self.clearAlias()
+            m.aliasAttr(alias, str(self))
+        return self
+
+    def clearAlias(self):
+        """Clears any alias for this attribute."""
+        m.aliasAttr(str(self), rm=True)
+        return self
+
+    alias = property(getAlias, setAlias, clearAlias)
+
     #-----------------------------------------|    Repr
 
     def attrName(self, longName:bool=False) -> str:
