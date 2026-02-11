@@ -224,7 +224,7 @@ def getMPlugOnNode(node:om.MObject,
 
     if failed:
         if checkShape and node.hasFn(om.MFn.kTransform):
-            mfn = omn.MFnDagNode(node)
+            mfn = om.MFnDagNode(node)
             children = [mfn.child(i) for i in range(mfn.childCount())]
 
             if children:
