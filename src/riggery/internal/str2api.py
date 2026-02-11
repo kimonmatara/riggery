@@ -147,33 +147,14 @@ def getMPlug(lookup:str, *,
             f"Invalid attribute lookup: {lookup}"
         )
     if (node and ext):
-        if checkShape and firstElem: # faster implementation
-            sel = om.MSelectionList()
-            try:
-                sel.add(lookup)
-            except RuntimeError as exc:
-                _exc = str(exc)
-                if 'Object does not exist' in _exc:
-                    raise Str2ApiNoMatchError(lookup)
-                raise Str2ApiError(lookup)
-            out = sel.getPlug(0)
-            if checkIsPlug:
-                try:
-                    out.attribute()
-                except RuntimeError as exc:
-                    _exc = str(exc)
-                    if "Unexpected Internal Failure" in _exc:
-                        raise Str2ApiTypeError(f"Not an attribute: {lookup}")
-                    raise Str2ApiTypeError(lookup)
-            return out
-        else:
-            nodeMObject = getNodeMObject(node)
-            return getMPlugOnNode(nodeMObject, ext,
-                                  firstElem=firstElem, checkShape=checkShape)
-    else:
-        raise Str2ApiTypeError(
-            f"Invalid attribute lookup: {lookup}"
-        )
+        nodeMObject = getNodeMObject(node)
+
+        return getMPlugOnNode(nodeMObject, ext,
+                              firstElem=firstElem, checkShape=checkShape)
+
+    raise Str2ApiTypeError(
+        f"Invalid attribute lookup: {lookup}"
+    )
 
 def getMPlugOnNode(node:om.MObject,
                    extension:str,
@@ -200,29 +181,50 @@ def getMPlugOnNode(node:om.MObject,
         on the node.
     """
     nodeFn = om.MFnDependencyNode(node)
-    plug = multi = index = None
+    aliasDict = dict(nodeFn.getAliasList())
+    extParts = [aliasDict.get(x, x) for x in extension.split('.')]
 
-    try:
-        for elem in filter(bool, re.split(r"\[(.*?)\]|\.", extension)):
-            if elem.isdigit():
-                index = int(elem)
-                plug = plug.elementByLogicalIndex(index)
-                multi = plug
+    arrayContext = [] # (index, array mobj)
+    failed = False
+    lastMPlug = None
+    visitedNames = set()
+
+    for extPart in extParts:
+        mt = re.match(r"^(.*?)\[(\-?[0-9]+)\]$", extPart)
+
+        if mt:
+            attrName = mt.group(1)
+        else:
+            attrName = extPart
+
+        if attrName in visitedNames:
+            continue
+
+        attrMObj = nodeFn.attribute(attrName)
+
+        if attrMObj.isNull():
+            failed = True
+            break
+
+        mplug = om.MPlug(node, attrMObj)
+
+        if mplug.isArray:
+            if mt:
+                elemIndex = int(mt.group(2))
+                if elemIndex < 0:
+                    if firstElem:
+                        arrayContext.append((0, attrMObj))
+                else:
+                    arrayContext.append((elemIndex, attrMObj))
             else:
-                try:
-                    plug = nodeFn.findPlug(elem, False)
-                except RuntimeError as exc:
-                    raise Str2ApiNoMatchError(extension)
-                if index is not None:
-                    plug.selectAncestorLogicalIndex(
-                        index,
-                        attribute=multi.attribute()
-                    )
-        if firstElem and plug.isArray:
-            plug = plug.elementByLogicalIndex(0)
-    except Exception as exc:
+                if firstElem:
+                    arrayContext.append((0, attrMObj))
+
+        lastMPlug = mplug
+
+    if failed:
         if checkShape and node.hasFn(om.MFn.kTransform):
-            mfn = om.MFnDagNode(node)
+            mfn = omn.MFnDagNode(node)
             children = [mfn.child(i) for i in range(mfn.childCount())]
 
             if children:
@@ -235,9 +237,13 @@ def getMPlugOnNode(node:om.MObject,
                 return getMPlugOnNode(children[0],
                                       extension,
                                       firstElem=firstElem)
+
         raise Str2ApiNoMatchError(extension)
 
-    return plug
+    for elemIndex, attrMObj in arrayContext:
+        lastMPlug.selectAncestorLogicalIndex(elemIndex, attrMObj)
+
+    return lastMPlug
 
 def getArrayContext(mPlug) -> list[tuple[int, om.MObject]]:
     """
@@ -265,17 +271,10 @@ def getArrayContext(mPlug) -> list[tuple[int, om.MObject]]:
 
     return list(reversed(out))
 
-def getMPlugOnMPlug(thisMPlug, attrName):
-    node = thisMPlug.node()
-    nodeFn = om.MFnDependencyNode(node)
-    attr = nodeFn.attribute(attrName)
-
-    outMPlug = om.MPlug(node, attr)
-
-    for index, attrMObj in getArrayContext(thisMPlug):
-        outMPlug.selectAncestorLogicalIndex(index, attrMObj)
-
-    return outMPlug
+def getMPlugOnMPlug(thisMPlug, attrName) -> om.MPlug:
+    ext = thisMPlug.partialName(includeInstancedIndices=True)
+    ext = '.'.join([ext, attrName.strip('.')])
+    return getMPlugOnNode(thisMPlug.node(), ext, checkShape=False)
 
 def getComponentBundle(lookup:str) -> tuple[om.MDagPath, om.MObject]:
     """
