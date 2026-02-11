@@ -181,8 +181,11 @@ def getMPlugOnNode(node:om.MObject,
                    checkShape:bool=True) -> om.MPlug:
     """
     .. warning::
-        Doesn't check if *node* is a valid
-        :class:`~maya.api.OpenMaya.MObject`.
+        -   Doesn't check if *node* is a valid
+            :class:`~maya.api.OpenMaya.MObject`.
+
+        -   Doesn't deal with aliases at all; *extension* must be a non-aliased
+            path
 
     :param node: the node with the attribute
     :param extension: the local path to the attribute (e.g.
