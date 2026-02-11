@@ -773,6 +773,10 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         :param checkShape: does nothing on :class:`DependNode`, here for
             calling parity
         """
+        aliases = dict(self.attrAliases)
+        attrName = '.'.join((aliases.get(elem, elem)
+                             for elem in attrName.split('.')))
+
         try:
             plug = _s2a.getMPlugOnNode(self.__apimobject__(),
                                        attrName,
