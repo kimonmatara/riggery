@@ -10,10 +10,96 @@ WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
 
+class _Interface:
+    def __init__(self, owner):
+        self.o = owner
+
+#-----------------------------------------|
+#-----------------------------------------|    TARGET INTERFACE
+#-----------------------------------------|
+
+class Target(_Interface):
+
+    #---------------------------|    Init
+
+    def __init__(self, targets:'Targets', targetIndex:int):
+        super().__init__(targets)
+        self._index = targetIndex
+
+    #---------------------------|    Node
+
+    def node(self):
+        return self.o.o
+
+    #---------------------------|    Index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    #---------------------------|    Weight
+
+    @property
+    def weight(self) -> 'plugs.Attribute':
+        return self.node().attr('weight')[self.index]
+
+    #---------------------------|    Alias
+
+    def getAlias(self) -> Optional[str]:
+        return self.node().attr('weight')[self.index].alias
+
+    def setAlias(self, alias:Optional[str]):
+        self.node().attr('weight')[self.index].alias = alias
+        return self
+
+    def clearAlias(self):
+        del(self.node().attr('weight')[self.index].alias)
+        return self
+
+    alias = property(getAlias, setAlias, clearAlias)
+
+    #---------------------------|    Repr
+
+    def __repr__(self):
+        content = self.alias
+        if content is None:
+            content = self.index
+
+        return "{}[{}]".format(self.o, repr(content))
+
+#-----------------------------------------|
+#-----------------------------------------|    TARGETS INTERFACE
+#-----------------------------------------|
+
+class Targets(_Interface):
+
+    #---------------------------|    Init
+
+    def __init__(self, bsnNode):
+        super().__init__(bsnNode)
+
+    #---------------------------|    Node
+
+    def node(self) -> 'BlendShape':
+        return self.o
+
+    #---------------------------|    Get targets
+
+    def __len__(self):
+        return self.o.numTargets()
+
+    #---------------------------|    Repr
+
+    def __repr__(self):
+        return '{}.targets'.format(repr(self.o))
+
+#-----------------------------------------|
+#-----------------------------------------|    MAIN CLASS
+#-----------------------------------------|
 
 class BlendShape(WeightGeometryFilter):
 
-    #-------------------------------------|    Constructor
+    #---------------------------|    Constructor
 
     @classmethod
     @short(name='n')
@@ -49,7 +135,13 @@ class BlendShape(WeightGeometryFilter):
 
         return cls(m.blendShape(str(base), **kwargs)[0])
 
-    #-------------------------------------|    General queries
+    #---------------------------|    Targets interface
+
+    @property
+    def targets(self):
+        return Targets(self)
+
+    #---------------------------|    General queries
 
     def inPostMode(self) -> bool:
         """
@@ -62,14 +154,17 @@ class BlendShape(WeightGeometryFilter):
     #-------------------------------------|    Target wrangling
     #-------------------------------------|
 
-    #-------------------------|    Aliases
+    #---------------------------|    Aliases
 
     def iterWeightAliases(self) -> Iterator[Optional[str]]:
         """This will also yield None for any targets with no assigned alias."""
         for slot in self.attr('weight'):
             yield slot.alias
 
-    #-------------------------|    Query targets
+    #---------------------------|    Query targets
+
+    def numTargets(self) -> int:
+        return len(self.attr('weight'))
 
     @staticmethod
     def weightToItemIndex(weight:float) -> int:
@@ -81,20 +176,22 @@ class BlendShape(WeightGeometryFilter):
     def itemIndexToWeight(itemIndex:int) -> float:
         return (itemIndex - 5000) / 1000
 
-    def getTargetGeoInput(self, targetIndex:int, weight:Optional[float]=None):
+    def getInputTargetGroup(self, targetIndex:str) -> 'plugs.Attribute':
+        return self.attr('inputTarget')[0].attr('inputTargetGroup')[targetIndex]
+
+    def getInputGeomTarget(self,
+                           targetIndex:int,
+                           weight:Optional[float]=None) -> 'plugs.Attribute':
         if weight is None:
             itemIndex = 6000
         else:
             itemIndex = self.weightToItemIndex(weight)
 
-        return self.attr('inputTarget'
-                         )[0].attr('inputTargetGroup'
-                                   )[targetIndex].attr('inputTargetItem'
-                                                       )[itemIndex].attr(
-            'inputGeomTarget'
-        )
+        return self.getInputTargetGroup(
+            targetIndex).attr('inputTargetItem'
+                              )[itemIndex].attr('inputGeomTarget')
 
-    #-------------------------|    Add targets
+    #---------------------------|    Add targets
 
     @short(alias='a',
            tangentSpace='ts',
@@ -185,7 +282,7 @@ class BlendShape(WeightGeometryFilter):
 
         #------------------|    Post-config
 
-        geoInput = self.getTargetGeoInput(index)
+        geoInput = self.getInputGeomTarget(index)
 
         if connect:
             worldSpace = self.attr('origin')() == 0
@@ -199,30 +296,64 @@ class BlendShape(WeightGeometryFilter):
 
         return index
 
-    # @short(connect='c',
-    #        topologyCheck='tc')
-    # def addInbetweenTarget(self,
-    #                        geo,
-    #                        index:int,
-    #                        weight:float,
-    #                        connect:Optional[bool]=None,
-    #                        topologyCheck:bool=True):
-    #     """
-    #     Adds an inbetween shape.
-    #
-    #     :param geo: the target geometry
-    #     :param index: the index of the main target (0-based)
-    #     :param weight: the weight at which to create the inbetween target
-    #     :param connect/c: keep the target connected; defaults to False if the
-    #         main target is a 'tangentSpace' or 'transform' target, otherwise
-    #         True
-    #     """
-    #     geo = nodes['DagNode'](geo)
-    #
-    #     m.blendShape(str(self),
-    #                  e=True,
-    #                  ib=True,
-    #                  t=(str(next(self.shapes)), index, str(geo), weight),
-    #                  tc=topologyCheck)
-    #
-    #     # Stub: need post config stuff here, complete soon
+    @short(connect='c',
+           topologyCheck='tc')
+    def addInbetweenTarget(self,
+                           geo,
+                           targetIndex:int,
+                           weight:float,
+                           connect:Optional[bool]=None,
+                           topologyCheck:bool=True):
+        """
+        Adds an inbetween shape.
+
+        :param geo: the target geometry
+        :param targetIndex: the index of the main target (0-based)
+        :param weight: the weight at which to create the inbetween target
+        :param connect/c: keep the target connected; defaults to False if the
+            main target is a 'tangentSpace' or 'transform' target, otherwise
+            True
+        """
+        _self = str(self)
+
+        args = (_self,)
+        kwargs = {'e': True,
+                  'ib': True,
+                  't':(str(next(self.shapes)), targetIndex, str(geo), weight),
+                  'tc': topologyCheck}
+
+        inputTargetGroup = self.getInputTargetGroup(targetIndex)
+        postDeformMode = inputTargetGroup.attr('postDeformersMode')()
+
+        if postDeformMode == 0: # regular
+            if connect is None:
+                connect = True
+        else:
+            if connect is None:
+                connect = False
+
+            if postDeformMode == 1: # tangent
+                kwargs['tangentSpace'] = True
+
+            elif postDeformMode == 2: # transform
+                inputs = inputTargetGroup.attr(
+                    'targetMatrix').inputs(type='transform')
+
+                if inputs:
+                    kwargs['transform'] = str(inputs[0])
+
+        # run the command
+        m.blendShape(str(self), **kwargs)
+
+        # wrangle connections
+        geoInput = self.getInputGeomTarget(targetIndex, weight)
+
+        if connect:
+            if self.attr('origin')() == 0:
+                geoOutput = geo.worldOutput
+            else:
+                geoOutput = geo.localOutput
+
+            geoOutput >> geoInput
+        else:
+            geoInput.disconnect(inputs=True)
