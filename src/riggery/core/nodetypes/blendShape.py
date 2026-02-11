@@ -10,88 +10,404 @@ WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
 
-class _Interface:
-    def __init__(self, owner):
-        self.o = owner
-
 #-----------------------------------------|
-#-----------------------------------------|    TARGET INTERFACE
+#-----------------------------------------|    INTERFACES
 #-----------------------------------------|
 
-class Target(_Interface):
+class Tween:
 
-    #---------------------------|    Init
+    #---------------------------|    Inst
 
-    def __init__(self, targets:'Targets', targetIndex:int):
-        super().__init__(targets)
-        self._index = targetIndex
+    def __init__(self, target:'Target', index:int):
+        self._target = target
+        self._index = index
+        self._node = target._node
 
-    #---------------------------|    Node
+    #---------------------------|    Basics
 
     def node(self):
-        return self.o.o
-
-    #---------------------------|    Index
+        return self._node
 
     @property
-    def index(self) -> int:
+    def target(self):
+        return self._target
+
+    @property
+    def index(self):
         return self._index
+
+    @property
+    def ratio(self) -> float:
+        return self.node().tweenItemIndexToRatio(self._index)
+
+    #---------------------------|    Plug shortcuts
+
+    @property
+    def item(self) -> 'Attribute':
+        return self._target.group.attr('inputTargetItem')[self._index]
+
+    @property
+    def geoInput(self):
+        return self.item.attr('inputGeomTarget')
+
+    #---------------------------|    Repr
+
+    def __repr__(self):
+        return "{}[{}]".format(self._target, self.ratio)
+
+
+class Target:
+
+    #---------------------------|    Inst
+
+    def __init__(self, targets:'Targets', index:int):
+        self._targets = targets
+        self._node = self._targets._node
+        self._index = index
+
+    #---------------------------|    Basics
+
+    @property
+    def index(self):
+        self._index
+
+    @property
+    def targets(self):
+        return self._targets
+
+    def node(self):
+        return self._node
 
     #---------------------------|    Weight
 
     @property
-    def weight(self) -> 'plugs.Attribute':
-        return self.node().attr('weight')[self.index]
+    def weight(self):
+        return self._node.attr('weight')[self._index]
 
     #---------------------------|    Alias
 
     def getAlias(self) -> Optional[str]:
-        return self.node().attr('weight')[self.index].alias
+        return self.weight.alias
 
     def setAlias(self, alias:Optional[str]):
-        self.node().attr('weight')[self.index].alias = alias
+        self.weight.alias = alias
         return self
 
     def clearAlias(self):
-        del(self.node().attr('weight')[self.index].alias)
+        del(self.weight.alias)
         return self
 
     alias = property(getAlias, setAlias, clearAlias)
+
+    #---------------------------|    Plug shortcuts
+
+    @property
+    def group(self) -> 'Attribute':
+        return self._node.attr('inputTarget'
+                               )[0].attr('inputTargetGroup')[self._index]
+
+    @property
+    def targetMatrix(self) -> 'Attribute':
+        return self.group.attr('targetMatrix')
+
+    def getTransform(self) -> Optional['nodes.Transform']:
+        out = self.targetMatrix.inputs(type='transform')
+        if out:
+            return out[0]
+
+    def setTransform(self, transform:Optional['nodes.Transform']):
+        if transform is None:
+            return self.clearTransform()
+        nodes['Transform'](transform).attr('worldMatrix') >> self.targetMatrix
+
+    def clearTransform(self):
+        self.targetMatrix.disconnect(inputs=True)
+
+    transform = property(getTransform, setTransform, clearTransform)
+
+    @property
+    def geoInput(self) -> 'Attribute':
+        return self[1.0].geoInput
+
+    #---------------------------|    Add tween
+
+    @short(connect='c',
+           topologyCheck='tc')
+    def add(self,
+            geo,
+            ratio:float,
+            connect:Optional[bool]=None,
+            topologyCheck:bool=True):
+        """
+       Adds an inbetween shape.
+
+       :param geo: the target geometry
+       :param ratio: the weight at which to create the inbetween target
+       :param connect/c: keep the target connected; defaults to False if the
+           main target is a 'tangentSpace' or 'transform' target, otherwise
+           True
+       """
+        node = self.node()
+        _node = str(node)
+        args = (_node,)
+
+        kwargs = {'e': True,
+                  'ib': True,
+                  't':(str(next(node.shapes)), self._index, str(geo), ratio),
+                  'tc': topologyCheck}
+
+        postDeformMode = self.group.attr('postDeformersMode')()
+
+        if postDeformMode == 0: # regular
+            if connect is None:
+                connect = True
+        else:
+            if connect is None:
+                connect = False
+
+            if postDeformMode == 1: # tangent
+                kwargs['tangentSpace'] = True
+
+            elif postDeformMode == 2: # transform
+                transform = self.transform
+
+                if transform:
+                    kwargs['transform'] = str(transform)
+
+        # run the command
+        m.blendShape(*args, **kwargs)
+
+        tween = self[ratio]
+
+        if connect:
+            if node.attr('origin')() == 0:
+                geoOutput = geo.worldOutput
+            else:
+                geoOutput = geo.localOutput
+
+            geoOutput >> tween.geoInput
+        else:
+            tween.geoInput.disconnect(inputs=True)
+
+        return tween
+
+    #---------------------------|    Get tweens
+
+    def ratioExists(self, ratio:float) -> bool:
+        return self.node().tweenRatioToItemIndex(ratio) in self.indices()
+
+    def indices(self) -> Iterator[int]:
+        for index in self.group.attr('inputTargetItem').indices():
+            if index == 0:
+                continue
+            yield index
+
+    def ratios(self) -> Iterator[float]:
+        node = self.node()
+
+        for index in self.group.attr('inputTargetItem').indices():
+            if index == 0:
+                continue
+            yield node.tweenItemIndexToRatio(index)
+
+    def __getitem__(self, ratio:float):
+        index = self.node().tweenRatioToItemIndex(ratio)
+
+        if index in self.indices():
+            return Tween(self, index)
+
+        raise IndexError("no tween at ratio {}".format(ratio))
+
+    def __iter__(self) -> Iterator[Tween]:
+        for index in self.indices():
+            yield Tween(self, index)
+
+    def __len__(self):
+        return len(list(self.indices()))
+
+    def __bool__(self):
+        return len(self) > 0
 
     #---------------------------|    Repr
 
     def __repr__(self):
         content = self.alias
+
         if content is None:
-            content = self.index
+            content = self._index
 
-        return "{}[{}]".format(self.o, repr(content))
+        return "{}[{}]".format(repr(self._targets), repr(content))
 
-#-----------------------------------------|
-#-----------------------------------------|    TARGETS INTERFACE
-#-----------------------------------------|
 
-class Targets(_Interface):
+class Targets:
 
-    #---------------------------|    Init
+    #---------------------------|    Inst
 
-    def __init__(self, bsnNode):
-        super().__init__(bsnNode)
+    def __init__(self, node):
+        self._node = node
 
-    #---------------------------|    Node
+    #---------------------------|    Basics
 
     def node(self) -> 'BlendShape':
-        return self.o
+        return self._node
 
-    #---------------------------|    Get targets
+    #---------------------------|    Get
+
+    def keys(self) -> Iterator[str]:
+        for slot in self.node().attr('weight'):
+            alias = slot.alias
+            if alias is None:
+                continue
+            yield alias
+
+    def indices(self) -> Iterator[int]:
+        yield from self.node().attr('weight').indices()
+
+    def getByAlias(self, alias:str) -> 'Target':
+        for slot in self.node().attr('weight'):
+            if slot.alias == alias:
+                return Target(self, slot.index())
+        raise KeyError("no target with alias '{}'".format(alias))
+
+    def getByIndex(self, index:int) -> 'Target':
+        if self.indexExists(index):
+            return Target(self, index)
+        raise IndexError("no target at index {}".format(index))
+
+    def aliasExists(self, alias:str) -> bool:
+        for slot in self.node().attr('weight'):
+            if slot.alias == alias:
+                return True
+        return False
+
+    def indexExists(self, index:int) -> bool:
+        return index in self.node().attr('weight').indices()
 
     def __len__(self):
-        return self.o.numTargets()
+        return len(self.node().attr('weight'))
+
+    def __bool__(self):
+        return len(self) > 0
+
+    def __getitem__(self, indexOrAlias:Union[str, int]):
+        if isinstance(indexOrAlias, str):
+            return self.getByAlias(indexOrAlias)
+        return self.getByIndex(indexOrAlias)
+
+    def __iter__(self):
+        for index in self.indices():
+            yield Target(self, index)
+
+    #---------------------------|    Add
+
+    @short(alias='a',
+           tangentSpace='ts',
+           connect='c',
+           index='i',
+           transform='t',
+           topologyCheck='tc')
+    def add(self,
+            geo:'nodes.DagNode',
+            alias:Optional[str]=None, *,
+            tangentSpace:bool=False,
+            transform:Optional['nodes.Transform']=None,
+            connect:Optional[bool]=None,
+            index:Optional[int]=None,
+            topologyCheck:bool=True) -> 'Target':
+        """
+       Adds a main (not inbetween) target. The weight for the new target will
+       be 0.0 by default.
+
+       :param geo: the target geometry
+       :param alias: the weight alias; defaults to the geometry transform's
+           short name
+       :param tangentSpace/ts: only available if the blend shape node is in
+           'post' mode; defaults to False
+       :param connect/c: connect the target geometry; defaults to False if one
+           of 'tangentSpace' or 'transform' were specified, otherwise True
+       :param transform/t: if provided, will be used to configure a 'transform'
+           space blend shape
+       :param index/i: a preferred index for the target; defaults to the next
+           available index
+       :param topologyCheck/tc: check topology matches the bases; defaults to
+           True
+       :raises ValueError: 'tangentSpace' and 'transform' can't be used; blend
+           shape node not in 'post mode
+       :raises ValueError: 'tangentSpace' and 'transform' can't be used
+           together
+       :raises ValueError: index in use
+       :raises ValueError: alias in use
+       """
+        #------------------|    Wrangle args
+
+        node = self.node()
+
+        post = node.inPostMode()
+        geo = nodes['DagNode'](geo)
+
+        if index is None:
+            index = node.attr('weight').nextIndex()
+
+        elif index in node.attr('weight').indices():
+            raise ValueError(f"index {index} in use")
+
+        if alias is None:
+            alias = geo.toTransform().shortName(sns=True)
+
+        if self.aliasExists(alias):
+            raise ValueError(f"alias '{alias}' in use")
+
+        kwargs = {'topologyCheck': topologyCheck}
+
+        if tangentSpace or transform:
+            if not post:
+                raise ValueError("'tangentSpace' and 'transform' can't be"
+                                 f" used: {self} not in 'post' mode")
+
+            if tangentSpace:
+                if transform:
+                    raise ValueError("'tangentSpace' and 'transform' can't be"
+                                     " used together")
+                kwargs['tangentSpace'] = True
+            else:
+                kwargs['transform'] = str(transform)
+
+            if connect is None:
+                connect = False
+        else:
+            if connect is None:
+                connect = True
+
+        #------------------|    Run
+
+        base = next(node.shapes)
+
+        m.blendShape(str(node),
+                     e=True,
+                     t=[str(base), index, str(geo), 1.0],
+                     w=[index, 0.0],
+                     **kwargs)
+
+        #------------------|    Post-config
+
+        target = Target(self, index)
+        geoInput = target.geoInput
+
+        if connect:
+            worldSpace = node.attr('origin')() == 0
+            geoPlug = geo.worldOutput if worldSpace else geo.localOutput
+            geoPlug >> geoInput
+        else:
+            geoInput.disconnect(inputs=True)
+
+        target.alias = alias
+
+        return target
 
     #---------------------------|    Repr
 
     def __repr__(self):
-        return '{}.targets'.format(repr(self.o))
+        return '{}.targets'.format(repr(self._node))
 
 #-----------------------------------------|
 #-----------------------------------------|    MAIN CLASS
@@ -135,10 +451,10 @@ class BlendShape(WeightGeometryFilter):
 
         return cls(m.blendShape(str(base), **kwargs)[0])
 
-    #---------------------------|    Targets interface
+    #---------------------------|    Interfaces
 
     @property
-    def targets(self):
+    def targets(self) -> Targets:
         return Targets(self)
 
     #---------------------------|    General queries
@@ -150,210 +466,12 @@ class BlendShape(WeightGeometryFilter):
         """
         return self.attr('deformationOrder')() == 1
 
-    #-------------------------------------|
-    #-------------------------------------|    Target wrangling
-    #-------------------------------------|
-
-    #---------------------------|    Aliases
-
-    def iterWeightAliases(self) -> Iterator[Optional[str]]:
-        """This will also yield None for any targets with no assigned alias."""
-        for slot in self.attr('weight'):
-            yield slot.alias
-
-    #---------------------------|    Query targets
-
-    def numTargets(self) -> int:
-        return len(self.attr('weight'))
+    @staticmethod
+    def tweenRatioToItemIndex(ratio:float) -> int:
+        ratio = round(ratio, 3)
+        ratio = ratio * 1000
+        return 5000 + int(ratio)
 
     @staticmethod
-    def weightToItemIndex(weight:float) -> int:
-        weight = round(weight, 3)
-        weight = weight * 1000
-        return 5000 + int(weight)
-
-    @staticmethod
-    def itemIndexToWeight(itemIndex:int) -> float:
+    def tweenItemIndexToRatio(itemIndex:int) -> float:
         return (itemIndex - 5000) / 1000
-
-    def getInputTargetGroup(self, targetIndex:str) -> 'plugs.Attribute':
-        return self.attr('inputTarget')[0].attr('inputTargetGroup')[targetIndex]
-
-    def getInputGeomTarget(self,
-                           targetIndex:int,
-                           weight:Optional[float]=None) -> 'plugs.Attribute':
-        if weight is None:
-            itemIndex = 6000
-        else:
-            itemIndex = self.weightToItemIndex(weight)
-
-        return self.getInputTargetGroup(
-            targetIndex).attr('inputTargetItem'
-                              )[itemIndex].attr('inputGeomTarget')
-
-    #---------------------------|    Add targets
-
-    @short(alias='a',
-           tangentSpace='ts',
-           connect='c',
-           index='i',
-           transform='t',
-           topologyCheck='tc')
-    def addTarget(self,
-                  geo:'nodes.DagNode',
-                  alias:Optional[str]=None, *,
-                  tangentSpace:bool=False,
-                  connect:Optional[bool]=None,
-                  transform:Optional['nodes.Transform']=None,
-                  index:Optional[int]=None,
-                  topologyCheck:bool=True) -> int:
-        """
-        Adds a main (not inbetween) target. The weight for the new target will
-        be 0.0 by default.
-
-        :param geo: the target geometry
-        :param alias: the weight alias; defaults to the geometry transform's
-            short name
-        :param tangentSpace/ts: only available if the blend shape node is in
-            'post' mode; defaults to False
-        :param connect/c: connect the target geometry; defaults to False if one
-            of 'tangentSpace' or 'transform' were specified, otherwise True
-        :param transform/t: if provided, will be used to configure a 'transform'
-            space blend shape
-        :param index/i: a preferred index for the target; defaults to the next
-            available index
-        :param topologyCheck/tc: check topology matches the bases; defaults to
-            True
-        :raises ValueError: 'tangentSpace' and 'transform' can't be used; blend
-            shape node not in 'post mode
-        :raises ValueError: 'tangentSpace' and 'transform' can't be used
-            together
-        :raises ValueError: index in use
-        :raises ValueError: alias in use
-        :return: The index of the new target.
-        """
-        #------------------|    Wrangle args
-
-        post = self.inPostMode()
-        geo = nodes['DagNode'](geo)
-
-        kwargs = {'topologyCheck': topologyCheck}
-
-        if index is None:
-            index = self.attr('weight').nextIndex()
-
-        elif index in self.attr('weight').indices():
-            raise ValueError(f"index {index} in use")
-
-        if alias is None:
-            alias = geo.toTransform().shortName(sns=True)
-
-        if alias in self.iterWeightAliases():
-            raise ValueError(f"alias '{alias}' in use")
-
-        if tangentSpace or transform:
-            if not post:
-                raise ValueError("'tangentSpace' and 'transform' can't be"
-                                 f" used: {self} not in 'post' mode")
-
-            if tangentSpace:
-                if transform:
-                    raise ValueError("'tangentSpace' and 'transform' can't be"
-                                     " used together")
-                kwargs['tangentSpace'] = True
-            else:
-                kwargs['transform'] = str(transform)
-
-            if connect is None:
-                connect = False
-        else:
-            if connect is None:
-                connect = True
-
-        #------------------|    Run
-
-        base = next(self.shapes)
-
-        m.blendShape(str(self),
-                     e=True,
-                     t=[str(base), index, str(geo), 1.0],
-                     w=[index, 0.0],
-                     **kwargs)
-
-        #------------------|    Post-config
-
-        geoInput = self.getInputGeomTarget(index)
-
-        if connect:
-            worldSpace = self.attr('origin')() == 0
-            geoPlug = geo.worldOutput if worldSpace else geo.localOutput
-            geoPlug >> geoInput
-        else:
-            geoInput.disconnect(inputs=True)
-
-        weightPlug = self.attr('weight')[index]
-        weightPlug.alias = alias
-
-        return index
-
-    @short(connect='c',
-           topologyCheck='tc')
-    def addInbetweenTarget(self,
-                           geo,
-                           targetIndex:int,
-                           weight:float,
-                           connect:Optional[bool]=None,
-                           topologyCheck:bool=True):
-        """
-        Adds an inbetween shape.
-
-        :param geo: the target geometry
-        :param targetIndex: the index of the main target (0-based)
-        :param weight: the weight at which to create the inbetween target
-        :param connect/c: keep the target connected; defaults to False if the
-            main target is a 'tangentSpace' or 'transform' target, otherwise
-            True
-        """
-        _self = str(self)
-
-        args = (_self,)
-        kwargs = {'e': True,
-                  'ib': True,
-                  't':(str(next(self.shapes)), targetIndex, str(geo), weight),
-                  'tc': topologyCheck}
-
-        inputTargetGroup = self.getInputTargetGroup(targetIndex)
-        postDeformMode = inputTargetGroup.attr('postDeformersMode')()
-
-        if postDeformMode == 0: # regular
-            if connect is None:
-                connect = True
-        else:
-            if connect is None:
-                connect = False
-
-            if postDeformMode == 1: # tangent
-                kwargs['tangentSpace'] = True
-
-            elif postDeformMode == 2: # transform
-                inputs = inputTargetGroup.attr(
-                    'targetMatrix').inputs(type='transform')
-
-                if inputs:
-                    kwargs['transform'] = str(inputs[0])
-
-        # run the command
-        m.blendShape(str(self), **kwargs)
-
-        # wrangle connections
-        geoInput = self.getInputGeomTarget(targetIndex, weight)
-
-        if connect:
-            if self.attr('origin')() == 0:
-                geoOutput = geo.worldOutput
-            else:
-                geoOutput = geo.localOutput
-
-            geoOutput >> geoInput
-        else:
-            geoInput.disconnect(inputs=True)
