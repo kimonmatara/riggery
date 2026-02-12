@@ -35,6 +35,11 @@ def describeMPlug(plug:om.MPlug) -> dict:
 
     attrType = aaInfo.get('attributeType')
 
+    isMulti = plug.isArray
+
+    if isMulti:
+        numIndicesBefore = len(plug.getExistingArrayAttributeIndices())
+
     if attrType is None:
         try:
             dataType = aaInfo['dataType']
@@ -47,17 +52,21 @@ def describeMPlug(plug:om.MPlug) -> dict:
         if (not out) or (out.get('geoType') == 'nurbsCurve'):
             evaluatedType = m.getAttr(_a2s.fromMPlug(plug), type=True)
             out.update(DESCS.get(evaluatedType, {}))
+
     elif attrType == 'typed':
         if __verbose__:
             m.warning(f"Can't classify attribute: {plug}")
         return out
 
+    instToRemove = None
+
     if plug.isCompound:
         shape = plug.numChildren()
+
         if shape:
             # Won't be able to get children if this is an array
             if plug.isArray:
-                parent = plug.elementByLogicalIndex(0)
+                parent = instToRemove = plug.elementByLogicalIndex(0)
             else:
                 parent = plug
 
@@ -90,6 +99,19 @@ def describeMPlug(plug:om.MPlug) -> dict:
                                         = unitType = unitTypes[0]
     else:
         out.update(DESCS.get(attrType, {}))
+
+    if isMulti:
+        # This step is necessary because, while inspecting a multi (array), we
+        # may have automatically created an element at [0] if we had to evaluate
+        # something
+        numIndicesAfter = len(plug.getExistingArrayAttributeIndices())
+
+        if (numIndicesAfter > numIndicesBefore
+            and (instToRemove is not None)
+            and not instToRemove.isNull):
+            mod = om.MDGModifier()
+            mod.removeMultiInstance(instToRemove, True)
+            mod.doIt()
 
     return out
 
