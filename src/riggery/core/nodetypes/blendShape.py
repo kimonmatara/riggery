@@ -16,6 +16,8 @@ import maya.cmds as m
 
 class Tween:
 
+    """Interface for editing of inbetween targets."""
+
     #---------------------------|    Inst
 
     def __init__(self, target:'Target', index:int):
@@ -25,29 +27,41 @@ class Tween:
 
     #---------------------------|    Basics
 
-    def node(self):
+    def node(self) -> 'BlendShape':
+        """Returns the blend shape node."""
         return self._node
 
     @property
     def target(self):
+        """
+        Navigates upwards to the :class:`Target` instance that owns this tween.
+        """
         return self._target
 
     @property
-    def index(self):
+    def index(self) -> int:
+        """
+        :return: The 5000-6000 index that corresponds to this tween.
+        """
         return self._index
 
     @property
     def ratio(self) -> float:
+        """
+        :return: The tween ratio.
+        """
         return self.node().tweenItemIndexToRatio(self._index)
 
     #---------------------------|    Plug shortcuts
 
     @property
     def item(self) -> 'Attribute':
+        """:return: The ``inputTargetItem`` slot output."""
         return self._target.group.attr('inputTargetItem')[self._index]
 
     @property
     def geoInput(self):
+        """:return: The ``inputGeomTarget`` geometry input."""
         return self.item.attr('inputGeomTarget')
 
     #---------------------------|    Repr
@@ -57,6 +71,11 @@ class Tween:
 
 
 class Target:
+
+    """
+    Interface for editing 'main' targets (i.e. not inbetweens).
+    Use subscripting with floats to edit tweens.
+    """
 
     #---------------------------|    Inst
 
@@ -68,32 +87,41 @@ class Target:
     #---------------------------|    Basics
 
     @property
-    def index(self):
+    def index(self) -> int:
+        """:return: The target weight index."""
         self._index
 
     @property
     def targets(self):
+        """
+        Navigates upwards to the :class:`Targets` interface.
+        """
         return self._targets
 
-    def node(self):
+    def node(self) -> 'BlendShape':
+        """:return: The blend shape node."""
         return self._node
 
     #---------------------------|    Weight
 
     @property
     def weight(self):
+        """:return: The corresponding ``weight`` input."""
         return self._node.attr('weight')[self._index]
 
     #---------------------------|    Alias
 
     def getAlias(self) -> Optional[str]:
+        """Implements the ``.alias`` property."""
         return self.weight.alias
 
     def setAlias(self, alias:Optional[str]):
+        """Implements the ``.alias`` property."""
         self.weight.alias = alias
         return self
 
     def clearAlias(self):
+        """Implements the ``.alias`` property."""
         del(self.weight.alias)
         return self
 
@@ -103,30 +131,39 @@ class Target:
 
     @property
     def group(self) -> 'Attribute':
+        """:return: The ``inputTargetGroup`` slot."""
         return self._node.attr('inputTarget'
                                )[0].attr('inputTargetGroup')[self._index]
 
     @property
     def targetMatrix(self) -> 'Attribute':
+        """
+        :return:The matrix input for the driver transform, if the target is in
+            'transform' post mode.
+        """
         return self.group.attr('targetMatrix')
 
     def getTransform(self) -> Optional['nodes.Transform']:
+        """Implements the ``.transform`` property."""
         out = self.targetMatrix.inputs(type='transform')
         if out:
             return out[0]
 
     def setTransform(self, transform:Optional['nodes.Transform']):
+        """Implements the ``.transform`` property."""
         if transform is None:
             return self.clearTransform()
         nodes['Transform'](transform).attr('worldMatrix') >> self.targetMatrix
 
     def clearTransform(self):
+        """Implements the ``.transform`` property."""
         self.targetMatrix.disconnect(inputs=True)
 
     transform = property(getTransform, setTransform, clearTransform)
 
     @property
     def geoInput(self) -> 'Attribute':
+        """:return: The geometry input for the tween at ratio 1.0."""
         return self[1.0].geoInput
 
     #---------------------------|    Add tween
@@ -194,15 +231,24 @@ class Target:
     #---------------------------|    Get tweens
 
     def ratioExists(self, ratio:float) -> bool:
+        """
+        :return: ``True`` if this target includes a tween at the specified
+            ratio.
+        """
         return self.node().tweenRatioToItemIndex(ratio) in self.indices()
 
     def indices(self) -> Iterator[int]:
+        """
+        :return: An iterator of indices in the 5000-6000 range, corresponding to
+            tweens for this target.
+        """
         for index in self.group.attr('inputTargetItem').indices():
             if index == 0:
                 continue
             yield index
 
     def ratios(self) -> Iterator[float]:
+        """:return: An iterator of tween ratios for this target."""
         node = self.node()
 
         for index in self.group.attr('inputTargetItem').indices():
@@ -249,11 +295,13 @@ class Targets:
     #---------------------------|    Basics
 
     def node(self) -> 'BlendShape':
+        """:return: The blend shape node."""
         return self._node
 
     #---------------------------|    Get
 
     def keys(self) -> Iterator[str]:
+        """:return: An iterator of weight aliases."""
         for slot in self.node().attr('weight'):
             alias = slot.alias
             if alias is None:
@@ -261,26 +309,37 @@ class Targets:
             yield alias
 
     def indices(self) -> Iterator[int]:
+        """:return: An iterator of weight indices."""
         yield from self.node().attr('weight').indices()
 
     def getByAlias(self, alias:str) -> 'Target':
+        """
+        :return: A :class:`Target` instance from the given alias.
+        """
         for slot in self.node().attr('weight'):
             if slot.alias == alias:
                 return Target(self, slot.index())
         raise KeyError("no target with alias '{}'".format(alias))
 
     def getByIndex(self, index:int) -> 'Target':
+        """
+        :return: A :class:`Target` instance from the given index.
+        """
         if self.indexExists(index):
             return Target(self, index)
         raise IndexError("no target at index {}".format(index))
 
     def aliasExists(self, alias:str) -> bool:
+        """:return: ``True`` if the specified target alias exists."""
+
         for slot in self.node().attr('weight'):
             if slot.alias == alias:
                 return True
         return False
 
     def indexExists(self, index:int) -> bool:
+        """:return: ``True`` if the specified target index exists."""
+
         return index in self.node().attr('weight').indices()
 
     def __len__(self):
