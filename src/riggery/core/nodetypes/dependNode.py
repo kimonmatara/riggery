@@ -785,6 +785,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         except _s2a.Str2ApiNoMatchError:
             raise AttributeError(attrName)
+
         return plugs['Attribute'].fromMPlug(plug)
 
     def hasAttr(self, attrName:str, checkShape:bool=True) -> bool:
