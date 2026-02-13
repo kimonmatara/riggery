@@ -419,6 +419,72 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         return list(self.iterOutputs(**kwargs))
 
+    def history(self,
+                type:Optional[Union[str, Iterable[str]]]=None
+                ) -> Iterator['_nodes.DependNode']:
+        """
+        :param type: one or more node type filters; defaults to None
+        :return: An iterator of nodes upstream of this attribute.
+        """
+        input = next(self.iterInputs(plugs=True), None)
+
+        if input is not None:
+            if type:
+                types = list(
+                    without_duplicates(filter(bool, expand_tuples_lists(type)))
+                )
+            else:
+                types = []
+
+            history = m.listHistory(str(input.node()), fullNodeName=True)
+
+            if history:
+                for node in history:
+                    if types:
+                        if not any((m.objectType(node, isAType=x))
+                                   for x in types):
+                            continue
+
+                    yield _nodes['DependNode'](node)
+
+    def future(self,
+               type:Optional[Union[str, Iterable[str]]]=None
+               ) -> Iterator['_nodes.DependNode']:
+        """
+        :param type: one or more node type filters; defaults to None
+        :return: An iterator of nodes downstream of this attribute.
+        """
+
+        outputs = self.iterOutputs(plugs=True)
+
+        if outputs:
+            if type:
+                types = list(
+                    without_duplicates(filter(bool, expand_tuples_lists(type)))
+                )
+            else:
+                types = []
+
+            for output in outputs:
+                outputNode = output.node()
+                _outputNode = str(outputNode)
+
+                if types and not any((m.objectType(_outputNode,
+                                                   isAType=x) for x in types)):
+                    continue
+
+                future = m.listHistory(_outputNode,
+                                       fullNodeName=True,
+                                       future=True)
+                if future:
+                    for futureNode in future:
+                        if types and not any((
+                                m.objectType(futureNode, isAType=x)
+                                for x in types
+                        )):
+                            continue
+                        yield _nodes['DependNode'](futureNode)
+
     def put(self, other, isPlug:Optional[bool]=None):
         """
         If *other* is an attribute, connects it into this attribute.
