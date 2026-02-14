@@ -1,4 +1,5 @@
-from typing import Union, Optional, Literal
+import re
+from typing import Union, Optional, Literal, Iterable, Callable
 import itertools
 from pathlib import Path, PurePosixPath
 from tempfile import gettempdir
@@ -57,6 +58,67 @@ def getDeformersFromShape(shape:str) -> list[str]:
 #-----------------------------------------|
 #-----------------------------------------|    ARG MANAGEMENT
 #-----------------------------------------|
+
+def remapToReplacer(remap:Optional[Union[str, Iterable[str]]]) -> Callable:
+    """
+    Uses a ``remap`` argument, formulated for the ``deformerWeights`` command,
+    and returns a callable that can be used to perform direct string
+    substitutions.
+    """
+    if not remap:
+        return lambda x: x
+
+    pairs = []
+
+    for remapEntry in expandRemapArg(remap):
+        origPat, origRepl = remapEntry.split(';')
+        newRepl = re.sub(r'\$([0-9]+)', r'\\g<\g<1>>', origRepl)
+        pairs.append((origPat, newRepl))
+
+    def replacer(st:str) -> str:
+        for pat, repl in pairs:
+            st = re.sub(pat, repl, st)
+        return st
+
+    return replacer
+
+def expandRemapArg(
+        remap:Optional[Union[str, Iterable[str]]]
+) -> Optional[list[str]]:
+    """
+    Performs minor cleanup on a user-provided ``remap`` argument, conforming to
+    a list of strings in every case.
+
+    How to format *remap* argument
+    ------------------------------
+    Each string should be formatted like this:
+
+    ```
+    <regex>;<replace>
+    ```
+    Use ``$1``, ``$2`` to refer to capture groups in the regex (1-based).
+    For example, to replace the namespace 'banana' with 'apple' everywhere:
+
+    ```
+    banana:(.*);apple:($1)
+    ```
+
+    Which will have a result of:
+
+    ```
+    banana:joint1 -> apple:joint1
+    etc.
+    ```
+
+    :param remap: either a single string (for a single substitution round) or
+         a list of strings (for multiple substitutions)
+    :return: a list of strings, or None
+    """
+    if remap:
+        if isinstance(remap, str):
+            return [remap]
+
+        return list(remap)
 
 def fixKwargs(kwargs:dict) -> None:
     # The only reliable way to run deformerWeights is to specify shapes via -sh
