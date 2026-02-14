@@ -1,7 +1,8 @@
+from functools import partial
 import json
 from pathlib import Path
 import os
-from typing import Iterator, Union, Optional, Literal
+from typing import Iterator, Union, Optional, Literal, Iterable, Callable
 
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.functions import short
@@ -18,6 +19,17 @@ import maya.cmds as m
 
 
 class GeometryFilter(DependNode):
+    """
+    To implement deformer archiving:
+
+        -   Implement macro() concisely (don't worry about class mapping, that
+            should happen externally)
+        -   Implement createFromMacro() concisely
+        -   Implement _applyReplacerToArchiveMacro() to perform name
+            on a macro where requested
+        -   If / where needed, overload _loadWeightsFromArchive(),
+            createFromArchive(), or dumpArchive()
+    """
 
     #-------------------------------------|    Constructors
 
@@ -360,93 +372,581 @@ class GeometryFilter(DependNode):
 
         return self
 
-    __archive_extra_attrs__ = None
+    # __archive_extra_attrs__ = None
+
+    #-------------------------------------|    Archiving
+
+    def _resolveArchiveDumpShapes(self,
+                                  shapes=None) -> list['nodes.DeformableShape']:
+
+        ourShapes = list(self.shapes)
+
+        if shapes:
+            shapes = expand_tuples_lists(shapes)
+            shapes = (nodes['DagNode'](x).toShape() for x in shapes)
+            shapes = without_duplicates(shapes)
+            shapes = (x for x in shapes if x is not None and x in ourShapes)
+            shapes = list(shapes)
+        else:
+            shapes = ourShapes
+
+        return shapes
+
+    def _archiveDumpShapeXMLWeights(self,
+                                    filePath:Path,
+                                    shape:'nodes.DeformableShape'):
+        """Here as a hook for per-deformer implementations."""
+
+        self.dumpWeights(filePath, shape=shape, vertexConnections=True)
+
+    def _generateMacroForArchive(self) -> dict:
+        return self.macro()
+
+    def _generateArchiveInfoContent(self) -> dict:
+        out = {'deformerName': str(self),
+               'deformerNodeType': self.__melnode__,
+               'deformerMacro': self._generateMacroForArchive()}
+
+        shapeInfos = {}
+        shapeOrder = []
+
+        deformerName = str(self)
+        deformerNameNoNs = deformerName.split(':')[-1]
+
+        for shape in self.shapes:
+            shapeShortName = shape.shortName()
+            shapeShortNameNoNs = shapeShortName.split(':')[-1]
+
+            shapeInfo = {
+                'transformName': shape.parent.shortName(),
+                'xmlWeights': '{}_on_{}_weights.xml'.format(deformerNameNoNs,
+                                                            shapeShortNameNoNs)
+            }
+            shapeInfos[shapeShortName] = shapeInfo
+            shapeOrder.append(shapeShortName)
+
+        if shapeInfos:
+            out['shapeOrder'] = shapeOrder
+            out['shapeInfos'] = shapeInfos
+
+        return out
+
+    def dumpArchive(self,
+                    parentDir:Union[str, Path],
+                    shapes:Optional[
+                        Union[
+                            'nodes.DagNode',
+                            Iterable['nodes.DagNode']
+                        ]
+                    ]=None, /) -> dict:
+
+        # Resolve parent dir
+        parentDir = Path(parentDir)
+
+        if not parentDir.is_dir():
+            raise FileNotFoundError(
+                "Parent directory doesn't exist: {}".format(parentDir)
+            )
+
+        # Resolve info file path
+        deformerName = self.shortName()
+        deformerNameNoNs = deformerName.split(':')[-1]
+        infoFileName = "{}_info.json".format(deformerNameNoNs)
+        infoFilePath = parentDir / infoFileName
+
+        # Generate info data
+        infoContent = self._generateArchiveInfoContent()
+        infoContentJson = json.dumps(infoContent, indent=4)
+
+        # Dump the info file
+        with open(infoFilePath, 'w') as f:
+            f.write(infoContentJson)
+
+        print("Wrote: {}".format(infoContentJson))
+
+        # Resolve the shapes worklist
+        shapes = self._resolveArchiveDumpShapes(shapes)
+
+        # Dump XML weights for each shape
+        for shape in shapes:
+            shapeNameNoNs = shape.shortName(sns=True)
+            fileName = "{}_on_{}_weights.xml".format(deformerNameNoNs,
+                                                     shapeNameNoNs)
+            filePath = parentDir / fileName
+            self._archiveDumpShapeXMLWeights(filePath, shape)
+
+        return {'infoFilePath': infoFilePath,
+                'info': infoContent,
+                'dumpedShapes': shapes}
 
     @classmethod
-    @short(method='m')
+    def _applyReplacerToArchiveMacro(cls,
+                                     replacer:Callable,
+                                     macro:dict) -> None:
+        """
+        The *replacer* is a one-shot function that pre-applies any substitutions
+        defined in the ``remap`` argument for ``deformerWeights()``.
+
+        This method should be implemented by the subclasses to edit the macro
+        in-place, updating any relevant string content (e.g. references to
+        influences, targets, geometry, deformers, etc).
+
+        :param replacer: the string-substitution callable
+        :param macro: the deformer macro loaded from the 'info' file in the
+            deformer archive
+        :return: None. This is an in-place operation.
+        """
+        pass
+
+    def _loadWeightsFromArchive(self,
+                                info:dict,
+                                infoFilePath:Path, *,
+                                method='index',
+                                remap=None):
+        """
+        Extend / overload this for sidecar weight loading (e.g. for skinCluster
+        blend weights).
+        """
+        if not remap:
+            remap = []
+
+        _self = str(self)
+        specDeformerName = info['deformerName']
+
+        if specDeformerName != _self:
+            remap.append(r'^'+specDeformerName+'$;'+_self)
+
+        if remap:
+            replacer = _xw.remapToReplacer(remap)
+
+        pdir = infoFilePath.parent
+        xmlKwargs = {'method': method}
+
+        if remap:
+            xmlKwargs['remap'] = remap
+
+        for shapeName, shapeInfo in info.get('shapeInfos', {}).items():
+            xmlFileName = shapeInfo['xmlWeights']
+            xmlFilePath = pdir / xmlFileName
+
+            if remap:
+                shapeName = replacer(shapeName)
+
+            if xmlFilePath.is_file():
+                try:
+                    _xw.load(xmlFilePath,
+                             shape=shapeName,
+                             deformer=_self,
+                             **xmlKwargs)
+                    print("Loaded: {}".format(xmlFileName))
+                except Exception as e:
+                    m.warning(
+                        "Couldn't load XML weights from {}: {}".format(
+                            xmlFileName,
+                            e
+                        )
+                    )
+
+    def loadWeightsFromArchive(self,
+                               infoFilePath:Union[str, Path], *,
+                               method:Literal[
+                                   'index', 'nearest', 'barycentric',
+                                   'bilinear', 'over'
+                               ]='index',
+                               remap:Optional[Union[str, Iterable[str]]]=None):
+        infoFilePath = Path(infoFilePath)
+
+        with open(infoFilePath, 'r', encoding='utf-8') as f:
+            data = f.read()
+
+        data = json.loads(data)
+
+        self._loadWeightsFromArchive(data,
+                                     infoFilePath,
+                                     method=method,
+                                     remap=remap)
+
+    @classmethod
+    @short(method='m', remap='r', loadWeights='lw')
     def createFromArchive(cls,
-                          infoFile:Union[str, Path],
+                          infoFilePath:Union[str, Path],
                           method:Literal[
                               'index', 'nearest', 'barycentric',
                               'bilinear', 'over'
-                          ]='index'):
+                          ]='index',
+                          remap:Optional[Union[str, Iterable[str]]]=None,
+                          loadWeights:bool=True,
+                          **createFromMacroKwargs) -> dict:
         """
-        Recreates a deformer using the type of archive produced using
-        :meth:`dumpArchive`.
+        How to format *remap* argument
+        ------------------------------
+        Provide this as a list of strings. Each string should be formatted
+        like this:
 
-        :param infoFile: the archive info file (see :meth:`dumpArchive`)
-        :param method/m: the weight-loading method (one of 'index', 'nearest',
-            'barycentric', 'bilinear' or 'over'); defaults to 'index'
+        ```
+        <regex>;<replace>
+        ```
+        Use ``$1``, ``$2`` to refer to capture groups in the regex (1-based).
+        For example, to replace the namespace 'banana' with 'apple' everywhere:
+
+        ```
+        banana:(.*);apple:($1)
+        ```
+
+        Which will have a result of:
+        ```
+        banana:joint1 -> apple:joint1
+        etc.
+        ```
+
+        :param remap/r: forwarded to ``deformerWeights``, and also parsed to
+            update the deformer macro (where the class implementation
+            supports it)
         """
-        infoFile = Path(infoFile)
-        with open(infoFile, 'r', encoding='utf-8') as f:
-            _data = f.read()
+        #--------------|    Load the archive info
 
-        info = json.loads(_data)
+        infoFilePath = Path(infoFilePath)
 
-        macro = info['macro']
-        builderClass = nodes[cap(info['nodeType'])]
+        with open(infoFilePath, 'r', encoding='utf-8') as f:
+            info = f.read()
 
-        inst = builderClass.createFromMacro(macro)
+        info = json.loads(info)
 
-        if 'geometries' in info:
-            for transform, shape in info['geometries']:
-                xmlFileName = '{}_on_{}.xml'.format(
-                    info['name'].split(':')[-1],
-                    shape
-                )
-                xmlFilePath = infoFile.parent / xmlFileName
+        #--------------|    Ask subclass to update the macro
 
-                if xmlFilePath.is_file():
-                    inst.loadWeights(xmlFilePath, shape=shape, method=method)
+        deformerMacro = info['deformerMacro']
 
-        return inst
+        if remap:
+            remap = _xw.expandRemapArg(remap)
+            replacer = _xw.remapToReplacer(remap)
+            cls._applyReplacerToArchiveMacro(replacer, deformerMacro)
+        else:
+            remap = []
 
-    def dumpArchive(self, directory:Union[str, Path]):
-        """
-        Dumps the following files into *directory*:
-            <deformer_name>_archive_info.json
-            <deformer_name>_on_<shape_name>.xml
-            <deformer_name>_on_<shape_name>.xml...
-        """
-        shapes = list(self.shapes)
+        #--------------|    Use the macro to recreate the deformer
 
-        archiveInfo = {'macro': self.macro(),
-                       'nodeType': self.__melnode__,
-                       'name': str(self),
-                       'description': 'single deformer archive'}
+        deformer = cls.createFromMacro(deformerMacro, **createFromMacroKwargs)
+        finalDeformerName = str(deformer)
 
-        if shapes:
-            archiveInfo['geometries'] = [(shape.parent.shortName(),
-                                          shape.shortName())
-                                         for shape in shapes]
+        #--------------|    If final deformer name is different, update the XML
+        #--------------|    spec
 
-        directory = Path(directory)
-        shortName = self.shortName(sns=True)
-        infoFileName = '{}_archive_info.json'.format(shortName)
-        infoFilePath = directory / infoFileName
+        specDeformerName = info['deformerName']
 
-        _data = json.dumps(archiveInfo, indent=4)
+        if finalDeformerName != specDeformerName:
+            remap.append(r'^'+specDeformerName+r'$;'+finalDeformerName)
 
-        with open(infoFilePath, 'w', encoding='utf-8') as f:
-            f.write(_data)
+            # Update it even if we don't use it later, in case we want to pass
+            # it along
+            replacer = _xw.remapToReplacer(remap)
 
-        kwargs = {}
+        #--------------|    Load weights
 
-        if self.__archive_extra_attrs__:
-            kwargs['attribute'] = self.__archive_extra_attrs__
+        if loadWeights:
+            deformer._loadWeightsFromArchive(info,
+                                             infoFilePath,
+                                             method=method,
+                                             remap=remap)
 
-        for shape in shapes:
-            xmlFileName = '{}_on_{}.xml'.format(shortName,
-                                                shape.shortName(sns=True))
-            xmlFilePath = directory / xmlFileName
+        return deformer
 
-            self.dumpWeights(xmlFilePath,
-                             shape=shape,
-                             vertexConnections=True,
-                             **kwargs)
+        # pdir = infoFilePath.parent
+        # xmlKwargs = {'method': method}
+        #
+        # if remap:
+        #     xmlKwargs['remap'] = remap
+        #
+        # for shapeName, shapeInfo in info.get('shapeInfos', {}).items():
+        #     if remap:
+        #         shapeName = replacer(shapeName)
+        #
+        #     xmlArgs = (pdir / shapeInfo['xmlWeights'],)
+        #     theseXmlKwargs = xmlKwargs.copy()
+        #     theseXmlKwargs['deformer'] = finalDeformerName
+        #     theseXmlKwargs['shape'] = shapeName
+        #
+        #     _xw.load(*xmlArgs, **theseXmlKwargs)
 
-        print(f"Dumped archive for deformer '{shortName}' into: {directory}")
+
+    # @classmethod
+    # def _createFromArchive(cls,
+    #                        info:dict,
+    #                        infoFilePath:Path,
+    #                        method:Literal[
+    #                            'index', 'nearest', 'barycentric',
+    #                            'bilinear', 'over'
+    #                        ]='index',
+    #                        ignoreChannelNames:bool=False,
+    #                        remapChannelNames:Optional[dict]=None,
+    #                        ignoreShapeNames:bool=False,
+    #                        remapShapeNames:Optional[dict]=None,
+    #                        **createFromMacroKwargs) -> dict:
+    #
+    #     #-----------------|    Re-initialize the deformer
+    #
+    #     node = cls.createFromMacro(info['macro'], **createFromMacroKwargs)
+    #
+    #     #-----------------|    Gather per-shape weight sourcing information
+    #
+    #     sceneShapes = list(node.shapes)
+    #     _sceneShapes = [x.shortName() for x in sceneShapes]
+    #     sceneTransforms = [x.parent for x in sceneShapes]
+    #     _sceneTransforms = [x.shortName() for x in sceneTransforms]
+    #
+    #     weightSpecs = []
+    #     pdir = infoFilePath.parent
+    #
+    #     for i, _infoShape in enumerate(info.get('shapeOrder', [])):
+    #         xmlFileName = info['shapeInfos'][_infoShape]['xmlWeights']
+    #         xmlFilePath = pdir / xmlFileName
+    #
+    #         if not xmlFilePath.is_file():
+    #             continue
+    #
+    #         """
+    #         Match the shape in the info to one of the shapes on the defoerm.
+    #
+    #         If ignoreShapeNames is True:
+    #             resolvedShapeName = _sceneShapes[i]
+    #         else:
+    #             if remapShapeNames:
+    #                 resolvedShapeName = remapShapeNames[_infoShape] etc.
+    #         """
+    #         _resolvedSceneShapeName = None
+    #
+    #         if ignoreShapeNames:
+    #             _resolvedSceneShapeName = _sceneShapes[i]
+    #         else:
+    #             if remapShapeNames:
+    #                 _remapped = remapShapeNames.get(_infoShape, _infoShape)
+    #
+    #                 if _remapped in _sceneShapes:
+    #                     _resolvedSceneShapeName = _remapped
+    #             else:
+    #                 if _infoShape in _sceneShapes:
+    #                     _resolvedSceneShapeName = _infoShape
+    #                 else:
+    #                     # Attempt to salvage
+    #                     _infoTransform = info[
+    #                         'shapeInfos'][_infoShape]['transform']
+    #
+    #                     if _infoTransform in _sceneTransforms:
+    #                         sceneTransform = sceneTransforms[
+    #                             _sceneTransforms.index(_infoTransform)
+    #                         ]
+    #
+    #                         shape = sceneTransform.getShape()
+    #
+    #                         if isinstance(shape, nodes['DeformableShape']):
+    #                             _resolvedSceneShapeName = str(shape)
+    #
+    #         if _resolvedSceneShapeName is None:
+    #             m.warning(
+    #                 "No scene match for '{}', skipping".format(_infoShape)
+    #             )
+    #
+    #         thisSpec = {'infoName': _infoShape,
+    #                     'sceneName': _resolvedSceneShapeName,
+    #                     'xmlFilePath': xmlFilePath}
+    #
+    #         weightSpecs.append(thisSpec)
+    #
+    #     #-----------------|    Cook full XML kwargs
+    #
+    #     xmlKwargs = {'method': method}
+    #     remapsDict = {}
+    #
+    #     if ignoreChannelNames:
+    #         xmlKwargs['ignoreName'] = True
+    #
+    #     elif remapChannelNames:
+    #         remapsDict.update(remapChannelNames)
+    #
+    #     for shapeSpec in weightSpecs:
+    #         infoName = shapeSpec['infoName']
+    #         sceneName = shapeSpec['sceneName']
+    #
+    #         if infoName != sceneName:
+    #             remapsDict[infoName] = sceneName
+    #
+    #     currentDeformerName = str(node)
+    #
+    #     if currentDeformerName != info['name']:
+    #         remapsDict[info['name']] = currentDeformerName
+    #
+    #     if remapsDict:
+    #         xmlKwargs['remap'] = [';'.join((k, v))
+    #                               for k, v in remapsDict.items()]
+    #
+    #     #-----------------|    Load weights
+    #
+    #     for weightSpec in weightSpecs:
+    #         try:
+    #             _xw.load(weightSpec['xmlFilePath'],
+    #                      deformer=currentDeformerName,
+    #                      shape=weightSpec['sceneName'],
+    #                      **xmlKwargs)
+    #
+    #         except Exception as e:
+    #             m.warning("Weight load for '{}' on '{}' failed: {}".format(
+    #                 currentDeformerName,
+    #                 weightSpec['sceneName'],
+    #                 str(e)
+    #             ))
+    #
+    #     #-----------------|    Return some info for overloads
+    #
+    #     return {'xmlKwargs': xmlKwargs,
+    #             'remapsDict': remapsDict,
+    #             'info': info,
+    #             'weightSpecs': weightSpecs,
+    #             'node': node}
+
+    # @classmethod
+    # @short(method='m',
+    #        ignoreChannelNames='icn',
+    #        ignoreShapeNames='isn',
+    #        remapShapeNames='rsn',
+    #        remapChannelNames='rcn')
+    # def createFromArchive(cls,
+    #                       infoFile:Union[str, Path],
+    #                       method:Literal[
+    #                           'index', 'nearest', 'barycentric',
+    #                           'bilinear', 'over'
+    #                       ]='index',
+    #                       ignoreChannelNames:bool=False,
+    #                       remapChannelNames:Optional[dict]=None,
+    #                       ignoreShapeNames:bool=False,
+    #                       remapShapeNames:Optional[dict]=None,
+    #                       **createFromMacroKwargs) -> dict:
+    #     """
+    #     :param method/m: the XML loading method; one of 'index', 'nearest',
+    #         'barycentric', 'bilinear' or 'over'; defaults to 'index'
+    #     :param ignoreChannelNames/icn: ignore names of influences, blend shape
+    #         aliases etc. and map by index instead; defaults to False
+    #     :param ignoreShapeNames/isn: if the number of dumped shapes is the same
+    #         as the number of deformed shapes, map by index instead; defaults to
+    #         False
+    #     :param remapChannelNames/rcn: ignored if *ignoreChannelNames* is True;
+    #         an optional dictionary of ``XML name: scene name`` for channel names
+    #         (e.g. joints or blendShape aliases)
+    #     :param remapShapeNames/rsn: ignored if *ignoreShapeNames* is True;
+    #         an optional dictionary of ``XML name: scene name`` for shape names
+    #     :param \*\*createFromMacroKwargs: forwarded to this type's
+    #         :meth:`createFromMacro` class method
+    #     """
+    #     #-----------------|    Read the info file
+    #
+    #     infoFile = Path(infoFile)
+    #
+    #     with open(infoFile, 'r', encoding='utf-8') as f:
+    #         _data = f.read()
+    #
+    #     info = json.loads(_data)
+    #
+    #     result = cls._createFromArchive(info,
+    #                                     infoFile,
+    #                                     method=method,
+    #                                     ignoreChannelNames=ignoreChannelNames,
+    #                                     remapChannelNames=remapChannelNames,
+    #                                     ignoreShapeNames=ignoreShapeNames,
+    #                                     remapShapeNames=remapShapeNames,
+    #                                     **createFromMacroKwargs)
+    #
+    #     return result['node']
+
+    # def _resolveArchiveShapesWorklist(
+    #         self, shapes=None) -> list['nodes.DeformableShape']:
+    #     ourShapes = list(self.shapes)
+    #
+    #     if shapes:
+    #         shapes = expand_tuples_lists(shapes)
+    #         shapes = (nodes['DagNode'](x).toShape() for x in shapes)
+    #         shapes = without_duplicates(shapes)
+    #         shapes = (x for x in shapes if x is not None and x in ourShapes)
+    #         shapes = list(shapes)
+    #     else:
+    #         shapes = ourShapes
+    #
+    #     return shapes
+    #
+    # def _generateArchiveInfo(self) -> dict:
+    #     ourName = self.shortName()
+    #     out = {'name': ourName, 'macro': self.macro()}
+    #
+    #     shapeInfos = {}
+    #     shapeOrder = []
+    #     ourNameNoNs = ourName.split(':')[-1]
+    #
+    #     for shape in self.shapes:
+    #         shapeName = shape.shortName()
+    #         shapeNameNoNs = shapeName.split(':')[-1]
+    #
+    #         info = {'shape': shapeName,
+    #                 'transform': shape.parent.shortName()}
+    #
+    #         info['xmlWeights'] = '{}_on_{}.xml'.format(ourNameNoNs,
+    #                                                    shapeNameNoNs)
+    #
+    #         shapeInfos[shapeName] = info
+    #         shapeOrder.append(shapeName)
+    #
+    #     if shapeOrder:
+    #         out['shapeOrder'] = shapeOrder
+    #         out['shapeInfos'] = shapeInfos
+    #
+    #     return out
+
+    # def _getArchiveDumpWeightsKwargs(self) -> dict:
+    #     return {'vertexConnections': True}
+    #
+    # def dumpArchive(self,
+    #                 parentDir:Union[str, Path],
+    #                 shapes:Optional[
+    #                     Union[
+    #                         'nodes.DagNode',
+    #                         Iterable['nodes.DagNode']
+    #                     ]
+    #                 ]=None, /) -> dict:
+    #
+    #     #----------|    Resolve parent dir
+    #
+    #     parentDir = Path(parentDir)
+    #
+    #     if not parentDir.is_dir():
+    #         raise FileNotFoundError(
+    #             'parent directory does not exist: {}'.format(parentDir)
+    #         )
+    #
+    #     #----------|    Dump info
+    #
+    #     infoFileName = '{}_info.json'.format(self.shortName(sns=True))
+    #     info = self._generateArchiveInfo()
+    #     jinfo = json.dumps(info, indent=4)
+    #
+    #     infoFilePath = parentDir / infoFileName
+    #
+    #     with open(infoFilePath, 'w', encoding='utf-8') as f:
+    #         f.write(jinfo)
+    #
+    #     print("Wrote: {}".format(infoFilePath))
+    #
+    #     #----------|    Dump weights
+    #
+    #     ourNameNoNs = self.shortName(sns=True)
+    #     dumpWeightsKwargs = self._getArchiveDumpWeightsKwargs()
+    #     shapesToDump = self._resolveArchiveShapesWorklist(shapes)
+    #
+    #     for shape in shapesToDump:
+    #         shapeNameNoNs = shape.shortName(sns=True)
+    #         xmlFileName = '{}_on_{}.xml'.format(ourNameNoNs, shapeNameNoNs)
+    #         xmlFilePath = parentDir / xmlFileName
+    #         self.dumpWeights(xmlFilePath, **dumpWeightsKwargs)
+    #         print("Wrote: {}".format(xmlFilePath))
+    #
+    #     return {'info': info,
+    #             'dumpedShapes': shapesToDump,
+    #             'parentDir': parentDir}
 
     #-------------------------------------|    Name
 
