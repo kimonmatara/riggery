@@ -1,10 +1,10 @@
+import json
 from copy import deepcopy
 import re
 import os
-import shutil
 from tempfile import gettempdir
 from pathlib import Path
-from typing import Literal, Union, Iterator, Optional, Iterable
+from typing import Literal, Union, Iterator, Optional, Iterable, Callable
 import xml.etree.ElementTree as ET
 
 from ..nodetypes import __pool__ as nodes
@@ -554,6 +554,33 @@ class SkinCluster(GeometryFilter):
 
         return self
 
+    #-------------------------------------|    Blend shapes
+
+    def invertShape(
+            self,
+            sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform']
+    ) -> 'nodes.Shape':
+        """
+        :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
+            currently at
+        :return: a reversed version of the sculpted geo, that can be used as a
+            pre-bind blend shape
+        """
+        thisShape = next(self.shapes)
+        xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
+
+        if _nm.Name.__elems__:
+            xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
+        else:
+            xform.name = "{}_inversion_{}".format(
+                thisShape.parent.shortName(sts=True),
+                thisShape.__typesuffix__
+            )
+
+        xform.assignDefaultShader()
+
+        return xform
+
     #-------------------------------------|    Weights
 
     def pruneWeightsBelow(self, threshold:float):
@@ -684,94 +711,62 @@ class SkinCluster(GeometryFilter):
         os.remove(tempfile)
         return self
 
-    def _padBlendWeights(self):
-        # Set any missing array indices on ``.blendWeights`` to 0.0. This is a
-        # workaround for the following bug:
-        #
-        # When the ``.blendWeights`` array is sparsely populated, dumping and
-        # reloading the attribute via :func:`deformerWeights` results in wrong
-        # index mapping.
-
-        plug = self.attr('blendWeights')
-        indices = plug.indices()
-        shape = next(self.shapes)
-        numVertices = shape.numVertices()
-
-        missingIndices = list(sorted(set(range(numVertices))-set(indices)))
-
-        _plug = str(plug)
-
-        for index in missingIndices:
-            m.setAttr('{}[{}]'.format(_plug, index), 0.0)
-
-        return missingIndices
-
-    @short(
-        remap='r',
-        vertexConnections='vc',
-        weightTolerance='wt',
-        weightPrecision='wp',
-        shape='sh',
-        attribute='at',
-        defaultValue='dv'
-    )
-    def dumpWeights(
-            self,
-            filepath:Union[str, Path],
-            shape:Optional[Union[
-                str,
-                list[str],
-                'nodes.DeformableShape',
-                list['nodes.DeformableShape']]]=None,
-            remap:Optional[str]=None,
-            vertexConnections:bool=False,
-            weightPrecision:int=3,
-            weightTolerance:float=0.001,
-            attribute:Optional[Union[
-                str,
-                list[str],
-                'plugs.Attribute',
-                list['plugs.Attribute']
-            ]]=None,
-            defaultValue:Optional[Union[int, float]]=None,
-            includeBlendWeights:bool=True):
+    def dumpBlendWeights(self, jsonFilePath:Union[str, Path]):
         """
-        Overrides
-        :meth:`riggery.core.nodetypes.geometryFilter.GeometryFilter.dumpWeights`
-        to include DQ blend weights by default, and to work around this bug:
-
-        When the ``.blendWeights`` array on a skinCluster is sparsely populated
-        (as is typically the case), dumping and reloading it via
-        ``deformerWeights(at='blendWeights')`` results in a wrong index mapping.
+        At the moment this can only be done by-index.
         """
-        kwargs = {}
+        jsonFilePath = Path(jsonFilePath).with_suffix('.json')
+        parentDir = jsonFilePath.parent
 
-        if includeBlendWeights:
-            if attribute is None:
-                attribute = []
-            else:
-                attribute = list(expand_tuples_lists(attribute))
+        if not parentDir.is_dir():
+            raise FileNotFoundError(
+                "parent directory doesn't exist: {}".format(parentDir)
+            )
 
-            attribute.append('blendWeights')
-            indicesToRemove = self._padBlendWeights()
+        # Gather the data
+        _self = str(self)
 
-            kwargs['at'] = attribute
+        indices = m.getAttr(f'{_self}.blendWeights', multiIndices=True)
 
-        nodes['GeometryFilter'].dumpWeights(self,
-                                            filepath,
-                                            sh=shape,
-                                            r=remap,
-                                            vc=vertexConnections,
-                                            wp=weightPrecision,
-                                            wt=weightTolerance,
-                                            dv=defaultValue,
-                                            **kwargs)
+        if indices:
+            weights = m.getAttr(f'{_self}.blendWeights')[0]
 
-        if includeBlendWeights:
-            _plug = '{}.blendWeights'.format(self)
+            indices, weights = zip(*((i, w) for i, w in zip(indices, weights)
+                                     if w > 0.0))
 
-            for index in indicesToRemove:
-                m.removeMultiInstance('{}[{}]'.format(_plug, index))
+            data = {'indices': indices, 'weights': weights}
+
+        else:
+            data = {}
+
+        _data = json.dumps(data, indent=4)
+
+        with open(jsonFilePath, 'w', encoding='utf-8') as f:
+            f.write(_data)
+
+        print("Wrote: {}".format(jsonFilePath))
+
+    def loadBlendWeights(self, jsonFilePath:Union[str, Path]):
+        """
+        At the moment this can only be done by-index.
+        """
+        jsonFilePath = Path(jsonFilePath)
+
+        with open(jsonFilePath, 'r', encoding='utf-8') as f:
+            data = f.read()
+
+        data = json.loads(data)
+
+        print("Loaded: {}".format(jsonFilePath))
+
+        indices = data['indices']
+        weights = data['weights']
+
+        self.attr('blendWeights').clearMulti()
+        _self = str(self)
+
+        for index, weight in zip(indices, weights):
+            m.setAttr(f'{_self}.blendWeights[{index}]', weight)
 
         return self
 
@@ -1018,27 +1013,58 @@ class SkinCluster(GeometryFilter):
 
         return inst
 
-    def invertShape(
-            self,
-            sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform']
-    ) -> 'nodes.Shape':
+    @classmethod
+    def _applyReplacerToArchiveMacro(cls,
+                                     replacer:Callable,
+                                     macro:dict) -> None:
+        if 'influence' in macro: # edge cases
+            macro['influence'][:] = map(replacer, macro['influence'])
+
+        for key in ('name', 'geoShape', 'geoTransform'):
+            macro[key] = replacer(macro[key])
+
+    def _loadWeightsFromArchive(self,
+                                info:dict,
+                                infoFilePath:Path, *,
+                                method='index',
+                                remap=None):
         """
-        :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
-            currently at
-        :return: a reversed version of the sculpted geo, that can be used as a
-            pre-bind blend shape
+        Extends
+        :meth:`~riggery.core.nodetypes.geometryFilter.GeometryFilter._loadWeightsFromArchive`
+        to load side-car blend weights, where available.
         """
-        thisShape = next(self.shapes)
-        xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
+        result = super()._loadWeightsFromArchive(info,
+                                                 infoFilePath,
+                                                 method=method,
+                                                 remap=remap)
 
-        if _nm.Name.__elems__:
-            xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
-        else:
-            xform.name = "{}_inversion_{}".format(
-                thisShape.parent.shortName(sts=True),
-                thisShape.__typesuffix__
-            )
+        fileName = '{}_blendWeights.json'.format(info['deformerName'])
+        filePath = infoFilePath.parent / fileName
 
-        xform.assignDefaultShader()
+        if filePath.is_file():
+            if method == 'index':
+                self.loadBlendWeights(filePath)
+            else:
+                m.warning(
+                    "Can't read blend weights from {}:".format(fileName)+
+                    " only supported for 'index' method"
+                )
 
-        return xform
+    def dumpArchive(self,
+                    parentDir:Union[str, Path],
+                    shapes:Optional[
+                        Union[
+                            'nodes.DagNode',
+                            Iterable['nodes.DagNode']
+                        ]
+                    ]=None, /) -> dict:
+        result = super().dumpArchive(parentDir, shapes)
+
+        _self = str(self)
+
+        if m.getAttr(f'{_self}.blendWeights', multiIndices=True):
+            fileName = '{}_blendWeights.json'.format(_self)
+            filePath = result['infoFilePath'].parent / fileName
+            self.dumpBlendWeights(filePath)
+
+        return result
