@@ -770,6 +770,57 @@ class SkinCluster(GeometryFilter):
 
         return self
 
+    def mirrorCopy(self, destGeo=None, /):
+        # Resolve dest geo
+
+        if destGeo is None:
+            destGeo = next(self.shapes).parent.findOppositeNodeByName()
+
+            if destGeo is None:
+                raise RuntimeError("couldn't resolve destination geo")
+        else:
+            destGeo = nodes['DagNode'](destGeo)
+
+        # Resolve destination influences
+        destInfl = []
+
+        srcInfl = list(self.influence)
+
+        for srcJoint in self.influence:
+            oppJoint = srcJoint.findOppositeNodeByName()
+
+            if oppJoint is None:
+                if not re.match(r"^[LR]_.*$", srcJoint.shortName()):
+                    destInfl.append(srcJoint)
+            else:
+                destInfl.append(oppJoint)
+
+        # Remove any skinCluster on destination
+        existing = next(SkinCluster.fromGeo(destGeo), None)
+
+        if existing is not None:
+            m.delete(str(existing))
+
+        # Rebind destination
+        args = destInfl + [destGeo]
+        destSkin = SkinCluster.create(*args).renameFromGeo()
+
+        # Copy weights with mirroring and auto
+        allInfl = srcInfl + destInfl
+        states = {infl: infl.autoLabel() for infl in allInfl}
+
+        m.copySkinWeights(ss=str(self), ds=str(destSkin),
+                          ia=['label', 'oneToOne'],
+                          mm='YZ',
+                          spa=0,
+                          sa='closestComponent')
+
+        # Restore joint labels
+        for joint, state in states.items():
+            joint.setLabelState(state)
+
+        return destSkin
+
     @short(name='n',
            replace='rep',
            sourceUVSet='suv',
@@ -1068,3 +1119,20 @@ class SkinCluster(GeometryFilter):
             self.dumpBlendWeights(filePath)
 
         return result
+
+    #-------------------------------------|    Granular weight management
+
+    def getWeightsByChannelIndex(self, index:int) -> list[float]:
+        ...
+
+    def iterWeightChannelNames(self) -> Iterator[str]:
+        out = m.skinCluster(str(self), q=True, influence=True)
+
+        if out:
+            yield from out
+
+    def numWeightChannels(self) -> int:
+        return len(list(self.iterWeightChannelNames()))
+
+    def iterWeightChannelIndices(self) -> Iterator[int]:
+        yield from range(self.numWeightChannels())
