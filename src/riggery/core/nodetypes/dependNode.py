@@ -73,14 +73,6 @@ class Section:
     def exists(self) -> bool:
         return _reo.hasSection(str(self._node), self._name)
 
-    def attr(self, quiet:bool=False) -> Optional['plugs.Enum']:
-        try:
-            return self._node.attr(self._name)
-        except AttributeError as exc:
-            if quiet:
-                return None
-            raise exc
-
     #-------------------------------------|    Get members
 
     def __contains__(self, item:Union['plugs.Attribute', str]):
@@ -800,6 +792,17 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     def __getattr__(self, item):
         return self.attr(item)
+
+    def reorderAttrs(self,
+                     *attrNames,
+                     expandSections:bool=False) -> list['plugs.Attribute']:
+        attrNames = list(without_duplicates(expand_tuples_lists(*attrNames)))
+
+        if attrNames:
+            _reo.reorder(str(self), attrNames, expandSections=expandSections)
+            return [self.attr(attrName) for attrName in attrNames]
+
+        return []
 
     @_ci.useCmdFlags('listAttr',
                      skip=['fullNodeName',
