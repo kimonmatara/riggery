@@ -564,26 +564,6 @@ class BlendShape(WeightGeometryFilter):
 
     #---------------------------|    Constructors
 
-    # @short()
-    # def recreateWithRetarget(self, newBase, keepTargets:bool=False):
-    #     """
-    #     This only works with 'pre' deformation, simple blend shapes. Check this
-    #     first and bug out with ImplementationError otherwise.
-    #
-    #     Recreate all input geometries as temporary objects
-    #     Duplicate the original base. Call it 'blendSource'. Assign the targets,
-    #     delete them. Make sure they're all at 0.0.
-    #
-    #     Make a duplicate of 'blendSource'. Call it 'generator base' or
-    #     something. Drive the 'generatorBase' using 'blendSource' with a wrap.
-    #
-    #     Cycle through the targets and duplicate the driven 'generatorBase'
-    #     to create new targets.
-    #
-    #     Clean up all junk. Create a new blend shape on 'newBase' and assign the
-    #     newly generated targets to it, with careful naming.
-    #     """
-
     @classmethod
     @short(name='n')
     def create(cls,
@@ -671,6 +651,12 @@ class BlendShape(WeightGeometryFilter):
         -   Only implemented for meshes
         -   Intended for topology transfers, so *newBase* must have a similar
             shape to the current base (uses proximityWrap)
+
+        To-Dos
+        ------
+
+        -   Implement for non-mesh types too
+        -   Implement a 'byUV' option
 
         :param newBase: the base shape for which to create the targets
         :param targetIndices: an optional list of target indices to include;
@@ -846,7 +832,7 @@ class BlendShape(WeightGeometryFilter):
 
             for tweenRatio in targetSpec.get('tweenRatios', []):
                 target.weight.set(tweenRatio)
-                pc = str(tweenRatio * 100).zfill(3)
+                pc = str(int(tweenRatio * 100)).zfill(3)
                 name = '{}_{}'.format(targetSpec['alias'], pc)
                 tweens[tweenRatio] = tweenGeo = wrapSlave.duplicate()[0]
                 tweenGeo.show()
