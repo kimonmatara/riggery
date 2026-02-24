@@ -80,13 +80,79 @@ class NurbsSurface(SurfaceShape):
         """
         return self.__apimfn__().formInV
 
-    def degreeInU(self) -> 3:
+    def degreeInU(self) -> int:
         return self.__apimfn__().degreeInU
 
-    def degreeInV(self) -> 3:
+    def degreeInV(self) -> int:
         return self.__apimfn__().degreeInV
 
+    @short(visible='v')
+    def numCVsInU(self, visible:bool=False) -> int:
+        """
+        :param visible/v: accounts for periodic form and subtracts the number of
+            invisible 'overlap' CVs; defaults to False
+        """
+        out = self.__apimfn__().numCVsInU
+
+        if visible:
+            if self.formInU() == 3:
+                out -= self.degreeInU()
+
+        return out
+
+    @short(visible='v')
+    def numCVsInV(self, visible:bool=False) -> int:
+        """
+        :param visible/v: accounts for periodic form and subtracts the number of
+            invisible 'overlap' CVs; defaults to False
+        """
+        out = self.__apimfn__().numCVsInV
+
+        if visible:
+            if self.formInV() == 3:
+                out -= self.degreeInV()
+
+        return out
+
+    def cvUVIndexToFlatIndex(self, uIndex:int, vIndex:int) -> int:
+        """
+        Given a standard U, V CV index, returns a flat CV index (e.g. as on
+        ``surfaceInfo.controlPoints`` arrays).
+        """
+        return (uIndex * self.numCVsInV()) + vIndex
+
+    def cvFlatIndexToUVIndex(self, flatIndex:int) -> tuple[int, int]:
+        """
+        Given a flat CV index (e.g. as on ``surfaceInfo.controlPoints`` arrays),
+        returns the U, V index.
+        """
+        numCVsV = self.numCVsInV()
+        u = flatIndex // numCVsV
+        v = flatIndex % numCVsV
+        return (u, v)
+
     #-------------------------------------|    Misc sampling
+
+    @short(plug='p',
+           worldSpace='ws')
+    def pointAtCV(self,
+                  uIndex:int,
+                  vIndex:int,
+                  plug:bool=False,
+                  worldSpace:bool=False):
+        if plug:
+            if worldSpace:
+                output = self.attr('worldSpace')[0]
+            else:
+                output = self.attr('local')
+
+            return output.info().attr(
+                'controlPoints')[self.cvUVIndexToFlatIndex(uIndex, vIndex)]
+
+        return _data['Point'](m.pointPosition(
+            '{}.cv[{}][{}]'.format(self, uIndex, vIndex),
+            world=worldSpace
+        ))
 
     # @short(minU='mnu',
     #        maxU='mxu',
