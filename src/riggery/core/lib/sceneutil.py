@@ -116,6 +116,8 @@ def stripdown(*nodes) -> list[str]:
 
     nodes = without_duplicates(map(str, expand_tuples_lists(*nodes)))
 
+    print('the nodes will be ', nodes)
+
     if not nodes:
         raise ValueError('No nodes specified')
 
@@ -162,7 +164,7 @@ def stripdown(*nodes) -> list[str]:
 
     for node in nodes:
         matches = m.ls(node)
-        print("matches for {node}: ".format(node))
+        print(f"matches for {}: ".format(node))
         print(matches)
 
         numMatches = len(matches)
