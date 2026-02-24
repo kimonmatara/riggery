@@ -1,6 +1,11 @@
+import os
+from pathlib import Path
+from tempfile import gettempdir
+
 import maya.cmds as m
 import maya.mel as mel
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from .selection import keepsel
 
 mel.eval('source MLdeleteUnused')
 
@@ -96,3 +101,78 @@ def removeUnusedShaders():
     command, may break if Autodesk changes the MEL codebase.
     """
     mel.eval('MLdeleteUnused')
+
+#-------------------------------------------------|
+#-------------------------------------------------|    Stripdown
+#-------------------------------------------------|
+
+@keepsel
+def stripdown(*nodes) -> list[str]:
+    """
+    :raises ValueError: no nodes specified
+    :return: The resolved partial DAG paths.
+    """
+    sceneName = m.file(sceneName=True, q=True)
+
+    nodes = without_duplicates(map(str, expand_tuples_lists(*nodes)))
+
+    if not nodes:
+        raise ValueError('No nodes specified')
+
+    tmpDir = Path(gettempdir())
+    index = 0
+
+    while True:
+        basename = 'mayaStripDownTmp'
+        if index > 0:
+            basename += '_'+str(index)
+        filename = basename + '.mb'
+        filepath = tmpDir / filename
+
+        if filepath.is_file():
+            index += 1
+            continue
+        break
+
+    m.select(nodes, replace=True)
+
+    m.file(filepath.as_posix(),
+           force=True,
+           options='v=0;',
+           typ='mayaBinary',
+           es=True)
+
+    m.file(newFile=True, force=True)
+
+    if sceneName:
+        m.file(rename=sceneName)
+
+    m.file(filepath.as_posix(),
+           i=True,
+           typ='mayaBinary',
+           ignoreVersion=True,
+           mergeNamespacesOnClash=False,
+           rpr='stripdown',
+           options='v=0;',
+           pr=True)
+
+    os.remove(filepath)
+
+    out = []
+
+    for node in nodes:
+        matches = m.ls(node)
+
+        numMatches = len(matches)
+
+        if numMatches > 0:
+            out.append(matches[0])
+        else:
+            if '|' in node:
+                node = node.split('|')[-1]
+                matches = m.ls(node)
+                numMatches = len(matches)
+
+                if numMatches > 0:
+                    out.append(matches[0])
+    return out
