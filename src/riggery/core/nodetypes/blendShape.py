@@ -192,6 +192,21 @@ class Target:
 
     #---------------------------|    Weight
 
+    def solo(self) -> 'Target':
+        """
+        Sets this target to 1.0 and all other targets to 0.0.
+
+        This is a 'soft' implementation. It will fail loudly if the weight plug
+        is locked or connected.
+        """
+        node = self.node()
+        weightIndices = node.attr('weight').indices()
+
+        for index in weightIndices:
+            node.attr('weight')[index].set(1.0 if index == self.index else 0.0)
+
+        return self
+
     @property
     def weight(self):
         """:return: The corresponding ``weight`` input."""
