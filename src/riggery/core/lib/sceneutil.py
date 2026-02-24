@@ -164,7 +164,7 @@ def stripdown(*nodes) -> list[str]:
 
     for node in nodes:
         matches = m.ls(node)
-        print(f"matches for {}: ".format(node))
+        print("matches for {}: ".format(node))
         print(matches)
 
         numMatches = len(matches)
