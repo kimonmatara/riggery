@@ -113,10 +113,7 @@ def stripdown(*nodes) -> list[str]:
     :return: The resolved partial DAG paths.
     """
     sceneName = m.file(sceneName=True, q=True)
-
-    nodes = without_duplicates(map(str, expand_tuples_lists(*nodes)))
-
-    print('the nodes will be ', nodes)
+    nodes = list(without_duplicates(map(str, expand_tuples_lists(*nodes))))
 
     if not nodes:
         raise ValueError('No nodes specified')
@@ -164,9 +161,6 @@ def stripdown(*nodes) -> list[str]:
 
     for node in nodes:
         matches = m.ls(node)
-        print("matches for {}: ".format(node))
-        print(matches)
-
         numMatches = len(matches)
 
         if numMatches > 0:
@@ -179,5 +173,4 @@ def stripdown(*nodes) -> list[str]:
 
                 if numMatches > 0:
                     out.append(matches[0])
-    print('out will be: ', out)
     return out
