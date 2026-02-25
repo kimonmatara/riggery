@@ -887,7 +887,7 @@ class ProximityWrap(WeightGeometryFilter):
             attribute type is of a numerical type, the attribute value
         """
         self.checkDriverIndex(driverIndex)
-        attrName = joincamel(('driver', detailName))
+        attrName = join_camel(('driver', detailName))
         plug = self.attr('drivers')[driverIndex].attr(attrName)
         input = next(plug.iterInputs(plugs=True), None)
 
@@ -910,7 +910,7 @@ class ProximityWrap(WeightGeometryFilter):
         :param detailContent: an input or value for the attribute
         """
         self.checkDriverIndex(driverIndex)
-        attrName = joincamel(('driver', detailName))
+        attrName = join_camel(('driver', detailName))
         plug = self.attr('drivers')[driverIndex].attr(attrName)
         detailContent >> plug
 
@@ -927,6 +927,6 @@ class ProximityWrap(WeightGeometryFilter):
         slot = self.attr('drivers')[driverIndex]
 
         for detailName, detailContent in details.items():
-            attrName = joincamel(('driver', detailName))
+            attrName = join_camel(('driver', detailName))
             plug = slot.attr(attrName)
             detailContent >> plug
