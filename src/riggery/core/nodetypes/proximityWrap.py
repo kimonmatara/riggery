@@ -255,7 +255,7 @@ class Master(_Interface):
             minus the 'driver' prefix, e.g. 'bindGeometry'
         :param detailContent: an input or value for the attribute
         """
-        self.node().setDriverDetail(detailName, detailContent)
+        self.node().setDriverDetail(self.index, detailName, detailContent)
         return self
 
     def setDriverDetails(self, **details) -> 'Master':
