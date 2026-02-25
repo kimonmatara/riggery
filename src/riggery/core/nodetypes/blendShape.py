@@ -838,9 +838,7 @@ class BlendShape(WeightGeometryFilter):
             thisInfo['main'] = geo = wrapSlave.duplicate()[0]
             geo.show()
 
-            if parent is not None:
-                geo.parent = parent
-
+            geo.parent = parent
             geo.name = targetSpec['alias']
 
             tweens = {}
