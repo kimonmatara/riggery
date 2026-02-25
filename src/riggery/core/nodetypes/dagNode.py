@@ -323,6 +323,23 @@ class DagNode(DependNode):
         """
         return list(self.iterChildren(**kwargs))
 
+    @short(type='typ')
+    def findChildren(self, globPattern:str, type=None) -> Iterator['DagNode']:
+        kwargs = {}
+
+        if type:
+            kwargs['type'] = type
+
+        descendants = m.listRelatives(str(self),
+                                      allDescendents=True,
+                                      path=True,
+                                      **kwargs)
+
+        if descendants:
+            for descendant in descendants:
+                if fnmatch(descendant.split('|')[-1], globPattern):
+                    yield DagNode(descendant)
+
     def isIntermediate(self) -> bool:
         """
         :return: True if this is an intermediate object.
