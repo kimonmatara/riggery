@@ -291,6 +291,7 @@ class Target:
         node = self.node()
         _node = str(node)
         args = (_node,)
+        geo = nodes['DagNode'](geo)
 
         kwargs = {'e': True,
                   'ib': True,
@@ -994,5 +995,64 @@ class BlendShape(WeightGeometryFilter):
                         out.setdefault(matches[0],
                                        {}).setdefault(descriptor,
                                                       {})[ratio] = item
+
+        return out
+
+    @classmethod
+    def createFromSceneMap(cls,
+                           sceneMap:dict,
+                           *baseMeshes,
+                           removeTargets:bool=False) -> list['BlendShape']:
+        """
+        :param sceneMap: the type of dictionary returned by :meth:`getSceneMap`
+        :param \*baseMeshes: the base meshes to create blend shapes on; if
+            omitted, all base meshes defined in the map will be used
+        :param removeTargets: remove any targets that were used; defaults to
+            False
+        """
+        if baseMeshes:
+            baseMeshes = list(without_duplicates(
+                (str(x).split('|')[-1] for x in expand_tuples_lists(baseMeshes))
+            ))
+        else:
+            baseMeshes = list(sceneMap.keys())
+
+        out = []
+
+        for baseMesh in baseMeshes:
+            if baseMesh in sceneMap:
+                bsn = nodes['BlendShape'].create(baseMesh)
+
+                for targetAlias, tweensMap in sceneMap[baseMesh].items():
+                    ratios = list(sorted(tweensMap, reverse=True))
+
+                    if 1.0 not in ratios:
+                        raise RuntimeError(
+                            "No 100 target for blend shape '{}'".format(
+                                targetAlias
+                            )
+                        )
+
+                    tweenRatios = ratios[1:]
+                    target = bsn.targets.add(tweensMap[1.0], alias=targetAlias)
+
+                    if removeTargets:
+                        m.delete(tweensMap[1.0])
+
+                    for tweenRatio in ratios[1:]:
+                        target.add(tweensMap[tweenRatio], tweenRatio)
+
+                        if removeTargets:
+                            m.delete(tweensMap[tweenRatio])
+
+                out.append(bsn)
+
+            else:
+                m.warning(
+                    "Base mesh '{}' not in scene map, skipping.".format(
+                        baseMesh
+                    )
+                )
+                continue
 
         return out
