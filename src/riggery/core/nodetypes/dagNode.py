@@ -1,3 +1,4 @@
+from fnmatch import fnmatch
 from functools import cached_property
 from typing import Iterator, Optional, Union, Iterable
 
