@@ -1,3 +1,4 @@
+import re
 from typing import Union, Optional, Literal, Iterator
 
 from ..nodetypes import __pool__ as nodes
@@ -943,3 +944,55 @@ class BlendShape(WeightGeometryFilter):
             out[1] = newTargets
 
         return tuple(out)
+
+    #---------------------------|    Scene batch operations
+
+    @classmethod
+    def getSceneMap(cls, suffix:str=_nm.BLENDSUFFIX) -> dict:
+        """
+        Detects this type of model asset configuration for blend shapes:
+
+        ``<base_geo_name>_<blend_descriptor>_<percent>_<suffix>``
+
+        For example:
+
+        ``face_DMSH_big_smile_100_BLEND``
+
+        :param suffix: the suffix to look for; defaults to ``BLENDSUFFIX`` in
+            :mod:`riggery.core.lib.names` (currently 'BLEND')
+        :return: A dictionary with this structure:
+            ```
+            {
+                <base geo> (str):
+                    <target alias> (str) : {
+                        <tween weight> (float) : <target geo> (str)
+                        ...
+                    },
+                    ...
+            }
+            ```
+        """
+        out = {}
+        pat = r"^(.*?)_([0-9]+)_" + suffix + r"$"
+
+        for item in m.ls('*_{}'.format(suffix), type='transform'):
+            name = item.split('|')[-1]
+            mt = re.match(pat, name)
+            if mt:
+                head, pc = mt.groups()
+                elems = head.split('_')
+                numElems = len(elems)
+
+                for i in range(1, numElems):
+                    baseName = '_'.join(elems[:numElems-i])
+                    descriptor = '_'.join(elems[numElems-i:])
+
+                    matches = m.ls(baseName, type='transform')
+
+                    if matches:
+                        ratio = float(pc) / 100.0
+                        out.setdefault(matches[0],
+                                       {}).setdefault(descriptor,
+                                                      {})[ratio] = item
+
+        return out
