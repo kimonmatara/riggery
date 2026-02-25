@@ -935,6 +935,12 @@ class BlendShape(WeightGeometryFilter):
                 if not keepTargets:
                     m.delete(str(tweenGeo))
 
+            # Copy any weight input
+            weightInputs = self.targets[targetIndex].weight.inputs(plugs=True)
+
+            if weightInputs:
+                weightInputs[0] >> newTarget.weight
+
         out = [newBsn, None]
 
         if keepTargets:
