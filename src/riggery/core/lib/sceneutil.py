@@ -133,7 +133,7 @@ def stripdown(*nodes) -> list[str]:
             continue
         break
 
-    m.select(nodes, replace=True)
+    m.select(nodes, replace=True, noExpand=True)
 
     m.file(filepath.as_posix(),
            force=True,
