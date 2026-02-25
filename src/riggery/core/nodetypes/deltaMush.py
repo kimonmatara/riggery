@@ -1,17 +1,23 @@
 from typing import Optional
+
 from ..nodetypes import __pool__ as nodes
+
 WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
-from ..lib import names as _nm
+
 from . import __pool__ as _nodes
-from riggery.general.functions import short
+
+from ..lib import names as _nm
+
+from ...general.functions import short
+from ...general.iterables import without_duplicates, expand_tuples_lists
 
 
 class DeltaMush(WeightGeometryFilter):
 
     #-------------------------------------|    Constructor
-    
+
     @classmethod
     @short(name='n', s='s')
     def create(cls,
@@ -35,5 +41,60 @@ class DeltaMush(WeightGeometryFilter):
 
         if scale is not None:
             node.attr('scale').put(scale)
+
+        return node
+
+    #-------------------------------------|    Macro
+
+    def copyTo(self, *geos) -> list['DeltaMush']:
+        geos = expand_tuples_lists(*geos)
+        geos = list(without_duplicates(map(nodes['DependNode'], geos)))
+
+        if not geos:
+            raise ValueError("No target geometries specified.")
+
+        srcMacro = self.macro()
+
+        out = []
+
+        for geo in geos:
+            thisMacro = srcMacro.copy()
+            thisMacro['geo'] = geo
+            out.append(self.createFromMacro(thisMacro))
+
+        return out
+
+    def macro(self) -> dict:
+        attrNames = [
+            'caching',
+            'envelope',
+            'smoothingIterations',
+            'smoothingAlgorithm',
+            'smoothingStep',
+            'inwardConstraint',
+            'outwardConstraint',
+            'distanceWeight',
+            'pinBorderVertices',
+            'displacement',
+            'scale',
+            'scaleX',
+            'scaleY',
+            'scaleZ'
+        ]
+
+        return {
+            'geo': list(map(str, (shape.parent for shape in self.shapes))),
+            'attrs': {
+                attrName:self.attr(attrName).getState(input=True, value=True)
+                for attrName in attrNames
+            }
+        }
+
+    @classmethod
+    def createFromMacro(cls, macro:dict) -> 'DeltaMush':
+        node = cls.create(macro['geo'])
+
+        for attrName, attrState in macro['attrs'].items():
+            node.attr(attrName).setState(attrState)
 
         return node
