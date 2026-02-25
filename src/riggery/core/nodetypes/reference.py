@@ -152,7 +152,12 @@ class Reference(DependNode):
         path = self.path.as_posix()
 
         def destroyer():
-            m.file(path, rr=True)
+            try:
+                m.file(path, rr=True)
+            except RuntimeError as exc:
+                if 'File not found' in str(exc):
+                    return
+                raise exc
 
         m.evalDeferred(destroyer)
 
