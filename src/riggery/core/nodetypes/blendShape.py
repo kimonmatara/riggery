@@ -850,10 +850,7 @@ class BlendShape(WeightGeometryFilter):
                 name = '{}_{}'.format(targetSpec['alias'], pc)
                 tweens[tweenRatio] = tweenGeo = wrapSlave.duplicate()[0]
                 tweenGeo.show()
-
-                if parent is not None:
-                    tweenGeo.parent = parent
-
+                tweenGeo.parent = parent
                 tweenGeo.name = name
 
             if tweens:
