@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import maya.cmds as m
 import maya.api.OpenMaya as om
 
@@ -94,11 +96,9 @@ class DeformableShape(nodes['GeometryShape']):
             return None
         return plugs['Attribute'](result).node()
 
-    def iterHistory(self):
+    def history(self) -> Iterator['nodes.DependNode']:
         history = m.listHistory(str(self), fullNodeName=True)
 
         if history:
             for node in history:
                 yield nodes['DependNode'](node)
-
-    history = property(iterHistory)
