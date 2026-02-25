@@ -827,12 +827,13 @@ class BlendShape(WeightGeometryFilter):
         out = {} # weight index: info
 
         for targetIndex, targetSpec in targetSpecs.items():
-            for target in wrapMasterBsn.targets:
-                target.weight.set(0.0)
+            for _target in wrapMasterBsn.targets:
+                _target.weight.set(0.0)
 
             thisInfo = {'alias': targetSpec['alias']}
 
             # Main
+            target = wrapMasterBsn.targets[targetIndex]
             target.weight.set(1.0)
 
             thisInfo['main'] = geo = wrapSlave.duplicate()[0]
