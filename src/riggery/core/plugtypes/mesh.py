@@ -8,6 +8,8 @@ from ..elem import Elem
 
 class Mesh(plugs['Geometry']):
 
+    __data_mfn_type__ = om.MFnMesh
+
     #--------------------------------------|    Data queries
 
     def _getData(self) -> om.MObject:

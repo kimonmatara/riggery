@@ -25,6 +25,7 @@ class GeometryMeta(type(Attribute)):
 class Geometry(Attribute, metaclass=GeometryMeta):
 
     __shape_class_name__ = 'GeometryShape'
+    __data_mfn_type__:om.MFnBase = None
 
     #--------------------------------------|    Data sampling
 

@@ -20,6 +20,8 @@ from ..datatypes import __pool__ as data
 
 class NurbsCurve(plugs['Geometry']):
 
+    __data_mfn_type__ = om.MFnNurbsCurve
+
     #--------------------------------------|    Free-floating generation
 
     @classmethod

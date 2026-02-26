@@ -11,6 +11,8 @@ from riggery.general.iterables import expand_tuples_lists
 
 class NurbsSurface(plugs['Geometry']):
 
+    __data_mfn_type__ = om.MFnNurbsSurface
+
     #-------------------------------------|    Static queries
 
     def _getData(self) -> om.MObject:
