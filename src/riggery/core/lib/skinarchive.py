@@ -126,7 +126,7 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
 
     skinCluster.dumpWeights(xmlFilePath,
                             shape=str(shape),
-                            vertexConnections=True)
+                            vertexConnections=shape.nodeType()=='mesh')
 
     out = {'info': infoFilePath, 'weights': xmlFilePath}
 
