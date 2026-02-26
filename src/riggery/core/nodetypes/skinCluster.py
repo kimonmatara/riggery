@@ -12,6 +12,8 @@ GeometryFilter = nodes['GeometryFilter']
 
 import maya.cmds as m
 import maya.mel as mel
+import maya.api.OpenMaya as om
+import maya.api.OpenMayaAnim as oma
 
 import riggery.core as r
 
@@ -1122,17 +1124,42 @@ class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Granular weight management
 
-    def getWeightsByChannelIndex(self, index:int) -> list[float]:
-        ...
+    def _getWeights(self, shapeIndex:int, channelIndex:int) -> list[float]:
+        shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
+        allComps = self._getAllWeightedComps(shapeIndex)
 
-    def iterWeightChannelNames(self) -> Iterator[str]:
-        out = m.skinCluster(str(self), q=True, influence=True)
+        skinMObject = self.__apimobject__()
+        skinFn = oma.MFnSkinCluster(skinMObject)
+        infIndices = om.MIntArray([channelIndex])
 
-        if out:
-            yield from out
+        return list(skinFn.getWeights(shapeMDagPath, allComps, infIndices))
 
-    def numWeightChannels(self) -> int:
-        return len(list(self.iterWeightChannelNames()))
+    def _getChannelIndex(self, joint:Union[str, 'nodes.Joint']) -> int:
+        joint = nodes['Transform'](joint)
 
-    def iterWeightChannelIndices(self) -> Iterator[int]:
-        yield from range(self.numWeightChannels())
+        return oma.MFnSkinCluster(
+            self.__apimobject__()
+        ).indexForInfluenceObject(joint.__apimdagpath__())
+
+    def _setWeights(self,
+                    shapeIndex:int,
+                    channelIndex:int,
+                    weights:list[float]):
+        """
+        This will issue warnings if the skinCluster is set to 'interactive'. You
+        might want to turn off normalization beforehand and resolve afterwards.
+        """
+        skinMObject = self.__apimobject__()
+        skinFn = oma.MFnSkinCluster(skinMObject)
+        shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
+        allComps = self._getAllWeightedComps(shapeIndex)
+        inflIndices = om.MIntArray([channelIndex])
+        weightsArray = om.MDoubleArray(list(weights))
+
+        skinFn.setWeights(shapeMDagPath,
+                          allComps,
+                          inflIndices,
+                          weightsArray,
+                          normalize=False)
+
+        return self
