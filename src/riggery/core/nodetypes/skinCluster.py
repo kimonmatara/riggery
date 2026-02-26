@@ -895,6 +895,41 @@ class SkinCluster(GeometryFilter):
 
         return out
 
+    @short(preserveWeights='pw',
+           verbose='v')
+    def copyInfluencesTo(self,
+                         *others,
+                         preserveWeights:bool=True,
+                         verbose:bool=False,):
+        """
+        Ensures that every skinCluster amongst *others* includes this
+        skinCluster's influences.
+
+        :param \*others: the skinClusters onto which to copy influences
+        :param preserveWeights/pw: don't edit weights on the destination
+            skinClusters; defaults to True
+        :param verbose/v: print informational messages; defaults to False
+        """
+        others = without_duplicates(
+            map(nodes['SkinCluster'], expand_tuples_lists(*others))
+        )
+
+        theseInfluences = set(self.influence)
+
+        for other in others:
+            otherInfluences = set(other.influence)
+            inflsToAdd = [x for x in theseInfluences
+                          if x not in otherInfluences]
+
+            if inflsToAdd:
+                other.addInfluence(inflsToAdd, preserveWeights=True)
+
+                if verbose:
+                    print("Added {} influence(s) to {}".format(len(inflsToAdd),
+                                                               other))
+
+        return self
+
     def rebuild(self) -> 'SkinCluster':
         """
         Deletes and rebuilds this skinCluster via a temporary weight dump. The
