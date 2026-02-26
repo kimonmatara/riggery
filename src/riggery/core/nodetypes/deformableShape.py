@@ -10,6 +10,12 @@ from ..plugtypes import __pool__ as plugs
 
 class DeformableShape(nodes['GeometryShape']):
 
+    def __apipointiterator__(self) -> om.MItGeometry:
+        return om.MItGeometry(self.__apimdagpath__())
+
+    def numDeformablePoints(self) -> int:
+        return self.__apipointiterator__().count()
+
     @property
     def input(self):
         """
