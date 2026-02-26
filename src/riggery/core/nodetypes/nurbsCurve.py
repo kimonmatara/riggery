@@ -413,7 +413,7 @@ class NurbsCurve(nodes['CurveShape']):
         """
         thisParent = self.parent
 
-        for shape in self.history:
+        for shape in self.history():
             if isinstance(shape, NurbsCurve):
                 if shape.parent == thisParent:
                     out = []
