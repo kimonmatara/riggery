@@ -16,6 +16,8 @@ from ..plugtypes import __pool__ as plugs
 DependNode = nodes['DependNode']
 
 import maya.cmds as m
+import maya.api.OpenMaya as om
+import maya.api.OpenMayaAnim as oma
 
 
 class GeometryFilter(DependNode):
@@ -29,6 +31,11 @@ class GeometryFilter(DependNode):
             on a macro where requested
         -   If / where needed, overload _loadWeightsFromArchive(),
             createFromArchive(), or dumpArchive()
+
+    To implement granular weight management:
+
+        -   Implement _getWeights() / _setWeights()
+        -   Implement _getChannelIndex()
     """
 
     #-------------------------------------|    Constructors
@@ -947,6 +954,95 @@ class GeometryFilter(DependNode):
     #     return {'info': info,
     #             'dumpedShapes': shapesToDump,
     #             'parentDir': parentDir}
+
+    #-------------------------------------|    Granular weight management
+
+    def _getShapeMDagPathAtIndex(self, shapeIndex:int) -> om.MDagPath:
+        return oma.MFnGeometryFilter(
+            self.__apimobject__()
+        ).getPathAtIndex(shapeIndex)
+
+    def _getShapeMObjectAtIndex(self, shapeIndex:int) -> om.MObject:
+        return self._getShapeMDagPathAtIndex(shapeIndex).node()
+
+    def _getAllWeightedComps(self, shapeIndex:int):
+        shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
+        shapeMObject = shapeMDagPath.node()
+
+        if shapeMObject.hasFn(om.MFn.kMesh):
+            compType = om.MFn.kMeshVertComponent
+            count = om.MFnMesh(shapeMDagPath).numVertices
+
+        elif shapeMObject.hasFn(om.MFn.kNurbsSurface):
+            compType = om.MFn.kSurfaceCVComponent
+            shapeFn = om.MFnNurbsSurface(geo_dag)
+            count = shapeFn.numCVsInU * shapeFn.numCVsInV
+
+        elif shapeMObject.hasFn(om.MFn.kNurbsCurve):
+            compType = om.MFn.kCurveCVComponent
+            count = om.MFnNurbsCurve(shapeMDagPath).numCVs
+
+        else:
+            raise TypeError(
+                "not implemented for geometry type: {}".format(
+                    shapeMObject.apiTypeStr
+                )
+            )
+
+        compFn = om.MFnSingleIndexedComponent()
+        allComps = compFn.create(compType)
+        compFn.setCompleteData(count)
+
+        return allComps
+
+    def getShapeAtIndex(self, shapeIndex:int) -> 'nodes.DeformableShape':
+        return nodes['DeformableShape'].fromMObject(
+            self._getShapeMDagPathAtIndex(shapeIndex)
+        )
+
+    def _getChannelIndex(self, channel):
+        """
+        Given a channel descriptor or object (e.g. a joint or blend shape
+        target name), returns an index for internal use.
+        """
+        raise NotImplementedError
+
+    def _getShapeIndex(self, shape:Union['nodes.DagNode']):
+        """
+        :param shape: the output (deformed) shape
+        :return: The logical index for the deformed shape.
+        """
+        shape = nodes['DagNode'](shape).toShape().__apimobject__()
+        fn = om.MFnGeometryFilter(self.__apimobject__())
+        return fn.indexForOutputShape(shape)
+
+    def _resolveChannelIndex(self, channel):
+        if isinstance(channel, int):
+            return channel
+        return self._getChannelIndex(channel)
+
+    def _resolveShapeIndex(self, shape):
+        if isinstance(shape, int):
+            return shape
+        return self._getShapeIndex(shape)
+
+    def _getWeights(self, shapeIndex:int, channelIndex:int):
+        raise NotImplementedError
+
+    def _setWeights(self, shapeIndex:int, channelIndex:int,
+                    weights:list[float]):
+        raise NotImplementedError
+
+    def getWeights(self, shape, channel) -> list[float]:
+        shapeIndex = self._resolveShapeIndex(shape)
+        channelIndex = self._resolveChannelIndex(channel)
+        return self._getWeights(shapeIndex, channelIndex)
+
+    def setWeights(self, shape, channel, weights:list[float]):
+        shapeIndex = self._resolveShapeIndex(shape)
+        channelIndex = self._resolveChannelIndex(channel)
+        self._setWeights(shapeIndex, channelIndex, weights)
+        return self
 
     #-------------------------------------|    Name
 
