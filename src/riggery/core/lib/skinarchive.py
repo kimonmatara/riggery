@@ -554,8 +554,12 @@ def loadMulti(infoFiles:list,
             if skinCluster is None: # weightsOnly and no scene skinCluster
                 continue
 
-            print("Created skinCluster {} on shape {}".format(skinCluster,
-                                                              infoShape))
+            print(
+                "Created or updated skinCluster {} on shape {}".format(
+                    skinCluster,
+                    infoShape
+                )
+            )
 
             skinClusters.append(skinCluster)
             alreadyProcessed.append(infoShape)
