@@ -286,13 +286,13 @@ def loadSkinCluster(infoFilePath,
 
         if skinCluster is None:
             kwargs = {'name': info['skinCluster'],
-              'obeyMaxInfluences': info['obeyMaxInfluences'],
-              'skinMethod': info['skinMethod'],
-              'toSelectedBones': True,
-              'bindMethod': 0,
-              'dropoffRate': 4.5,
-              'weightDistribution': 0,
-              'normalizeWeights': 1}
+                      'obeyMaxInfluences': info['obeyMaxInfluences'],
+                      'skinMethod': info['skinMethod'],
+                      'toSelectedBones': True,
+                      'bindMethod': 0,
+                      'dropoffRate': 4.5,
+                      'weightDistribution': 0,
+                      'normalizeWeights': 1}
 
             args = joints + [sceneShape]
             skinCluster = r.skinCluster(*args, **kwargs)[0]
@@ -583,5 +583,11 @@ def findInfoFiles(directories):
 
     return out
 
-def loadMultiFromDir(dr, onlyForSceneShapes=None, /, **kwargs):
-    return loadMulti(findInfoFiles(dr), onlyForSceneShapes, **kwargs)
+def loadMultiFromDir(dr,
+                     onlyForSceneShapes=None, /,
+                     weightsOnly:bool=False,
+                     **kwargs):
+    return loadMulti(findInfoFiles(dr),
+                     onlyForSceneShapes,
+                     weightsOnly=weightsOnly,
+                     **kwargs)
