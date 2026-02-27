@@ -566,7 +566,7 @@ class SkinCluster(GeometryFilter):
         :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
             currently at
         :return: a reversed version of the sculpted geo, that can be used as a
-            pre-bind blend shape
+            pre-bind blend shape.
         """
         thisShape = next(self.shapes)
         xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
@@ -580,8 +580,7 @@ class SkinCluster(GeometryFilter):
             )
 
         xform.assignDefaultShader()
-
-        return xform
+        return xform.shape
 
     #-------------------------------------|    Weights
 
