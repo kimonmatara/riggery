@@ -1135,6 +1135,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             return m.nodeType(str(self), **kwargs)
         return om.MFnDependencyNode(self.__apimobject__()).typeName
 
+    def isATypeOf(self, type:str) -> bool:
+        """
+        Thin wrapper for ``objectType(isAType=...)``.
+        """
+        return m.objectType(str(self), isAType=type)
+
     #-----------------------------------------|    Rigging
 
     def _getControlTag(self) -> Optional[str]:
