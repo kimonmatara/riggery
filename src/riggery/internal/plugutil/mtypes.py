@@ -26,16 +26,15 @@ DATA = {}
 
 #--------------------------------------------|    REGENERATE
 
-CORRECTIONS = {
-    'int64Array': 'Int64Array',
-}
+CORRECTIONS = {'int64Array': 'Int64Array'}
 
-ADDITIONS = [
-    'subdiv', 'subd',
-    'dataBezierCurve',
-    'TdataCompound', 'Tdata',
-    'IntArray'
-]
+ADDITIONS = ['subdiv',
+             'subd',
+             'geometry',
+             'dataBezierCurve',
+             'TdataCompound',
+             'Tdata',
+             'IntArray']
 
 def _fromOnlineHelp(version:str='2025') -> Iterator[str]:
     """

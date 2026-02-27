@@ -47,6 +47,7 @@ def describeMPlug(plug:om.MPlug) -> dict:
             if __verbose__:
                 m.warning(f"Can't classify attribute: {plug}")
             return out
+
         out.update(DESCS.get(dataType, {}))
 
         if (not out) or (out.get('geoType') == 'nurbsCurve'):

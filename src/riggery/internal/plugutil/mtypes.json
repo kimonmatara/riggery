@@ -39,6 +39,7 @@
     "fltMatrix",
     "fluid",
     "generic",
+    "geometry",
     "int2",
     "int3",
     "intArray",

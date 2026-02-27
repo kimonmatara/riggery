@@ -40,7 +40,7 @@ IS_MATRIX_TYPE = re.compile(r"^(matrix|floatMatrix|fltMatrix)$", flags=re.IGNORE
 IS_3D_TENSOR = re.compile(r"^(floatVector|vector|point|reflectance|reflectanceRGB|spectrum|spectrumRGB)$", flags=re.IGNORECASE)
 IS_UNIT_ATTR = re.compile(r"^.*?(Angle|Linear|Time)$", flags=re.IGNORECASE)
 
-def _describeMType(mtype) -> dict:
+def _describeMType(mtype:str) -> dict:
     out = {}
 
     if re.match(IS_BORING, mtype):
@@ -118,8 +118,10 @@ def _describeMType(mtype) -> dict:
 
 def _generate() -> dict[str:dict]:
     out = {}
+
     for mtype in MTYPES:
         entry = _describeMType(mtype)
+
         if entry:
             out[mtype] = entry
 

@@ -132,6 +132,9 @@
     "generic": {
         "otherType": "generic"
     },
+    "geometry": {
+        "otherType": "geometry"
+    },
     "int2": {
         "scalarType": "int",
         "tensorShape": 2
