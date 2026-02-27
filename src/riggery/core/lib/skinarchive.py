@@ -64,7 +64,11 @@ def sceneNodeExistsAndHasNoDuplicates(name):
     matches = m.ls(name)
     return matches and len(matches) == 1
 
-def findSceneNode(name):
+def findSceneNode(name) -> str:
+    """
+    :raises MultipleMatchesForSceneShapeError:
+    :raises NoMatchForSceneShapeError:
+    """
     if isinstance(name, Elem):
         return name
 
@@ -181,16 +185,20 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
 
     return out
 
+
+def findSkinClusterFromGeo(shapeLookup:str, transformLookup:str):
+    raise NotImplementedError
+
 def loadSkinCluster(infoFilePath,
                     method='index',
                     forceShapeTo=None,
                     loadWeights=True,
+                    weightsOnly=False,
+                    replace:bool=True,
                     uvSet=None):
     """
     :Notes:
 
-        -   If the scene shape already has a skinCluster, that skinCluster
-            will be deleted
         -   If the scene is missing joints expected by the archive, those will
             be recreated under a group called 'missing_joints'
 
@@ -213,59 +221,71 @@ def loadSkinCluster(infoFilePath,
     :param forceShapeTo: a specific scene shape to map to; defaults to
         ``None``
     :type forceShapeTo: :class:`~payo.runtime.nodes.Shape`, :class:`str`
-    :param bool loadWeights: load weights; defaults to ``False``
-    :return: The regenerated skinCluster
-    :rtype: :class:`~payo.runtime.nodes.SkinCluster`
+    :param bool weightsOnly: don't create any new skinClusters; only load
+        weights for existing ones; defaults to False
+    :param bool loadWeights: ignored if *weightsOnly* is True; defaults to
+        ``True``
+    :param replace: replace any existing skinCluster; if False, edit the
+        existing skinCluster instead; defaults to ``True``
+    :return: The regenerated or retrieved skinCluster, or None
     """
+    #-------------------|    Basics
 
-    #--------------------------|    Conform args
+    if weightsOnly:
+        loadWeights = True
 
     infoFilePath = Path(infoFilePath)
     parentDir = infoFilePath.parent
 
     prefix = re.match(r"^(.*?)_info.json$", infoFilePath.name).groups()[0]
 
-    if forceShapeTo:
-        sceneShape = findSceneNode(forceShapeTo)
-    else:
-        sceneShape = None
-
-    #--------------------------|    Read info
-
     with infoFilePath.open('r') as f:
         data = f.read()
 
     info = json.loads(data)
 
-    #--------------------------|    Resolve scene shape
+    #-------------------|    Resolve shape
 
-    if sceneShape is None:
-        sceneShape = findSceneNode(info['shape'])
-
-        for skin in r.nodes.SkinCluster.fromGeo(sceneShape):
-            r.delete(skin)
-
-    #--------------------------|    Recreate skinCluster
-
-    # Resolve joints; create any that were missing
-    joints = []
-
-    for jointName in info['joints']:
+    if forceShapeTo:
+        # allow to error
+        shape = findSceneNode(forceShapeTo)
+    else:
         try:
-            joint = findSceneNode(jointName)
-        except (NoMatchForSceneShapeError,
-                MultipleMatchesForSceneShapeError):
+            shape = findSceneNode(info['shape'])
+        except MultipleOrNoMatchesForSceneShapeError:
+            shape = findSceneNode(info['transform']).shape
 
-            if not r.objExists('missing_joints'):
-                r.group(empty=True, n='missing_joints')
+    #-------------------|    Resolve skinCluster and influences
 
-            joint = r.createNode('joint')
-            joint.parent = 'missing_joints'
-            joint.name = jointName
+    skinCluster = next(r.nodes.SkinCluster.fromGeo(shape), None)
 
-        joints.append(joint)
+    if skinCluster is None:
+        if weightsOnly:
+            return
+        else:
+            if replace:
+                r.delete(skinCluster)
+                skinCluster = None
 
-    kwargs = {'name': info['skinCluster'],
+        joints = []
+
+        for jointName in info['joints']:
+            try:
+                joint = findSceneNode(jointName)
+            except (NoMatchForSceneShapeError,
+                    MultipleMatchesForSceneShapeError):
+
+                if not r.objExists('missing_joints'):
+                    r.group(empty=True, n='missing_joints')
+
+                joint = r.createNode('joint')
+                joint.parent = 'missing_joints'
+                joint.name = jointName
+
+            joints.append(joint)
+
+        if skinCluster is None:
+            kwargs = {'name': info['skinCluster'],
               'obeyMaxInfluences': info['obeyMaxInfluences'],
               'skinMethod': info['skinMethod'],
               'toSelectedBones': True,
@@ -274,13 +294,22 @@ def loadSkinCluster(infoFilePath,
               'weightDistribution': 0,
               'normalizeWeights': 1}
 
-    args = joints + [sceneShape]
-    skinCluster = r.skinCluster(*args, **kwargs)[0]
+            args = joints + [sceneShape]
+            skinCluster = r.skinCluster(*args, **kwargs)[0]
 
-    if not loadWeights:
-        return skinCluster
+            if not loadWeights:
+                return skinCluster
 
-    #--------------------------|    Load weights
+        else:
+            if not loadWeights:
+                return skinCluster
+
+            notInSkin = [x for x in joints if x not in skinCluster.influence]
+
+            if notInSkin:
+                skinCluster.addInfluence(notInSkin, preserveWeights=True)
+
+    #-------------------|    Load weights
 
     if method in ['closestPoint', 'closestComponent', 'rayCast', 'uv']:
 
@@ -405,7 +434,9 @@ def loadSkinCluster(infoFilePath,
         # Load blend weights from separate dump
 
         if method == 'index' and info['skinMethod'] == 2:
-            blendWeightsPath = parentDir / '{}_blend_weights.json'.format(prefix)
+            blendWeightsPath = parentDir / '{}_blend_weights.json'.format(
+                prefix
+            )
             if blendWeightsPath.is_file():
                 with open(blendWeightsPath, 'r') as f:
                     data = f.read()
@@ -465,6 +496,7 @@ def dumpMulti(dirpath,
 def loadMulti(infoFiles:list,
               onlyForSceneShapes=None, /,
               loadWeights:bool=True,
+              weightsOnly:bool=False,
               method='index',
               uvSet:Optional[str]=None,
               skipFails:bool=False,
@@ -515,8 +547,12 @@ def loadMulti(infoFiles:list,
         try:
             skinCluster = loadSkinCluster(infoFile,
                                           method=method,
+                                          weightsOnly=weightsOnly,
                                           loadWeights=loadWeights,
                                           uvSet=uvSet)
+
+            if skinCluster is None: # weightsOnly and no scene skinCluster
+                continue
 
             print("Created skinCluster {} on shape {}".format(skinCluster,
                                                               infoShape))
