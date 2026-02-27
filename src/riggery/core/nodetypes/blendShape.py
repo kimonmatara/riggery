@@ -76,6 +76,16 @@ class Tween:
                          conformShapeNames=True)
         return geoXform
 
+    def _connectInputShape(self, shape):
+        shape = nodes['DependNode'](shape)
+
+        if self.node().attr('origin')() == 0:
+            src = shape.worldOutput
+        else:
+            src = shape.localOutput
+
+        src >> self.geoInput
+
     def _doCreateShapeCmd(self) -> 'nodes.Shape':
         return nodes['Transform'](m.sculptTarget(str(self.node()),
                                                  e=True,
@@ -88,6 +98,16 @@ class Tween:
     def createShape(self, *,
                     connect:Optional[bool]=None,
                     parent:Optional['nodes.Transform']=None) -> 'nodes.Shape':
+        """
+        This method will always create a shape, even if one is already
+        present and connected. To reuse a shape instead, use :meth:`getShape`.
+
+        :param connect/con: this will default to True or False depending on
+            circumstances
+        :param parent/p: an optional destination parent for the generated
+            geometry's transform.
+        :return: The geometry shape.
+        """
         incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
 
         if incomingConnection:
@@ -108,14 +128,7 @@ class Tween:
             else:
                 outShape = incomingConnection.createShape()
                 self._cleanupOutputGeo(outShape.parent, parent=parent)
-
-                if connect is not None and connect:
-                    if self.node().attr('origin')() == 0:
-                        src = outShape.worldOutput
-                    else:
-                        src = outShape.localOutput
-
-                    src >> self.geoInput
+                self._connectInputShape(outShape)
 
                 return outShape
         else:
@@ -123,22 +136,50 @@ class Tween:
             self._cleanupOutputGeo(outShape.parent, parent=parent)
 
             if connect is None:
-                connect = not self.node().inPostMode()
+                connect = not self.target.inPostMode()
 
             if not connect:
                 self.geoInput.disconnect(inputs=True)
 
             return outShape
 
+    def updateShape(self, src:'nodes.DagNode'):
+        """
+        Temporarily connects a new shape and afterwards disconnects it.
+        """
+        incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
+        self._connectInputShape(src)
+
+        if incomingConnection:
+            incomingConnection >> self.geoInput
+        else:
+            self.geoInput.disconnect(inputs=True)
+
+        return self
+
     @short(create='c',
            connect='con',
-           parent='p')
+           parent='p',
+           inspectScene='ins')
     def getShape(
             self, *,
             create:bool=False,
             connect:Optional[bool]=None,
+            inspectScene:bool=False,
             parent:Optional['nodes.Transform']=None
     ) -> Optional['nodes.Shape']:
+        """
+        :param create/c: create a shape if one could not be found from the input
+            connection; False
+        :param connect/con: ignored if *create* is False or a scene shape was
+            not retrieved; defaults to True or False depending on circumstances
+        :param parent/p: an optional destination parent for the generated
+            shape's transform; defaults to None
+        :param inspectScene/ins: if no connected shape could be found, look for
+            a geometry in the scene that obeys the 'model asset' naming
+            convention for blend shapes; defaults to False
+        :return: The retrieved or recreated shape, or None.
+        """
         incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
 
         if incomingConnection:
@@ -146,7 +187,6 @@ class Tween:
 
             if isinstance(inputNode, nodes['DeformableShape']):
                 return inputNode
-
             else:
                 if create:
                     outShape = incomingConnection.createShape()
@@ -156,21 +196,29 @@ class Tween:
                         connect = True
 
                     if connect:
-                        if self.node().attr('origin')() == 0:
-                            src = outShape.worldOutput
-                        else:
-                            src = outShape.localOutput
-
-                        outShape >> self.geoInput
+                        self._connectInputShape(outShape)
 
                     return outShape
         else:
+            if inspectScene:
+                lookup = self.node()._buildTargetName(self.target.index,
+                                                      self.ratio)
+                matches = r.ls(lookup, type='transform')
+
+                if len(matches) == 1:
+                    outShape = matches[0].shape
+
+                    if connect is not None and connect:
+                        self._connectInputShape(outShape)
+
+                    return outShape
+
             if create:
                 outShape = self._doCreateShapeCmd()
                 self._cleanupOutputGeo(outShape.parent, parent=parent)
 
                 if connect is None:
-                    connect = not self.node().inPostMode()
+                    connect = not self.target.inPostMode()
 
                 if not connect:
                     self.geoInput.disconnect(inputs=True)
@@ -256,6 +304,9 @@ class Target:
     alias = property(getAlias, setAlias, clearAlias)
 
     #---------------------------|    Plug shortcuts
+
+    def inPostMode(self) -> bool:
+        return self.group.attr('postDeformersMode')() != 0
 
     @property
     def group(self) -> 'Attribute':
@@ -346,12 +397,7 @@ class Target:
         tween = self[ratio]
 
         if connect:
-            if node.attr('origin')() == 0:
-                geoOutput = geo.worldOutput
-            else:
-                geoOutput = geo.localOutput
-
-            geoOutput >> tween.geoInput
+            tween._connectInputShape(geo)
         else:
             tween.geoInput.disconnect(inputs=True)
 
