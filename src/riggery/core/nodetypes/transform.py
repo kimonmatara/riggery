@@ -950,6 +950,22 @@ class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Repr
 
+    @short(conformShapeNames='csn')
+    def setName(self,
+                name:str,
+                conformShapeNames:bool=False):
+        """
+        :param conformShapeNames/csn: this should be reserved for situations
+            where, for some reason, Maya doesn't update shape names under this
+            transform; defaults to False
+        """
+        super().setName()
+
+        if conformShapeNames:
+            self.conformShapeNames()
+
+        return self
+
     @property
     def defaultTypeSuffix(self) -> str:
         """
