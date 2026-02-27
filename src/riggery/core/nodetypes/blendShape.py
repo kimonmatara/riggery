@@ -68,90 +68,114 @@ class Tween:
 
     #---------------------------|    Higher-level
 
-    @short(reuse='re',
-           connect='c',
+    def _cleanupOutputGeo(self, geoXform, parent=None) -> 'nodes.Transform':
+        geoXform = nodes['Transform'](geoXform)
+        geoXform.parent = parent
+        geoXform.setName(self.node()._buildTargetName(self.target.index,
+                                                      self.ratio),
+                         conformShapeNames=True)
+        return geoXform
+
+    def _doCreateShapeCmd(self) -> 'nodes.Shape':
+        return nodes['Transform'](m.sculptTarget(str(self.node()),
+                                                 e=True,
+                                                 t=self.target.index,
+                                                 ibw=self.ratio,
+                                                 r=True)[0]).shape
+
+    @short(connect='con',
            parent='p')
-    def regenerateInputGeo(
-            self, *,
-            reuse:bool=True,
-            parent:Optional['nodes.Transform']=None,
-            connect:Optional[bool]=None
-    ) -> tuple['nodes.Transform', bool]:
-        """
-        :param reuse/re: if there's a geometry already connected, return that
-        :param connect/c: force the connection state; defaults vary by
-            circumstance (e.g. if in post-deformation, this will always default
-            to False)
-        :param parent/p: ignored if there's already an input shape and 'reuse'
-            was True; an optional destination parent for any newly-generated
-            shape; defaults to None (world)
-        :return: Tuple of geometry (transform), was regenerated (bool)
-        """
-        # Gather information
-        geoInput = self.geoInput
-        incomingConnection = next(geoInput.iterInputs(plugs=True), None)
-
-        if incomingConnection is None:
-            inputShape = None
-
-        else:
-            inputNode = incomingConnection.node()
-
-            if isinstance(inputNode, nodes.DeformableShape):
-                inputShape = inputNode
-            else:
-                inputShape = None
-
-        if reuse:
-            if inputShape is not None:
-                out = inputShape.parent
-
-                if connect is not None and not connect:
-                    geoInput.disconnect(inputs=True)
-
-                return out
-
-        # Will need to recreate in all circumstances
+    def createShape(self, *,
+                    connect:Optional[bool]=None,
+                    parent:Optional['nodes.Transform']=None) -> 'nodes.Shape':
+        incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
 
         if incomingConnection:
-            geoInput.disconnect(inputs=True)
+            inputNode = incomingConnection.node()
 
-        out = nodes['Transform'](m.sculptTarget(str(self.node()),
-                                                e=True,
-                                                t=self.target.index,
-                                                ibw=self.ratio,
-                                                r=True)[0])
+            if isinstance(inputNode, nodes['DeformableShape']):
+                incomingConnection // self.geoInput
+                outShape = self._doCreateShapeCmd()
+                self._cleanupOutputGeo(outShape.parent, parent=parent)
 
-        if parent is not None:
-            out.parent = parent
+                if connect is None:
+                    connect = True
 
-        # Wrangle connections
+                if not connect:
+                    self.geoInput.disconnect(inputs=True)
 
-        node = self.node()
-
-        if connect is None:
-            if incomingConnection:
-                incomingConnection >> geoInput
+                return outShape
             else:
-                if not node.inPostMode():
-                    if node.attr('origin')() == 0:
-                        src = out.shape.worldOutput
+                outShape = incomingConnection.createShape()
+                self._cleanupOutputGeo(outShape.parent, parent=parent)
+
+                if connect is not None and connect:
+                    if self.node().attr('origin')() == 0:
+                        src = outShape.worldOutput
                     else:
-                        src = out.shape.localOutput
+                        src = outShape.localOutput
 
-                    src >> geoInput
+                    src >> self.geoInput
+
+                return outShape
         else:
-            if connect:
-                if node.attr('origin')() == 0:
-                    src = out.shape.worldOutput
-                else:
-                    src = out.shape.localOutput
+            outShape = self._doCreateShapeCmd()
+            self._cleanupOutputGeo(outShape.parent, parent=parent)
 
-                src >> geoInput
+            if connect is None:
+                connect = not self.node().inPostMode()
+
+            if not connect:
+                self.geoInput.disconnect(inputs=True)
+
+            return outShape
+
+    @short(create='c',
+           connect='con',
+           parent='p')
+    def getShape(
+            self, *,
+            create:bool=False,
+            connect:Optional[bool]=None,
+            parent:Optional['nodes.Transform']=None
+    ) -> Optional['nodes.Shape']:
+        incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
+
+        if incomingConnection:
+            inputNode = incomingConnection.node()
+
+            if isinstance(inputNode, nodes['DeformableShape']):
+                return inputNode
+
             else:
-                geoInput.disconnect(inputs=True)
+                if create:
+                    outShape = incomingConnection.createShape()
+                    self._cleanupOutputGeo(outShape.parent, parent=parent)
 
-        return out
+                    if connect is None:
+                        connect = True
+
+                    if connect:
+                        if self.node().attr('origin')() == 0:
+                            src = outShape.worldOutput
+                        else:
+                            src = outShape.localOutput
+
+                        outShape >> self.geoInput
+
+                    return outShape
+        else:
+            if create:
+                outShape = self._doCreateShapeCmd()
+                self._cleanupOutputGeo(outShape.parent, parent=parent)
+
+                if connect is None:
+                    connect = not self.node().inPostMode()
+
+                if not connect:
+                    self.geoInput.disconnect(inputs=True)
+
+                return outShape
 
     #---------------------------|    Repr
 
@@ -781,13 +805,9 @@ class BlendShape(WeightGeometryFilter):
 
         for targetIndex, targetSpec in targetSpecs.items():
             srcTarget = self.targets[targetIndex]
-            mainGeo = srcTarget[1.0].regenerateInputGeo(connect=False,
-                                                        reuse=False)
+            mainGeo = srcTarget[1.0].createShape(connect=False)
             tweenGeos = {
-                tweenRatio: srcTarget[tweenRatio].regenerateInputGeo(
-                    connect=False,
-                    reuse=False
-                )
+                tweenRatio: srcTarget[tweenRatio].createShape(connect=False)
                 for tweenRatio in targetSpec.get('tweenRatios', [])
             }
 
@@ -1056,3 +1076,16 @@ class BlendShape(WeightGeometryFilter):
                 continue
 
         return out
+
+    def _buildTargetName(self, targetIndex:int, tweenRatio:float=1.0, /):
+        alias = self.attr('weight')[targetIndex].alias
+
+        if alias is None:
+            alias = 'target_{}'.format(str(targetIndex).zfill(3))
+
+        elems = [next(self.shapes).parent.shortName(),
+                 alias,
+                 str(int(tweenRatio * 100)).zfill(3),
+                 _nm.BLENDSUFFIX]
+
+        return '_'.join(elems)
