@@ -248,16 +248,16 @@ def loadSkinCluster(infoFilePath,
 
     if forceShapeTo:
         # allow to error
-        shape = findSceneNode(forceShapeTo)
+        sceneShape = findSceneNode(forceShapeTo)
     else:
         try:
-            shape = findSceneNode(info['shape'])
+            sceneShape = findSceneNode(info['shape'])
         except MultipleOrNoMatchesForSceneShapeError:
-            shape = findSceneNode(info['transform']).shape
+            sceneShape = findSceneNode(info['transform']).shape
 
     #-------------------|    Resolve skinCluster and influences
 
-    skinCluster = next(r.nodes.SkinCluster.fromGeo(shape), None)
+    skinCluster = next(r.nodes.SkinCluster.fromGeo(sceneShape), None)
 
     if skinCluster is None:
         if weightsOnly:
