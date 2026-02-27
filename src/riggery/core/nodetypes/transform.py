@@ -959,7 +959,7 @@ class Transform(nodes['DagNode']):
             where, for some reason, Maya doesn't update shape names under this
             transform; defaults to False
         """
-        super().setName()
+        super().setName(name)
 
         if conformShapeNames:
             self.conformShapeNames()
