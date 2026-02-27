@@ -241,6 +241,8 @@ class Tween:
 
                 return outShape
 
+    shape = property(getShape)
+
     #---------------------------|    Repr
 
     def __repr__(self):
