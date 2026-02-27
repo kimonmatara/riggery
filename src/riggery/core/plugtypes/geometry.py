@@ -1,3 +1,4 @@
+import re
 from typing import Union, Optional
 
 import maya.api.OpenMaya as om
@@ -9,6 +10,7 @@ from riggery.core.elem import Elem
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from riggery.internal.nodeinfo import UNCAPMAP
+from riggery.general.strings import uncap
 
 uncap = lambda x: x[0].lower()+x[1:]
 
@@ -31,12 +33,33 @@ class Geometry(Attribute, metaclass=GeometryMeta):
 
     def _getSamplingPlug(self) -> om.MPlug:
         plug = self.__apimplug__()
+
         if plug.isArray:
             plug = plug.elementByLogicalIndex(0)
+
         return plug
 
     def _getData(self) -> om.MObject:
         return self._getSamplingPlug().asMDataHandle().data()
+
+    def geoType(self, apiType:bool=False) -> Optional[str]:
+        """
+        :param apiType: return the raw API type string
+        :return: the geometry type, detected from the plug data
+        """
+        out = self._getData().apiTypeStr
+
+        if apiType:
+            return out
+
+        out = uncap(out[1:])
+        mt = re.match(r"^(.*)Data$", out)
+
+        if mt:
+            out =  mt.group(1)
+
+        if out != 'invalid':
+            return out
 
     #--------------------------------------|    Shape interops
 
@@ -50,8 +73,10 @@ class Geometry(Attribute, metaclass=GeometryMeta):
             with, the original plug.
         """
         geo = Elem(geo)
+
         if isinstance(geo, Geometry):
             return geo
+
         if isinstance(geo, nodes['DagNode']):
             if isinstance(geo, nodes['Transform']):
                 shape = geo.getShape()
