@@ -555,7 +555,7 @@ def loadMulti(infoFiles:list,
                 continue
 
             print(
-                "Created or updated skinCluster {} on shape {}".format(
+                "Processed skinCluster '{}' on shape '{}'".format(
                     skinCluster,
                     infoShape
                 )
