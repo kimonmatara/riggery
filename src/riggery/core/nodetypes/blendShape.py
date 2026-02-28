@@ -366,29 +366,41 @@ class Target:
     #---------------------------|    Add tween
 
     @short(connect='c',
-           topologyCheck='tc')
+           topologyCheck='tc',
+           skinCluster='sc')
     def add(self,
             geo,
-            ratio:float,
+            ratio:float, *,
             connect:Optional[bool]=None,
-            topologyCheck:bool=True):
+            topologyCheck:bool=True,
+            skinCluster:Optional['nodes.SkinCluster']=None):
         """
        Adds an inbetween shape.
 
        :param geo: the target geometry
        :param ratio: the weight at which to create the inbetween target
+       :param skinCluster/sc: a skinCluster to perform inversion before
+        applying; defaults to None
        :param connect/c: keep the target connected; defaults to False if the
            main target is a 'tangentSpace' or 'transform' target, otherwise
            True
        """
-        node = self.node()
-        _node = str(node)
-        args = (_node,)
-        geo = nodes['DagNode'](geo)
+        bsn = self.node()
+        _bsn = str(bsn)
+
+        args = (_bsn,)
+
+        if skinCluster:
+            skinCluster = nodes['SkinCluster'](skinCluster)
+            geoShape = skinCluster.invertShape(geo)
+        else:
+            geoShape = nodes['DagNode'](geo).toShape()
+
+        geoXf = geoShape.parent
 
         kwargs = {'e': True,
                   'ib': True,
-                  't':(str(next(node.shapes)), self._index, str(geo), ratio),
+                  't':(str(next(node.shapes)), self._index, str(geoXf), ratio),
                   'tc': topologyCheck}
 
         postDeformMode = self.group.attr('postDeformersMode')()
@@ -415,9 +427,12 @@ class Target:
         tween = self[ratio]
 
         if connect:
-            tween._connectInputShape(geo)
+            tween._connectInputShape(geoShape)
         else:
             tween.geoInput.disconnect(inputs=True)
+
+            if skinCluster:
+                m.delete(str(geoXf))
 
         return tween
 
@@ -550,14 +565,15 @@ class Targets:
         for index in self.indices():
             yield Target(self, index)
 
-    #---------------------------|    Add
+    #---------------------------|    Add target
 
     @short(alias='a',
            tangentSpace='ts',
            connect='c',
            index='i',
            transform='t',
-           topologyCheck='tc')
+           topologyCheck='tc',
+           skinCluster='sc')
     def add(self,
             geo:'nodes.DagNode',
             alias:Optional[str]=None, *,
@@ -565,6 +581,7 @@ class Targets:
             transform:Optional['nodes.Transform']=None,
             connect:Optional[bool]=None,
             index:Optional[int]=None,
+            skinCluster:Optional['nodes.SkinCluster']=None,
             topologyCheck:bool=True) -> 'Target':
         """
        Adds a main (not inbetween) target. The weight for the new target will
@@ -581,6 +598,10 @@ class Targets:
            space blend shape
        :param index/i: a preferred index for the target; defaults to the next
            available index
+       :param skinCluster/sc: if this is provided, it will be used to invert
+           the shape before application (note that this is not a 'live'
+           operation, and that the skinCluster must be at-pose at the time of
+           application); defaults to None
        :param topologyCheck/tc: check topology matches the bases; defaults to
            True
        :raises ValueError: 'tangentSpace' and 'transform' can't be used; blend
@@ -592,10 +613,16 @@ class Targets:
        """
         #------------------|    Wrangle args
 
-        node = self.node()
+        bsn = self.node()
+        post = bsn.inPostMode()
 
-        post = node.inPostMode()
-        geo = nodes['DagNode'](geo)
+        if skinCluster:
+            skinCluster = nodes['SkinCluster'](skinCluster)
+            geoShape = skinCluster.invertShape(geo)
+        else:
+            geoShape = nodes['DagNode'](geo).toShape()
+
+        geoXf = geoShape.parent
 
         if index is None:
             index = node.attr('weight').nextIndex()
@@ -604,7 +631,7 @@ class Targets:
             raise ValueError(f"index {index} in use")
 
         if alias is None:
-            alias = geo.toTransform().shortName(sns=True)
+            alias = geoXf.shortName(sns=True)
 
         if self.aliasExists(alias):
             raise ValueError(f"alias '{alias}' in use")
@@ -636,23 +663,26 @@ class Targets:
 
         m.blendShape(str(node),
                      e=True,
-                     t=[str(base), index, str(geo), 1.0],
+                     t=[str(base), index, str(geoXf), 1.0],
                      w=[index, 0.0],
                      **kwargs)
 
         #------------------|    Post-config
 
         target = Target(self, index)
+        target.alias = alias
         geoInput = target.geoInput
 
         if connect:
             worldSpace = node.attr('origin')() == 0
-            geoPlug = geo.worldOutput if worldSpace else geo.localOutput
+            geoPlug = (geoShape.worldOutput
+                       if worldSpace else geoShape.localOutput)
             geoPlug >> geoInput
         else:
             geoInput.disconnect(inputs=True)
 
-        target.alias = alias
+            if skinCluster:
+                m.delete(str(geoXf))
 
         return target
 
