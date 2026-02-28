@@ -930,6 +930,3 @@ class ProximityWrap(WeightGeometryFilter):
             attrName = join_camel(('driver', detailName))
             plug = slot.attr(attrName)
             detailContent >> plug
-
-    def getWeights(self) -> list[float]:
-        plug =
