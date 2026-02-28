@@ -146,12 +146,14 @@ class Tween:
     @short(skinCluster='sc')
     def updateShape(self,
                     src:'nodes.DagNode', *,
-                    skinCluster:Optional['nodes.SkinCluster']=None):
+                    skinCluster:Optional['nodes.SkinCluster']=None,
+                    connect:bool=False):
         """
         Temporarily connects a new shape and afterwards disconnects it.
 
         :param skinCluster/sc: if this is provided, it will be used to invert
             the shape before updating; defaults to None
+        :param connect/con: keep the connection; defaults to False
         """
         incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
 
@@ -163,10 +165,11 @@ class Tween:
 
         self._connectInputShape(src)
 
-        if incomingConnection:
-            incomingConnection >> self.geoInput
-        else:
-            self.geoInput.disconnect(inputs=True)
+        if not connect:
+            if incomingConnection:
+                incomingConnection >> self.geoInput
+            else:
+                self.geoInput.disconnect(inputs=True)
 
         if skinCluster:
             r.delete(src.parent)
