@@ -11,6 +11,7 @@ from riggery.general.iterables import expand_tuples_lists, without_duplicates
 WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
+import maya.api.OpenMaya as om
 
 #-----------------------------------------|
 #-----------------------------------------|    INTERFACES
@@ -1186,3 +1187,178 @@ class BlendShape(WeightGeometryFilter):
                  _nm.BLENDSUFFIX]
 
         return '_'.join(elems)
+
+    #---------------------------|    Granular weight control
+
+    def iterAliases(self, includeNone:bool=False) -> Iterator[str]:
+        """
+        Do not rely on this to get a target count, since on some blendShape
+        nodes the aliases may be malformed / missing.
+
+        :param includeNone: in the (unusual) event that a weight plug doesn't
+            have an alias, yield None; defaults to False (skip)
+        :return: An iterator of target aliases.
+        """
+        for slot in self.attr('weight'):
+            alias = slot.alias
+
+            if (not includeNone) and alias is None:
+                continue
+
+            yield alias
+
+    def _getChannelIndex(self, shapeOrAlias:Union['nodes.DagNode', str]) -> int:
+        """
+        :raises NoTargetIndexError:
+        """
+        if isinstance(shapeOrAlias, str):
+            for slot in self.attr('weight'):
+                if slot.alias == shapeOrAlias:
+                    return slot.index()
+
+        try:
+            shape = nodes['DagNode'](shapeOrAlias).toShape()
+        except:
+            raise self.NoTargetIndexError(
+                "Couldn't derive a target index from {}".format(
+                    repr(shapeOrAlias)
+                )
+            )
+
+        for targetGroup in self.attr('inputTarget')[0].attr('inputTargetGroup'):
+            for targetItem in targetGroup.attr('inputTargetItem'):
+                if shape in targetItem.attr('inputGeomTarget').history(
+                        type='deformableShape'
+                ):
+                    return slot.index()
+
+        raise self.NoTargetIndexError(
+            "Couldn't derive a target index from {}".format(
+                repr(shapeOrAlias)
+            )
+        )
+
+    def _getWeights(self, shapeIndex:int, channelIndex:int) -> list[float]:
+        """
+        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
+        decides to do something 'special' with blend shapes, will always be 0.
+        """
+        weightAttr = self.attr(
+            'inputTarget'
+        )[shapeIndex].attr('inputTargetGroup'
+                           )[channelIndex].attr('targetWeights')
+
+        mplug = weightAttr.__apimplug__()
+        numPoints = list(self.shapes)[shapeIndex].numDeformablePoints()
+        weights = [1.0] * numPoints
+
+        for index in mplug.getExistingArrayAttributeIndices():
+            weights[index] = mplug.elementByLogicalIndex(index).asDouble()
+
+        return weights
+
+    def _setWeights(self, shapeIndex:int, channelIndex:int,
+                    weights:list[float]):
+        """
+        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
+        decides to do something 'special' with blend shapes, will always be 0.
+        """
+        weightAttr = self.attr(
+            'inputTarget'
+        )[shapeIndex].attr('inputTargetGroup'
+                           )[channelIndex].attr('targetWeights')
+        mplug = weightAttr.__apimplug__()
+        existingIndices = mplug.getExistingArrayAttributeIndices()
+        dgMod = om.MDGModifier()
+
+        for i, weight in enumerate(weights):
+            elem = mplug.elementByLogicalIndex(i)
+            if weight == 1.0:
+                if i in existingIndices:
+                    dgMod.removeMultiInstance(elem, True)
+            else:
+                elem.setDouble(weight)
+
+        dgMod.doIt()
+
+    def _getBaseWeights(self, shapeIndex:int):
+        """
+        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
+        decides to do something 'special' with blend shapes, will always be 0.
+        """
+        weightAttr = self.attr('weightList')[shapeIndex].attr('weights')
+        mplug = weightAttr.__apimplug__()
+        numPoints = list(self.shapes)[shapeIndex].numDeformablePoints()
+        weights = [1.0] * numPoints
+
+        for index in mplug.getExistingArrayAttributeIndices():
+            weights[index] = mplug.elementByLogicalIndex(index).asDouble()
+
+        return weights
+
+    def _setBaseWeights(self, shapeIndex:int, weights:list[float]):
+        """
+        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
+        decides to do something 'special' with blend shapes, will always be 0.
+        """
+        weightAttr = self.attr('weightList')[shapeIndex].attr('weights')
+        mplug = weightAttr.__apimplug__()
+
+        existingIndices = mplug.getExistingArrayAttributeIndices()
+        dgMod = om.MDGModifier()
+
+        for i, w in enumerate(weights):
+            elem = mplug.elementByLogicalIndex(i)
+
+            if w == 1.0:
+                if i in existingIndices:
+                    dgMod.removeMultiInstance(elem, True)
+            else:
+                elem.setDouble(w)
+
+        dgMod.doIt()
+
+    def getWeights(self,
+                   shape:Union[str, 'nodes.DagNode'],
+                   channel:Union[str, int]) -> list[float]:
+        """
+        Returns the weights for the given channel (target).
+
+        :param shape: this refers to the *base* shape which, until Autodesk
+            decides to do something 'special' with blend shapes, should always
+            be passed-in as 0
+        :param channel: an index, alias or geometry name representing the target
+            for which to get weights; pass ``None`` to get the *base* weights
+        """
+        shapeIndex = self._resolveShapeIndex(shape)
+
+        if channel is None:
+            return self._getBaseWeights(shapeIndex)
+
+        channelIndex = self._resolveChannelIndex(channel)
+
+        return self._getWeights(shapeIndex, channelIndex)
+
+    def setWeights(self,
+                   shape:Union[str, 'nodes.DagNode'],
+                   channel:Union[str, int],
+                   weights:list[float]):
+        """
+        Sets the weights for the given channel (target).
+
+        :param shape: this refers to the *base* shape which, until Autodesk
+            decides to do something 'special' with blend shapes, should always
+            be passed-in as 0
+        :param channel: an index, alias or geometry name representing the target
+            for which to get weights; pass ``None`` to set the *base* weights
+        :param weights: the weight list; this must not be sparse
+        """
+        shapeIndex = self._resolveShapeIndex(shape)
+
+        if channel is None:
+            self._setBaseWeights(shapeIndex, weights)
+        else:
+            channelIndex = self._resolveChannelIndex(channel)
+            self._setWeights(shapeIndex, channelIndex, weights)
+
+        return self

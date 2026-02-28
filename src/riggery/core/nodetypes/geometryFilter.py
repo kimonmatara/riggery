@@ -957,6 +957,9 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    Granular weight management
 
+    class NoTargetIndexError(RuntimeError):
+        ...
+
     def _getShapeMDagPathAtIndex(self, shapeIndex:int) -> om.MDagPath:
         return oma.MFnGeometryFilter(
             self.__apimobject__()
