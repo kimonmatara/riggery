@@ -1186,10 +1186,21 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         This must be called on the root of a multi. Clears out all elements,
         breaking any connections.
+
+        No undo support (uses MDGModifier).
         """
-        _self = str(self)
-        for index in self.indices():
-            m.removeMultiInstance(f"{_self}[{index}]", b=True)
+        mplug = self.__apimplug__()
+        indices = mplug.getExistingArrayAttributeIndices()
+
+        if len(indices):
+            dgMod = om.DGModifier()
+
+            for index in indices:
+                dgMod.removeMultiInstance(mplug.elementByLogicalIndex(index,
+                                                                      True))
+
+            dgMod.doIt()
+
         return self
 
     def __delitem__(self, logicalIndex:int):

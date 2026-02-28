@@ -34,10 +34,9 @@ class GeometryFilter(DependNode):
 
     To implement granular weight management:
 
-        -   Implement _getWeights() / _setWeights()
+        -   Implement _getWeightsForShapeAndChannel() / _setWeightsForShapeAndChannel()
         -   Implement _getChannelIndex()
     """
-
     #-------------------------------------|    Constructors
 
     @classmethod
@@ -1029,22 +1028,22 @@ class GeometryFilter(DependNode):
             return shape
         return self._getShapeIndex(shape)
 
-    def _getWeights(self, shapeIndex:int, channelIndex:int):
+    def _getWeightsForShapeAndChannel(self, shapeIndex:int, channelIndex:int):
         raise NotImplementedError
 
-    def _setWeights(self, shapeIndex:int, channelIndex:int,
+    def _setWeightsForShapeAndChannel(self, shapeIndex:int, channelIndex:int,
                     weights:list[float]):
         raise NotImplementedError
 
-    def getWeights(self, shape, channel) -> list[float]:
+    def getWeightsForShapeAndChannel(self, shape, channel) -> list[float]:
         shapeIndex = self._resolveShapeIndex(shape)
         channelIndex = self._resolveChannelIndex(channel)
-        return self._getWeights(shapeIndex, channelIndex)
+        return self._getWeightsForShapeAndChannel(shapeIndex, channelIndex)
 
-    def setWeights(self, shape, channel, weights:list[float]):
+    def setWeightsForShapeAndChannel(self, shape, channel, weights:list[float]):
         shapeIndex = self._resolveShapeIndex(shape)
         channelIndex = self._resolveChannelIndex(channel)
-        self._setWeights(shapeIndex, channelIndex, weights)
+        self._setWeightsForShapeAndChannel(shapeIndex, channelIndex, weights)
         return self
 
     #-------------------------------------|    Name

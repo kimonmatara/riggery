@@ -1158,7 +1158,52 @@ class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Granular weight management
 
-    def _getWeights(self, shapeIndex:int, channelIndex:int) -> list[float]:
+    def getBlendWeights(self) -> list[float]:
+        """
+        :return: The full list of DG blend weights for the skinCluster.
+        """
+        allComps = self._getAllWeightedComps(0)
+        mfn = oma.MFnSkinCluster(self.__apimobject__())
+        shape = next(self.shapes).__apimdagpath__()
+
+        return list(mfn.getBlendWeights(shape, allComps))
+
+    def setBlendWeights(self, weights:list[float]):
+        """
+        :param weights: the weights to set; this must be a padded (non-sparse)
+            list
+        """
+        allComps = self._getAllWeightedComps(0)
+        mfn = oma.MFnSkinCluster(self.__apimobject__())
+        shape = next(self.shapes).__apimdagpath__()
+        mfn.setBlendWeights(shape, allComps, om.MDoubleArray(weights))
+
+        return self
+
+    def getInflWeights(
+            self,
+            influence:Union[int, str, 'nodes.Transform']
+    ) -> list[float]:
+        """
+        :param influence: the influence (typically a joint), specified by index,
+            name or as a riggery node
+        :return: The full (per-component) weight list for the specified
+            influence.
+        """
+        return self.getWeightsForShapeAndChannel(0, influence)
+
+    def setInflWeights(self, influence, weights:list[float]):
+        """
+        :param influence: the influence (typically a joint), specified by index,
+            name or as a riggery node
+        :param weights: the full (per-component) weight list for the specified
+            influence
+        """
+        return self.setWeightsForShapeAndChannel(0, influence, weights)
+
+    def _getWeightsForShapeAndChannel(self,
+                                      shapeIndex:int,
+                                      channelIndex:int) -> list[float]:
         shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
         allComps = self._getAllWeightedComps(shapeIndex)
 
@@ -1175,10 +1220,10 @@ class SkinCluster(GeometryFilter):
             self.__apimobject__()
         ).indexForInfluenceObject(joint.__apimdagpath__())
 
-    def _setWeights(self,
-                    shapeIndex:int,
-                    channelIndex:int,
-                    weights:list[float]):
+    def _setWeightsForShapeAndChannel(self,
+                                      shapeIndex:int,
+                                      channelIndex:int,
+                                      weights:list[float]):
         """
         This will issue warnings if the skinCluster is set to 'interactive'. You
         might want to turn off normalization beforehand and resolve afterwards.

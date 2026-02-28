@@ -33,7 +33,7 @@ def getPathFromNodeType(nodeType:str,
 
 @cache
 def getPathFromKey(clsname:str) -> list[str]:
-    nodeType = UNCAPMAP[clsname]
+    nodeType = UNCAPMAP.setdefault(clsname, uncap(clsname))
     return getPathFromNodeType(nodeType, True)
 
 def getKeyFromMObject(mObject:om.MObject) -> str:

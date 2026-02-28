@@ -307,6 +307,26 @@ class Target:
         """:return: The corresponding ``weight`` input."""
         return self._node.attr('weight')[self._index]
 
+    #---------------------------|    Granular weights
+
+    def getWeights(self) -> list[float]:
+        """
+        :return: The per-vertex weights for this target.
+        """
+        return self.node().getWeightsForTargetByIndex(self._index)
+
+    def setWeights(self, weights:list[float]) -> 'Target':
+        """
+        Sets the weights for this target.
+
+        :param weights: the weights to set; the list must be complete
+            (non-sparse)
+        """
+        self.node().setWeightsForTargetByIndex(self._index, weights)
+        return self
+
+    weights = property(getWeights, setWeights)
+
     #---------------------------|    Alias
 
     def getAlias(self) -> Optional[str]:
@@ -1238,7 +1258,9 @@ class BlendShape(WeightGeometryFilter):
             )
         )
 
-    def _getWeights(self, shapeIndex:int, channelIndex:int) -> list[float]:
+    def _getWeightsForShapeAndChannel(self,
+                                      shapeIndex:int,
+                                      channelIndex:int) -> list[float]:
         """
         Note that *shapeIndex* refers to the *base* index, which, until Autodesk
         decides to do something 'special' with blend shapes, will always be 0.
@@ -1248,17 +1270,15 @@ class BlendShape(WeightGeometryFilter):
         )[shapeIndex].attr('inputTargetGroup'
                            )[channelIndex].attr('targetWeights')
 
-        mplug = weightAttr.__apimplug__()
-        numPoints = list(self.shapes)[shapeIndex].numDeformablePoints()
-        weights = [1.0] * numPoints
+        return weightAttr.readSparseWeightsMulti(
+            list(self.shapes)[shapeIndex].numDeformablePoints(),
+            1.0
+        )
 
-        for index in mplug.getExistingArrayAttributeIndices():
-            weights[index] = mplug.elementByLogicalIndex(index).asDouble()
-
-        return weights
-
-    def _setWeights(self, shapeIndex:int, channelIndex:int,
-                    weights:list[float]):
+    def _setWeightsForShapeAndChannel(self,
+                                      shapeIndex:int,
+                                      channelIndex:int,
+                                      weights:list[float]):
         """
         Note that *shapeIndex* refers to the *base* index, which, until Autodesk
         decides to do something 'special' with blend shapes, will always be 0.
@@ -1267,60 +1287,31 @@ class BlendShape(WeightGeometryFilter):
             'inputTarget'
         )[shapeIndex].attr('inputTargetGroup'
                            )[channelIndex].attr('targetWeights')
-        mplug = weightAttr.__apimplug__()
-        existingIndices = mplug.getExistingArrayAttributeIndices()
-        dgMod = om.MDGModifier()
+        weightAttr.writeSparseWeightsMulti(weights, 1.0)
 
-        for i, weight in enumerate(weights):
-            elem = mplug.elementByLogicalIndex(i)
-            if weight == 1.0:
-                if i in existingIndices:
-                    dgMod.removeMultiInstance(elem, True)
-            else:
-                elem.setDouble(weight)
-
-        dgMod.doIt()
-
-    def _getBaseWeights(self, shapeIndex:int):
+    def getBaseWeights(self) -> list[float]:
         """
-        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
-        decides to do something 'special' with blend shapes, will always be 0.
+        :return: The full list of base weights for the blend shape node.
         """
-        weightAttr = self.attr('weightList')[shapeIndex].attr('weights')
-        mplug = weightAttr.__apimplug__()
-        numPoints = list(self.shapes)[shapeIndex].numDeformablePoints()
-        weights = [1.0] * numPoints
+        return self.attr('weightList'
+                         )[0].attr('weights').readSparseWeightsMulti(
+            next(self.shapes).numDeformablePoints(),
+            1.0
+        )
 
-        for index in mplug.getExistingArrayAttributeIndices():
-            weights[index] = mplug.elementByLogicalIndex(index).asDouble()
-
-        return weights
-
-    def _setBaseWeights(self, shapeIndex:int, weights:list[float]):
+    def setBaseWeights(self, weights:list[float]):
         """
-        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
-        decides to do something 'special' with blend shapes, will always be 0.
+        Sets the base weights for the blend shape node.
+
+        :param weights: the full (non-sparse) weights list
         """
-        weightAttr = self.attr('weightList')[shapeIndex].attr('weights')
-        mplug = weightAttr.__apimplug__()
+        self.attr('weightList'
+                  )[0].attr('weights').writeSparseWeightsMulti(weights, 1.0)
+        return self
 
-        existingIndices = mplug.getExistingArrayAttributeIndices()
-        dgMod = om.MDGModifier()
-
-        for i, w in enumerate(weights):
-            elem = mplug.elementByLogicalIndex(i)
-
-            if w == 1.0:
-                if i in existingIndices:
-                    dgMod.removeMultiInstance(elem, True)
-            else:
-                elem.setDouble(w)
-
-        dgMod.doIt()
-
-    def getWeights(self,
-                   shape:Union[str, 'nodes.DagNode'],
-                   channel:Union[str, int]) -> list[float]:
+    def getWeightsForShapeAndChannel(self,
+                                     shape:Union[str, 'nodes.DagNode'],
+                                     channel:Union[str, int]) -> list[float]:
         """
         Returns the weights for the given channel (target).
 
@@ -1328,21 +1319,16 @@ class BlendShape(WeightGeometryFilter):
             decides to do something 'special' with blend shapes, should always
             be passed-in as 0
         :param channel: an index, alias or geometry name representing the target
-            for which to get weights; pass ``None`` to get the *base* weights
+            for which to get weights
         """
         shapeIndex = self._resolveShapeIndex(shape)
-
-        if channel is None:
-            return self._getBaseWeights(shapeIndex)
-
         channelIndex = self._resolveChannelIndex(channel)
+        return self._getWeightsForShapeAndChannel(shapeIndex, channelIndex)
 
-        return self._getWeights(shapeIndex, channelIndex)
-
-    def setWeights(self,
-                   shape:Union[str, 'nodes.DagNode'],
-                   channel:Union[str, int],
-                   weights:list[float]):
+    def setWeightsForShapeAndChannel(self,
+                                     shape:Union[str, 'nodes.DagNode'],
+                                     channel:Union[str, int],
+                                     weights:list[float]):
         """
         Sets the weights for the given channel (target).
 
@@ -1350,15 +1336,35 @@ class BlendShape(WeightGeometryFilter):
             decides to do something 'special' with blend shapes, should always
             be passed-in as 0
         :param channel: an index, alias or geometry name representing the target
-            for which to get weights; pass ``None`` to set the *base* weights
+            for which to get weights
         :param weights: the weight list; this must not be sparse
         """
         shapeIndex = self._resolveShapeIndex(shape)
 
-        if channel is None:
-            self._setBaseWeights(shapeIndex, weights)
-        else:
-            channelIndex = self._resolveChannelIndex(channel)
-            self._setWeights(shapeIndex, channelIndex, weights)
+        channelIndex = self._resolveChannelIndex(channel)
+        self._setWeightsForShapeAndChannel(shapeIndex,
+                                           channelIndex,
+                                           weights)
 
+        return self
+
+    def getWeightsForTargetByIndex(self, targetIndex:int) -> list[float]:
+        """
+        :param targetIndex: the target index
+        :return: The full (non-sparse) weights list for the target.
+        """
+        weightAttr = self.attr('inputTarget')[0].attr(
+            'inputTargetGroup')[targetIndex].attr('targetWeights')
+        numPoints = next(self.shapes).numDeformablePoints()
+
+        return weightAttr.readSparseWeightsMulti(numPoints, 1.0)
+
+    def setWeightsForTargetByIndex(self, targetIndex:int, weights:list[float]):
+        """
+        :param targetIndex: the target index
+        :param weights: Tthe full (non-sparse) weights list for the target
+        """
+        weightAttr = self.attr('inputTarget')[0].attr(
+            'inputTargetGroup')[targetIndex].attr('targetWeights')
+        weightAttr.writeSparseWeightsMulti(weights, 1.0)
         return self

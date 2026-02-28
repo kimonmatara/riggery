@@ -709,3 +709,53 @@ class Number(__pool__['Math']):
             input = currentInputs[0] * input
         input >> self
         return self
+
+    #-----------------------------------------|    Multi read / write
+
+    def readSparseWeightsMulti(self, length:int, default:float) -> list[float]:
+        """
+        :param length: the expected weights length
+        :param default: the default to return for missing indices
+        :return: The full weight list.
+        """
+        mplug = self.__apimplug__()
+
+        if mplug.isArray:
+            indices = mplug.getExistingArrayAttributeIndices()
+
+            return [mplug.elementByLogicalIndex(i).asDouble()
+                    if i in indices else default
+                    for i in range(length)]
+
+        raise TypeError("Not a multi.")
+
+    def writeSparseWeightsMulti(self, weights:list[float], default:float):
+        """
+        :param weights: the full, non-sparse weights list
+        :param default: the default value to omit from writing
+        """
+        mplug = self.__apimplug__()
+
+        if mplug.isArray:
+            indices = mplug.getExistingArrayAttributeIndices()
+
+            if len(indices):
+                dgMod = om.MDGModifier()
+
+                for index in indices:
+                    dgMod.removeMultiInstance(
+                        mplug.elementByLogicalIndex(index),
+                        True
+                    )
+
+                dgMod.doIt()
+
+            for i, weight in enumerate(weights):
+                if weight == default:
+                    continue
+
+                mplug.elementByLogicalIndex(i).setDouble(weight)
+
+            return self
+
+        raise TypeError("Not a multi.")
