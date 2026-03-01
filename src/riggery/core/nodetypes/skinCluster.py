@@ -34,8 +34,6 @@ from riggery.internal import str2api as _s2a
 if not m.pluginInfo('invertShape', loaded=1, q=1):
     m.loadPlugin('invertShape')
 
-
-
 class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Contructors
@@ -1293,7 +1291,7 @@ class SkinCluster(GeometryFilter):
 
         mFn = oma.MFnSkinCluster(self.__apimobject__())
         influence = self._inflToIndex(influence)
-        mfn.setWeights(shape, comps, influence, weight, normalize=False)
+        mFn.setWeights(shape, comps, influence, weight, normalize=False)
 
         return self
 
@@ -1467,7 +1465,7 @@ class SkinCluster(GeometryFilter):
         return mfn.getBlendWeights(shape, comps)
 
     def setBlendWeights(self,
-                        weights:list[float],
+                        weights:Union[float, int, list[Union[float, int]]],
                         components:Optional[
                             Union[
                                 int,
@@ -1488,6 +1486,10 @@ class SkinCluster(GeometryFilter):
         mfn = oma.MFnSkinCluster(self.__apimobject__())
         shape = self._getShapeMDagPathAtIndex(0)
         comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        if isinstance(weights, (int, float)):
+            weights = [weights] * om.MFnComponent(comps).elementCount
+
         mfn.setBlendWeights(shape, comps, om.MDoubleArray(weights))
 
         return self
