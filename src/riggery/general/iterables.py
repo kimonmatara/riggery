@@ -1,5 +1,6 @@
 """General utilities for collections, iterables, lists etc."""
 
+from itertools import islice
 from typing import Iterable, Any, Iterator
 
 def expand_tuples_lists(*items) -> list:
@@ -155,3 +156,8 @@ def pad_nones(items:list, conserve:bool=True) -> list:
         out.append(item)
 
     return out
+
+def chunks(iterable, n) -> Iterator[list]:
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
