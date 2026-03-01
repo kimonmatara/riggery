@@ -1,3 +1,4 @@
+from itertools import chain
 import json
 from copy import deepcopy
 import re
@@ -21,12 +22,18 @@ from riggery.core.lib.selection import keepsel
 import riggery.core.lib.names as _nm
 from riggery.core.lib import skinwtio as _sw
 
-from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.iterables import (expand_tuples_lists,
+                                       without_duplicates,
+                                       chunks)
+
 from riggery.general.functions import short
 from riggery.internal.typeutil import UNDEFINED
+from riggery.internal import computil as _cu
+from riggery.internal import str2api as _s2a
 
 if not m.pluginInfo('invertShape', loaded=1, q=1):
     m.loadPlugin('invertShape')
+
 
 
 class SkinCluster(GeometryFilter):
@@ -1158,87 +1165,329 @@ class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Granular weight management
 
-    def getBlendWeights(self) -> list[float]:
+    def indexForInfluenceObject(
+            self,
+            influence:Union[str, 'nodes.Transform', int]
+    ) -> int:
         """
-        :return: The full list of DG blend weights for the skinCluster.
+        :return: The index for the given influence object (typically a joint).
         """
-        allComps = self._getAllWeightedComps(0)
-        mfn = oma.MFnSkinCluster(self.__apimobject__())
-        shape = next(self.shapes).__apimdagpath__()
+        if isinstance(influence, str):
+            return oma.MFnSkinCluster(
+                self.__apimobject__()
+            ).indexForInfluenceObject(_s2a.getMDagPath(influence))
 
-        return list(mfn.getBlendWeights(shape, allComps))
+        if isinstance(influence, nodes['Transform']):
+            return oma.MFnSkinCluster(
+                self.__apimobject__()
+            ).indexForInfluenceObject(influence.__apimdagpath__())
 
-    def setBlendWeights(self, weights:list[float]):
+        raise TypeError("expected str or Transform")
+
+    def iterInfluenceIndices(self) -> Iterator[int]:
         """
-        :param weights: the weights to set; this must be a padded (non-sparse)
-            list
+        :return: An iterator of influence indices.
         """
-        allComps = self._getAllWeightedComps(0)
-        mfn = oma.MFnSkinCluster(self.__apimobject__())
-        shape = next(self.shapes).__apimdagpath__()
-        mfn.setBlendWeights(shape, allComps, om.MDoubleArray(weights))
+        mfn = om.MFnSkinCluster(self.__apimobject__())
+
+        for infl in mfn.influenceObjects():
+            yield mfn.indexForInfluenceObject(infl)
+
+    def _inflToIndex(self, infl) -> int:
+        if isinstance(infl, int):
+            return infl
+        return self.indexForInfluenceObject(infl)
+
+    def getWeightsForInfluence(self,
+                               influence:Union[int, str, 'nodes.Transform'],
+                               components:Optional[
+                                   Union[
+                                       int,
+                                       list[int],
+                                       tuple[int, int],
+                                       list[tuple[int, int]],
+                                       tuple[int, int, int],
+                                       list[tuple[int, int, int]]
+                                   ]
+                               ]=None, /) -> list[float]:
+        """
+        :param influence: the influence to query, as an integer (index), str or
+            :class:`~riggery.core.nodetypes.transform.Transform` instance
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        :return: The per-component weights for the given influence.
+        """
+        influence = self._inflToIndex(influence)
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        return oma.MFnSkinCluster(self.__apimobject__()).getWeights(
+            shape,
+            comps,
+            influence
+        )
+
+    def setWeightsForInfluence(self,
+                               influence:Union[int, str, 'nodes.Transform'],
+                               weights:Union[float, list[float]],
+                               components:Optional[
+                                   Union[
+                                       int,
+                                       list[int],
+                                       tuple[int, int],
+                                       list[tuple[int, int]],
+                                       tuple[int, int, int],
+                                       list[tuple[int, int, int]]
+                                   ]
+                               ]=None, /):
+        """
+        :param influence: the influence to edit, as an integer (index), str or
+            :class:`~riggery.core.nodetypes.transform.Transform` instance
+        :param weights: the weights to set (per-component)
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        """
+        influence = self._inflToIndex(influence)
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        if not isinstance(weights, (int, float)):
+            weights = om.MDoubleArray(weights)
+            influence = om.MIntArray([influence])
+
+        oma.MFnSkinCluster(self.__apimobject__()).setWeights(
+            shape,
+            comps,
+            influence,
+            weights,
+            normalize=False
+        )
 
         return self
 
-    def getInflWeights(
+    def setWeightForInfluence(self,
+                              influence:Union[int, str, 'nodes.Transform'],
+                              weight:float,
+                              components:Optional[
+                                  Union[
+                                      int,
+                                      list[int],
+                                      tuple[int, int],
+                                      list[tuple[int, int]],
+                                      tuple[int, int, int],
+                                      list[tuple[int, int, int]]
+                                  ]
+                              ]=None, /):
+        """
+        :param influence: the influence to edit, as an integer (index), str or
+            :class:`~riggery.core.nodetypes.transform.Transform` instance
+        :param weight: a single weight value to flood
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        """
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        mFn = oma.MFnSkinCluster(self.__apimobject__())
+        influence = self._inflToIndex(influence)
+        mfn.setWeights(shape, comps, influence, weight, normalize=False)
+
+        return self
+
+    def setWeightsForInfluences(
             self,
-            influence:Union[int, str, 'nodes.Transform']
-    ) -> list[float]:
+            influences:list[Union[str, 'nodes.Transform'], int],
+            weights:list[list[float]],
+            components:Optional[
+                Union[
+                    int,
+                    list[int],
+                    tuple[int, int],
+                    list[tuple[int, int]],
+                    tuple[int, int, int],
+                    list[tuple[int, int, int]]
+                ]
+            ]=None, /
+    ):
         """
-        :param influence: the influence (typically a joint), specified by index,
-            name or as a riggery node
-        :return: The full (per-component) weight list for the specified
-            influence.
+        :param influences: the influences to edit, as a list of integers
+            (indices), str or
+            :class:`~riggery.core.nodetypes.transform.Transform` instances
+        :param weights: the weights to set, as a list of lists, where each
+            sublist comprises the per-component weights for a joint
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
         """
-        return self.getWeightsForShapeAndChannel(0, influence)
+        influences = om.MIntArray([self._inflToIndex(x) for x in influences])
 
-    def setInflWeights(self, influence, weights:list[float]):
+        # Right now the weight list is per-joint
+        # We need to convert to per-component, and then flatten
+        weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
+
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        mFn = oma.MFnSkinCluster(self.__apimobject__())
+
+        mFn.setWeights(shape,
+                       comps,
+                       influences,
+                       weights,
+                       normalize=False)
+
+        return self
+
+    def setWeightsForAllInfluences(self,
+                                   weights:list[list[float]],
+                                   components:Optional[
+                                       Union[
+                                           int,
+                                           list[int],
+                                           tuple[int, int],
+                                           list[tuple[int, int]],
+                                           tuple[int, int, int],
+                                           list[tuple[int, int, int]]
+                                       ]
+                                   ]=None, /):
         """
-        :param influence: the influence (typically a joint), specified by index,
-            name or as a riggery node
-        :param weights: the full (per-component) weight list for the specified
-            influence
+        :param weights: the weights to set, as a list of lists, where each
+            sublist comprises the per-component weights for a joint
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
         """
-        return self.setWeightsForShapeAndChannel(0, influence, weights)
+        mFn = oma.MFnSkinCluster(self.__apimobject__())
+        influences = om.MIntArray([mFn.indexForInfluenceObject(x)
+                                   for x in mFn.influenceObjects()])
+        weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+        mFn.setWeights(shape,
+                       comps,
+                       influences,
+                       weights,
+                       normalize=False)
 
-    def _getWeightsForShapeAndChannel(self,
-                                      shapeIndex:int,
-                                      channelIndex:int) -> list[float]:
-        shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
-        allComps = self._getAllWeightedComps(shapeIndex)
+        return self
 
-        skinMObject = self.__apimobject__()
-        skinFn = oma.MFnSkinCluster(skinMObject)
-        infIndices = om.MIntArray([channelIndex])
-
-        return list(skinFn.getWeights(shapeMDagPath, allComps, infIndices))
-
-    def _getChannelIndex(self, joint:Union[str, 'nodes.Joint']) -> int:
-        joint = nodes['Transform'](joint)
-
-        return oma.MFnSkinCluster(
-            self.__apimobject__()
-        ).indexForInfluenceObject(joint.__apimdagpath__())
-
-    def _setWeightsForShapeAndChannel(self,
-                                      shapeIndex:int,
-                                      channelIndex:int,
-                                      weights:list[float]):
+    def getWeightsForInfluences(
+            self,
+            influences:list[Union[str, 'nodes.Transform'], int],
+            components:Optional[
+                Union[
+                    int,
+                    list[int],
+                    tuple[int, int],
+                    list[tuple[int, int]],
+                    tuple[int, int, int],
+                    list[tuple[int, int, int]]
+                ]
+            ]=None, /
+    ) -> list[list[float]]:
         """
-        This will issue warnings if the skinCluster is set to 'interactive'. You
-        might want to turn off normalization beforehand and resolve afterwards.
+        :param influences: the influences to query, as a list of integers
+            (indices), str or
+            :class:`~riggery.core.nodetypes.transform.Transform` instances
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        :return: The weights as a list of lists, where each sublist comprises
+            the per-component weights for an influence.
         """
-        skinMObject = self.__apimobject__()
-        skinFn = oma.MFnSkinCluster(skinMObject)
-        shapeMDagPath = self._getShapeMDagPathAtIndex(shapeIndex)
-        allComps = self._getAllWeightedComps(shapeIndex)
-        inflIndices = om.MIntArray([channelIndex])
-        weightsArray = om.MDoubleArray(list(weights))
+        influences = om.MIntArray([self._inflToIndex(x) for x in influences])
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
 
-        skinFn.setWeights(shapeMDagPath,
-                          allComps,
-                          inflIndices,
-                          weightsArray,
-                          normalize=False)
+        mFn = oma.MFnSkinCluster(self.__apimobject__())
+        weights = mFn.getWeights(
+            shape,
+            comps,
+            influences
+        )
+
+        # Right now weights are per-component, and flat. Must group and
+        # transpose
+        return list(zip(*chunks(weights, len(influences))))
+
+    def getWeightsForAllInfluences(self,
+                                   components:Optional[
+                                       Union[
+                                           int,
+                                           list[int],
+                                           tuple[int, int],
+                                           list[tuple[int, int]],
+                                           tuple[int, int, int],
+                                           list[tuple[int, int, int]]
+                                       ]
+                                   ]=None, /
+                                   ) -> list[list[float]]:
+        """
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        :return: The weights for all influences as a list of lists, where each
+            sublist comprises the per-component weights for a joint.
+        """
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        mFn = oma.MFnSkinCluster(self.__apimobject__())
+        weights, numInfls = mFn.getWeights(shape, comps)
+
+        # Right now weights are per-component, and flat. Must group and
+        # transpose
+
+        return list(zip(*chunks(weights, numInfls)))
+
+    def getBlendWeights(self,
+                        components:Optional[
+                            Union[
+                                int,
+                                list[int],
+                                tuple[int, int],
+                                list[tuple[int, int]],
+                                tuple[int, int, int],
+                                list[tuple[int, int, int]]
+                            ]
+                        ]=None, /) -> list[float]:
+        """
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        :return: The blend weights for the specified components.
+        """
+        mfn = oma.MFnSkinCluster(self.__apimobject__())
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+
+        return mfn.getBlendWeights(shape, comps)
+
+    def setBlendWeights(self,
+                        weights:list[float],
+                        components:Optional[
+                            Union[
+                                int,
+                                list[int],
+                                tuple[int, int],
+                                list[tuple[int, int]],
+                                tuple[int, int, int],
+                                list[tuple[int, int, int]]
+                            ]
+                        ]=None, /):
+        """
+        :param weights: the blend weights to set for the specified components
+        :param components: the indices of the components; where tuples are
+            encountered, they will be interpreted as UV or UVW indices; if
+            omitted, all components will be wrangled
+        :return: The blend weights for the specified components.
+        """
+        mfn = oma.MFnSkinCluster(self.__apimobject__())
+        shape = self._getShapeMDagPathAtIndex(0)
+        comps = _cu.getCompMObjectFromIndices(shape, components)
+        mfn.setBlendWeights(shape, comps, om.MDoubleArray(weights))
 
         return self
