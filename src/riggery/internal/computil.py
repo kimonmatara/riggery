@@ -125,13 +125,3 @@ def getCompMObjectFromIndices(shape:Union[om.MObject, om.MDagPath],
         )
 
     return comp
-
-def selectComponent(shape:Union[om.MDagPath, om.MObject],
-                    component:om.MObject):
-
-    if isinstance(shape, om.MObject):
-        shape = om.MDagPath.getAPathTo(shape)
-
-    sel = om.MSelectionList()
-    sel.add(dagPath, comp)
-    om.MGlobal.setActiveSelectionList(sel)
