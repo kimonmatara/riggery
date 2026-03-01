@@ -1227,75 +1227,13 @@ class BlendShape(WeightGeometryFilter):
 
             yield alias
 
-    def _getChannelIndex(self, shapeOrAlias:Union['nodes.DagNode', str]) -> int:
-        """
-        :raises NoTargetIndexError:
-        """
-        if isinstance(shapeOrAlias, str):
-            for slot in self.attr('weight'):
-                if slot.alias == shapeOrAlias:
-                    return slot.index()
-
-        try:
-            shape = nodes['DagNode'](shapeOrAlias).toShape()
-        except:
-            raise self.NoTargetIndexError(
-                "Couldn't derive a target index from {}".format(
-                    repr(shapeOrAlias)
-                )
-            )
-
-        for targetGroup in self.attr('inputTarget')[0].attr('inputTargetGroup'):
-            for targetItem in targetGroup.attr('inputTargetItem'):
-                if shape in targetItem.attr('inputGeomTarget').history(
-                        type='deformableShape'
-                ):
-                    return slot.index()
-
-        raise self.NoTargetIndexError(
-            "Couldn't derive a target index from {}".format(
-                repr(shapeOrAlias)
-            )
-        )
-
-    def _getWeightsForShapeAndChannel(self,
-                                      shapeIndex:int,
-                                      channelIndex:int) -> list[float]:
-        """
-        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
-        decides to do something 'special' with blend shapes, will always be 0.
-        """
-        weightAttr = self.attr(
-            'inputTarget'
-        )[shapeIndex].attr('inputTargetGroup'
-                           )[channelIndex].attr('targetWeights')
-
-        return weightAttr.readWeightsMulti(
-            list(self.shapes)[shapeIndex].numPoints(),
-            1.0
-        )
-
-    def _setWeightsForShapeAndChannel(self,
-                                      shapeIndex:int,
-                                      channelIndex:int,
-                                      weights:list[float]):
-        """
-        Note that *shapeIndex* refers to the *base* index, which, until Autodesk
-        decides to do something 'special' with blend shapes, will always be 0.
-        """
-        weightAttr = self.attr(
-            'inputTarget'
-        )[shapeIndex].attr('inputTargetGroup'
-                           )[channelIndex].attr('targetWeights')
-        weightAttr.writeWeightsMulti(weights)
-
     def getBaseWeights(self) -> list[float]:
         """
         :return: The full list of base weights for the blend shape node.
         """
         return self.attr('weightList'
                          )[0].attr('weights').readWeightsMulti(
-            next(self.shapes).numPoints(),
+            self.numPoints(0),
             1.0
         )
 
@@ -1309,45 +1247,6 @@ class BlendShape(WeightGeometryFilter):
                   )[0].attr('weights').writeWeightsMulti(weights)
         return self
 
-    def getWeightsForShapeAndChannel(self,
-                                     shape:Union[str, 'nodes.DagNode'],
-                                     channel:Union[str, int]) -> list[float]:
-        """
-        Returns the weights for the given channel (target).
-
-        :param shape: this refers to the *base* shape which, until Autodesk
-            decides to do something 'special' with blend shapes, should always
-            be passed-in as 0
-        :param channel: an index, alias or geometry name representing the target
-            for which to get weights
-        """
-        shapeIndex = self._resolveShapeIndex(shape)
-        channelIndex = self._resolveChannelIndex(channel)
-        return self._getWeightsForShapeAndChannel(shapeIndex, channelIndex)
-
-    def setWeightsForShapeAndChannel(self,
-                                     shape:Union[str, 'nodes.DagNode'],
-                                     channel:Union[str, int],
-                                     weights:list[float]):
-        """
-        Sets the weights for the given channel (target).
-
-        :param shape: this refers to the *base* shape which, until Autodesk
-            decides to do something 'special' with blend shapes, should always
-            be passed-in as 0
-        :param channel: an index, alias or geometry name representing the target
-            for which to get weights
-        :param weights: the weight list; this must not be sparse
-        """
-        shapeIndex = self._resolveShapeIndex(shape)
-
-        channelIndex = self._resolveChannelIndex(channel)
-        self._setWeightsForShapeAndChannel(shapeIndex,
-                                           channelIndex,
-                                           weights)
-
-        return self
-
     def getWeightsForTargetByIndex(self, targetIndex:int) -> list[float]:
         """
         :param targetIndex: the target index
@@ -1355,7 +1254,7 @@ class BlendShape(WeightGeometryFilter):
         """
         weightAttr = self.attr('inputTarget')[0].attr(
             'inputTargetGroup')[targetIndex].attr('targetWeights')
-        numPoints = next(self.shapes).numPoints()
+        numPoints = self.numPoints(0)
 
         return weightAttr.readWeightsMulti(numPoints, 1.0)
 
