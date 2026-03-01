@@ -712,50 +712,38 @@ class Number(__pool__['Math']):
 
     #-----------------------------------------|    Multi read / write
 
-    def readSparseWeightsMulti(self, length:int, default:float) -> list[float]:
-        """
-        :param length: the expected weights length
-        :param default: the default to return for missing indices
-        :return: The full weight list.
-        """
+    def readWeightsMulti(self, length:int, default:float) -> list[float]:
+        values = [default] * length
+
         mplug = self.__apimplug__()
+        arrayHandle = mplug.asMDataHandle()
+        arrayDataHandle = om.MArrayDataHandle(arrayHandle)
 
-        if mplug.isArray:
-            indices = mplug.getExistingArrayAttributeIndices()
+        while not arrayDataHandle.isDone():
+            logicalIndex = arrayDataHandle.elementLogicalIndex()
 
-            return [mplug.elementByLogicalIndex(i).asDouble()
-                    if i in indices else default
-                    for i in range(length)]
+            if logicalIndex < length:
+                values[logicalIndex] = arrayDataHandle.outputValue().asFloat()
 
-        raise TypeError("Not a multi.")
+            arrayDataHandle.next()
 
-    def writeSparseWeightsMulti(self, weights:list[float], default:float):
-        """
-        :param weights: the full, non-sparse weights list
-        :param default: the default value to omit from writing
-        """
-        mplug = self.__apimplug__()
+        mplug.destructHandle(arrayHandle)
+        return values
 
-        if mplug.isArray:
-            indices = mplug.getExistingArrayAttributeIndices()
+    def writeWeightsMulti(self, values:list[float], *, chunkSize:int=10000):
+        totalLength = len(values)
+    
+        if totalLength == 0:
+            return
 
-            if len(indices):
-                dgMod = om.MDGModifier()
+        _self = str(self)
+    
+        for startIndex in range(0, totalLength, chunkSize):
+            endIndex = min(startIndex + chunkSize, totalLength)
+            mayaEndIndex = endIndex - 1
+            chunkPath = f"{_self}[{startIndex}:{mayaEndIndex}]"
+            chunkData = values[startIndex:endIndex]
 
-                for index in indices:
-                    dgMod.removeMultiInstance(
-                        mplug.elementByLogicalIndex(index),
-                        True
-                    )
+            m.setAttr(chunkPath, *chunkData)
 
-                dgMod.doIt()
-
-            for i, weight in enumerate(weights):
-                if weight == default:
-                    continue
-
-                mplug.elementByLogicalIndex(i).setDouble(weight)
-
-            return self
-
-        raise TypeError("Not a multi.")
+        return self

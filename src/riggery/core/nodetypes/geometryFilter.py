@@ -658,7 +658,7 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    Granular weight management
 
-    def getNumPoints(self, shapeIndex:int) -> int:
+    def numPoints(self, shapeIndex:int) -> int:
         shape = self._getShapeMObjectAtIndex(shapeIndex)
 
         if shape.hasFn(om.MFn.kMesh):

@@ -40,7 +40,11 @@ class Geometry(Attribute, metaclass=GeometryMeta):
         return plug
 
     def _getData(self) -> om.MObject:
-        return self._getSamplingPlug().asMDataHandle().data()
+        plug = self._getSamplingPlug()
+        handle = plug.asMDataHandle()
+        out = handle.data()
+        plug.destructHandle(handle)
+        return out
 
     def geoType(self, apiType:bool=False) -> Optional[str]:
         """

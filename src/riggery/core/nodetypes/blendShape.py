@@ -1270,7 +1270,7 @@ class BlendShape(WeightGeometryFilter):
         )[shapeIndex].attr('inputTargetGroup'
                            )[channelIndex].attr('targetWeights')
 
-        return weightAttr.readSparseWeightsMulti(
+        return weightAttr.readWeightsMulti(
             list(self.shapes)[shapeIndex].numPoints(),
             1.0
         )
@@ -1287,14 +1287,14 @@ class BlendShape(WeightGeometryFilter):
             'inputTarget'
         )[shapeIndex].attr('inputTargetGroup'
                            )[channelIndex].attr('targetWeights')
-        weightAttr.writeSparseWeightsMulti(weights, 1.0)
+        weightAttr.writeWeightsMulti(weights)
 
     def getBaseWeights(self) -> list[float]:
         """
         :return: The full list of base weights for the blend shape node.
         """
         return self.attr('weightList'
-                         )[0].attr('weights').readSparseWeightsMulti(
+                         )[0].attr('weights').readWeightsMulti(
             next(self.shapes).numPoints(),
             1.0
         )
@@ -1306,7 +1306,7 @@ class BlendShape(WeightGeometryFilter):
         :param weights: the full (non-sparse) weights list
         """
         self.attr('weightList'
-                  )[0].attr('weights').writeSparseWeightsMulti(weights, 1.0)
+                  )[0].attr('weights').writeWeightsMulti(weights)
         return self
 
     def getWeightsForShapeAndChannel(self,
@@ -1357,7 +1357,7 @@ class BlendShape(WeightGeometryFilter):
             'inputTargetGroup')[targetIndex].attr('targetWeights')
         numPoints = next(self.shapes).numPoints()
 
-        return weightAttr.readSparseWeightsMulti(numPoints, 1.0)
+        return weightAttr.readWeightsMulti(numPoints, 1.0)
 
     def setWeightsForTargetByIndex(self, targetIndex:int, weights:list[float]):
         """
@@ -1366,5 +1366,5 @@ class BlendShape(WeightGeometryFilter):
         """
         weightAttr = self.attr('inputTarget')[0].attr(
             'inputTargetGroup')[targetIndex].attr('targetWeights')
-        weightAttr.writeSparseWeightsMulti(weights, 1.0)
+        weightAttr.writeWeightsMulti(weights)
         return self

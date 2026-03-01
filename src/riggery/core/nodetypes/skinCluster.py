@@ -718,9 +718,6 @@ class SkinCluster(GeometryFilter):
         return self
 
     def dumpBlendWeights(self, jsonFilePath:Union[str, Path]):
-        """
-        At the moment this can only be done by-index.
-        """
         jsonFilePath = Path(jsonFilePath).with_suffix('.json')
         parentDir = jsonFilePath.parent
 
@@ -729,23 +726,7 @@ class SkinCluster(GeometryFilter):
                 "parent directory doesn't exist: {}".format(parentDir)
             )
 
-        # Gather the data
-        _self = str(self)
-
-        indices = m.getAttr(f'{_self}.blendWeights', multiIndices=True)
-
-        if indices:
-            weights = m.getAttr(f'{_self}.blendWeights')[0]
-
-            indices, weights = zip(*((i, w) for i, w in zip(indices, weights)
-                                     if w > 0.0))
-
-            data = {'indices': indices, 'weights': weights}
-
-        else:
-            data = {}
-
-        _data = json.dumps(data, indent=4)
+        _data = json.dumps(self.getBlendWeights(), indent=4)
 
         with open(jsonFilePath, 'w', encoding='utf-8') as f:
             f.write(_data)
@@ -753,26 +734,15 @@ class SkinCluster(GeometryFilter):
         print("Wrote: {}".format(jsonFilePath))
 
     def loadBlendWeights(self, jsonFilePath:Union[str, Path]):
-        """
-        At the moment this can only be done by-index.
-        """
         jsonFilePath = Path(jsonFilePath)
 
         with open(jsonFilePath, 'r', encoding='utf-8') as f:
             data = f.read()
 
         data = json.loads(data)
-
         print("Loaded: {}".format(jsonFilePath))
 
-        indices = data['indices']
-        weights = data['weights']
-
-        self.attr('blendWeights').clearMulti()
-        _self = str(self)
-
-        for index, weight in zip(indices, weights):
-            m.setAttr(f'{_self}.blendWeights[{index}]', weight)
+        self.setBlendWeights(data)
 
         return self
 

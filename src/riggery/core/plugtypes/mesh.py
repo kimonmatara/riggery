@@ -13,7 +13,11 @@ class Mesh(plugs['Geometry']):
     #--------------------------------------|    Data queries
 
     def _getData(self) -> om.MObject:
-        return self._getSamplingPlug().asMDataHandle().asMeshTransformed()
+        plug = self._getSamplingPlug()
+        handle = plug.asMDataHandle()
+        out = handle.asMeshTransformed()
+        plug.destructHandle(handle)
+        return out
 
     #--------------------------------------|    Edits
 

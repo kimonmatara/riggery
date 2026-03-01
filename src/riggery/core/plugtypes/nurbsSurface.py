@@ -16,8 +16,11 @@ class NurbsSurface(plugs['Geometry']):
     #-------------------------------------|    Static queries
 
     def _getData(self) -> om.MObject:
-        return self._getSamplingPlug(
-        ).asMDataHandle().asNurbsSurfaceTransformed()
+        plug = self._getSamplingPlug()
+        handle = plug.asMDataHandle()
+        out = handle.asNurbsSurfaceTransformed()
+        plug.destructHandle(handle)
+        return out
 
     def __datamfn__(self) -> om.MFnNurbsSurface:
         return om.MFnNurbsSurface(self._getData())
