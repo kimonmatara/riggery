@@ -1271,7 +1271,7 @@ class BlendShape(WeightGeometryFilter):
                            )[channelIndex].attr('targetWeights')
 
         return weightAttr.readSparseWeightsMulti(
-            list(self.shapes)[shapeIndex].numDeformablePoints(),
+            list(self.shapes)[shapeIndex].numPoints(),
             1.0
         )
 
@@ -1295,7 +1295,7 @@ class BlendShape(WeightGeometryFilter):
         """
         return self.attr('weightList'
                          )[0].attr('weights').readSparseWeightsMulti(
-            next(self.shapes).numDeformablePoints(),
+            next(self.shapes).numPoints(),
             1.0
         )
 
@@ -1355,7 +1355,7 @@ class BlendShape(WeightGeometryFilter):
         """
         weightAttr = self.attr('inputTarget')[0].attr(
             'inputTargetGroup')[targetIndex].attr('targetWeights')
-        numPoints = next(self.shapes).numDeformablePoints()
+        numPoints = next(self.shapes).numPoints()
 
         return weightAttr.readSparseWeightsMulti(numPoints, 1.0)
 

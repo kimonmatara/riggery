@@ -13,7 +13,7 @@ class DeformableShape(nodes['GeometryShape']):
     def __apipointiterator__(self) -> om.MItGeometry:
         return om.MItGeometry(self.__apimdagpath__())
 
-    def numDeformablePoints(self) -> int:
+    def numPoints(self) -> int:
         return self.__apipointiterator__().count()
 
     @property
