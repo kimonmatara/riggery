@@ -1,17 +1,36 @@
+import json
+from copy import deepcopy
 import re
-from typing import Union, Optional, Literal, Iterator
+from typing import Union, Optional, Literal, Iterator, Iterable
+from functools import reduce
 
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
-from ..lib import names as _nm
+from ..lib import names as _nm, poses as _pos
 
 from riggery.general.functions import short
+from riggery.internal.typeutil import UNDEFINED
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.mappings import deep_merge_dicts, deep_intersect_dicts
 
 WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
+
+#-----------------------------------------|
+#-----------------------------------------|    HELPERS
+#-----------------------------------------|
+
+def checkTransformUnambiguouslyExists(lookup:str, quiet:bool=False) -> bool:
+    matches = m.ls(lookup, type='transform')
+    if len(matches) == 1:
+        return True
+
+    if not quiet:
+        m.warning(f"No unambiguous match for {lookup}")
+
+    return False
 
 #-----------------------------------------|
 #-----------------------------------------|    INTERFACES
@@ -72,9 +91,16 @@ class Tween:
     def _cleanupOutputGeo(self, geoXform, parent=None) -> 'nodes.Transform':
         geoXform = nodes['Transform'](geoXform)
         geoXform.parent = parent
-        geoXform.setName(self.node()._buildTargetName(self.target.index,
-                                                      self.ratio),
-                         conformShapeNames=True)
+
+        ratio = self.ratio
+
+        name = self.node()._buildTargetName(
+            self.target.index,
+            ratio=None if ratio == 1.0 else ratio
+        )
+
+        geoXform.setName(name, conformShapeNames=True)
+
         return geoXform
 
     def _connectInputShape(self, shape):
@@ -144,26 +170,15 @@ class Tween:
 
             return outShape
 
-    @short(skinCluster='sc')
-    def updateShape(self,
-                    src:'nodes.DagNode', *,
-                    skinCluster:Optional['nodes.SkinCluster']=None,
-                    connect:bool=False):
+    def update(self, src:'nodes.DagNode', *, connect:bool=False):
         """
         Temporarily connects a new shape and afterwards disconnects it.
 
-        :param skinCluster/sc: if this is provided, it will be used to invert
-            the shape before updating; defaults to None
         :param connect/con: keep the connection; defaults to False
         """
         incomingConnection = next(self.geoInput.iterInputs(plugs=True), None)
 
         src = nodes['DagNode'](src).toShape()
-
-        if skinCluster:
-            skinCluster = nodes['SkinCluster'](skinCluster)
-            src = skinCluster.invertShape(src)
-
         self._connectInputShape(src)
 
         if not connect:
@@ -171,9 +186,6 @@ class Tween:
                 incomingConnection >> self.geoInput
             else:
                 self.geoInput.disconnect(inputs=True)
-
-        if skinCluster:
-            r.delete(src.parent)
 
         return self
 
@@ -196,7 +208,7 @@ class Tween:
         :param parent/p: an optional destination parent for the generated
             shape's transform; defaults to None
         :param inspectScene/ins: if no connected shape could be found, look for
-            a geometry in the scene that obeys the 'model asset' naming
+            a geometry in the scene that obeys the 'scene map' naming
             convention for blend shapes; defaults to False
         :return: The retrieved or recreated shape, or None.
         """
@@ -221,17 +233,39 @@ class Tween:
                     return outShape
         else:
             if inspectScene:
-                lookup = self.node()._buildTargetName(self.target.index,
-                                                      self.ratio)
-                matches = r.ls(lookup, type='transform')
+                baseShape = next(self.node().shapes)
+                baseXf = baseShape.parent
+                baseGeoName = baseXf.shortName()
+                lookup = f"{baseGeoName}_*_{_nm.BLENDSUFFIX}"
 
-                if len(matches) == 1:
-                    outShape = matches[0].shape
+                matches = m.ls(lookup, type='transform')
 
-                    if connect is not None and connect:
-                        self._connectInputShape(outShape)
+                if matches:
+                    pat = (r"^"
+                           + baseGeoName
+                           + r"_(.*?)(?:_([0-9]+))?_"
+                           + _nm.BLENDSUFFIX
+                           + r"$")
 
-                    return outShape
+                    for match in matches:
+                        matchName = match.split('|')
+                        mt = re.match(pat, matchName)
+
+                        if mt:
+                            alias, pc = mt.groups()
+
+                            if pc is None:
+                                ratio = 1.0
+                            else:
+                                ratio = float(pc) / 100.0
+
+                            if ratio == self.ratio:
+                                outShape = nodes['Transform'](match).shape
+
+                                if connect is not None and connect:
+                                    self._connectInputShape(outShape)
+
+                                return outShape
 
             if create:
                 outShape = self._doCreateShapeCmd()
@@ -350,6 +384,12 @@ class Target:
     def inPostMode(self) -> bool:
         return self.group.attr('postDeformersMode')() != 0
 
+    def inTangentMode(self) -> bool:
+        return self.group.attr('postDeformersMode')() == 1
+
+    def inTransformMode(self) -> bool:
+        return self.group.attr('postDeformersMode')() == 2
+
     @property
     def group(self) -> 'Attribute':
         """:return: The ``inputTargetGroup`` slot."""
@@ -387,44 +427,91 @@ class Target:
         """:return: The geometry input for the tween at ratio 1.0."""
         return self[1.0].geoInput
 
+    #---------------------------|    Update
+
+    @short(transform='t',
+           connect='con',
+           alias='a')
+    def update(self,
+               geo, *,
+               transform:Optional[Union[str, 'nodes.Transform']]=None,
+               connect:Optional[bool]=None,
+               alias:Optional[str]=None) -> 'Target':
+        """
+        :param geo: the geometry with which to update this target
+        :param connect/c: default varies depending on circumstances
+        :param transform/t: an optional transform for transform-driven 'post'
+            targets; defaults to None
+        :param alias/a: an optional new alias; defaults to None (no change)
+        :raises TypeError: Can't connect the transform because the target is not
+            a transform-mode target.
+        """
+        if transform is not None:
+            if self.inTransformMode():
+                transform = nodes['Transform'](transform)
+                transform.attr('worldMatrix') >> self.group.attr('targetMatrix')
+            else:
+                _id = self.alias
+
+                if _id is None:
+                    _id = self.index
+                else:
+                    _id = repr(_id)
+
+                raise TypeError(
+                    f"Can't update target {_id} with transform "
+                    f"'{transform}': target not in transform mode"
+                )
+
+        self[1.0].update(geo, connect=connect)
+
+        if alias is not None:
+            self.alias = alias
+
+        return self
+
     #---------------------------|    Add tween
 
     @short(connect='c',
            topologyCheck='tc',
-           skinCluster='sc')
+           update='u')
     def add(self,
             geo,
             ratio:float, *,
             connect:Optional[bool]=None,
             topologyCheck:bool=True,
-            skinCluster:Optional['nodes.SkinCluster']=None):
+            update:bool=False) -> 'Tween':
         """
-       Adds an inbetween shape.
+        Adds an inbetween shape.
 
-       :param geo: the target geometry
-       :param ratio: the weight at which to create the inbetween target
-       :param skinCluster/sc: a skinCluster to perform inversion before
-        applying; defaults to None
-       :param connect/c: keep the target connected; defaults to False if the
+        :param geo: the target geometry
+        :param ratio: the weight at which to create the inbetween target
+        :param connect/c: keep the target connected; defaults to False if the
            main target is a 'tangentSpace' or 'transform' target, otherwise
            True
-       """
+        :param update/u: if the ratio already exists, attempt to update it;
+            defaults to False
+        :raises ValueError: The ratio already exists.
+        """
+        try:
+            existing = self[ratio]
+        except IndexError:
+            existing = None
+
+        if existing:
+            return existing.update(geo, connect=connect)
+
         bsn = self.node()
         _bsn = str(bsn)
 
         args = (_bsn,)
 
-        if skinCluster:
-            skinCluster = nodes['SkinCluster'](skinCluster)
-            geoShape = skinCluster.invertShape(geo)
-        else:
-            geoShape = nodes['DagNode'](geo).toShape()
-
+        geoShape = nodes['DagNode'](geo).toShape()
         geoXf = geoShape.parent
 
         kwargs = {'e': True,
                   'ib': True,
-                  't':(str(next(node.shapes)), self._index, str(geoXf), ratio),
+                  't':(str(next(bsn.shapes)), self._index, str(geoXf), ratio),
                   'tc': topologyCheck}
 
         postDeformMode = self.group.attr('postDeformersMode')()
@@ -454,9 +541,6 @@ class Target:
             tween._connectInputShape(geoShape)
         else:
             tween.geoInput.disconnect(inputs=True)
-
-            if skinCluster:
-                m.delete(str(geoXf))
 
         return tween
 
@@ -597,7 +681,8 @@ class Targets:
            index='i',
            transform='t',
            topologyCheck='tc',
-           skinCluster='sc')
+           skinCluster='sc',
+           update='u')
     def add(self,
             geo:'nodes.DagNode',
             alias:Optional[str]=None, *,
@@ -605,62 +690,79 @@ class Targets:
             transform:Optional['nodes.Transform']=None,
             connect:Optional[bool]=None,
             index:Optional[int]=None,
-            skinCluster:Optional['nodes.SkinCluster']=None,
-            topologyCheck:bool=True) -> 'Target':
+            topologyCheck:bool=True,
+            update:bool=False) -> 'Target':
         """
-       Adds a main (not inbetween) target. The weight for the new target will
-       be 0.0 by default.
+        Adds a main (not inbetween) target. The weight for the new target will
+        be 0.0 by default.
 
-       :param geo: the target geometry
-       :param alias: the weight alias; defaults to the geometry transform's
-           short name
-       :param tangentSpace/ts: only available if the blend shape node is in
-           'post' mode; defaults to False
-       :param connect/c: connect the target geometry; defaults to False if one
-           of 'tangentSpace' or 'transform' were specified, otherwise True
-       :param transform/t: if provided, will be used to configure a 'transform'
-           space blend shape
-       :param index/i: a preferred index for the target; defaults to the next
-           available index
-       :param skinCluster/sc: if this is provided, it will be used to invert
-           the shape before application (note that this is not a 'live'
-           operation, and that the skinCluster must be at-pose at the time of
-           application); defaults to None
-       :param topologyCheck/tc: check topology matches the bases; defaults to
-           True
-       :raises ValueError: 'tangentSpace' and 'transform' can't be used; blend
-           shape node not in 'post mode
-       :raises ValueError: 'tangentSpace' and 'transform' can't be used
-           together
-       :raises ValueError: index in use
-       :raises ValueError: alias in use
-       """
-        #------------------|    Wrangle args
-
-        bsn = self.node()
-        post = bsn.inPostMode()
-
-        if skinCluster:
-            skinCluster = nodes['SkinCluster'](skinCluster)
-            geoShape = skinCluster.invertShape(geo)
-        else:
-            geoShape = nodes['DagNode'](geo).toShape()
-
+        :param geo: the target geometry
+        :param alias: the weight alias; defaults to the geometry transform's
+            short name
+        :param update/u: if the target already exists, attempt to update it;
+            defaults to False
+        :param tangentSpace/ts: only available if the blend shape node is in
+            'post' mode; defaults to False
+        :param connect/c: connect the target geometry; defaults to False if one
+            of 'tangentSpace' or 'transform' were specified, otherwise True
+        :param transform/t: if provided, will be used to configure a 'transform'
+            space blend shape
+        :param index/i: a preferred index for the target; defaults to the next
+            available index
+        :param topologyCheck/tc: check topology matches the bases; defaults to
+            True
+        :raises ValueError: 'tangentSpace' and 'transform' can't be used; blend
+            shape node not in 'post mode
+        :raises ValueError: 'tangentSpace' and 'transform' can't be used
+            together
+        :raises ValueError: index in use
+        :raises ValueError: alias in use
+        """
+        geoShape = nodes['DagNode'](geo).toShape()
         geoXf = geoShape.parent
+        bsn = self.node()
+
+        existing = None
 
         if index is None:
-            index = node.attr('weight').nextIndex()
+            index = bsn.attr('weight').nextIndex()
+        else:
+            try:
+                existing = self.getByIndex(index)
+            except IndexError:
+                pass
 
-        elif index in node.attr('weight').indices():
-            raise ValueError(f"index {index} in use")
+            if existing is not None:
+                if update:
+                    return existing.update(geoXf,
+                                           transform=transform,
+                                           connect=connect,
+                                           alias=alias)
+                else:
+                    raise ValueError("index in use: {}".format(index))
 
         if alias is None:
             alias = geoXf.shortName(sns=True)
 
-        if self.aliasExists(alias):
-            raise ValueError(f"alias '{alias}' in use")
+        try:
+            existing = self.getByAlias(alias)
+        except KeyError:
+            pass
+
+        if existing is not None:
+            if update:
+                return existing.update(geoXf,
+                                       transform=transform,
+                                       connect=connect)
+            else:
+                raise ValueError("alias in use: {}".format(index))
+
+        if index is None:
+            index = bsn.attr('weight').index.nextIndex()
 
         kwargs = {'topologyCheck': topologyCheck}
+
+        post = bsn.inPostMode()
 
         if tangentSpace or transform:
             if not post:
@@ -683,9 +785,9 @@ class Targets:
 
         #------------------|    Run
 
-        base = next(node.shapes)
+        base = next(bsn.shapes)
 
-        m.blendShape(str(node),
+        m.blendShape(str(bsn),
                      e=True,
                      t=[str(base), index, str(geoXf), 1.0],
                      w=[index, 0.0],
@@ -698,15 +800,12 @@ class Targets:
         geoInput = target.geoInput
 
         if connect:
-            worldSpace = node.attr('origin')() == 0
-            geoPlug = (geoShape.worldOutput
+            worldSpace = bsn.attr('origin')() == 0
+            src = (geoShape.worldOutput
                        if worldSpace else geoShape.localOutput)
-            geoPlug >> geoInput
+            src >> geoInput
         else:
             geoInput.disconnect(inputs=True)
-
-            if skinCluster:
-                m.delete(str(geoXf))
 
         return target
 
@@ -720,6 +819,22 @@ class Targets:
 #-----------------------------------------|
 
 class BlendShape(WeightGeometryFilter):
+    """
+    Notes on scene maps
+    ===================
+
+    Scene maps rely on in-scene geometries that follow this naming convention:
+
+    ``<base geo name>_<target descriptor>_<percentage>_BLEND``
+
+    The ``<percentage>`` element may be omited.
+
+    Sculpted blend shape targets need an embedded inversion pose in an attribute
+    called 'inversionPose'. Poses can be generated using the tools in
+    :mod:`riggery.core.lib.poses`, and embedded using
+    :meth:`setInversionPoseOnTargetGeo` and
+    :meth:`getInversionPoseFromTargetGeo` on this class.
+    """
 
     #---------------------------|    Constructors
 
@@ -904,11 +1019,6 @@ class BlendShape(WeightGeometryFilter):
 
             targetSpecs[targetIndex] = thisSpec
 
-        """
-        Create a clean copy of our base. Call it 'wrapMaster'
-        Create a clean copy of the new base. Call it 'wrapSlave'
-        """
-
         _wrapMaster = self.attr(
             'originalGeometry')[0].inputs(plugs=True)[0].createShape().parent
         wrapMaster = _wrapMaster.duplicate(n='wrap_master')[0]
@@ -1084,128 +1194,346 @@ class BlendShape(WeightGeometryFilter):
 
         return tuple(out)
 
-    #---------------------------|    Scene batch operations
+    #---------------------------|    Scene mapping
+
+    """
+    Scene map structure:
+    
+    {
+        baseGeoName:[str]: {
+            alias:[str]: {
+                'main': {
+                    'geo': str,
+                    'inversionPose': dict
+                },
+                'tweens': {
+                    ratio[float]: {
+                        'geo': str,
+                        'inversionPose': dict
+                    }
+                }
+            }
+        }
+    }
+    
+    Inversions need a pose (as in :mod:`riggery.core.lib.poses`), in JSON
+    format, embedded onto the target in an attribute called 'inversionPose'. The
+    name of the pose doesn't matter. 
+    """
 
     @classmethod
-    def getSceneMap(cls, suffix:str=_nm.BLENDSUFFIX) -> dict:
-        """
-        Detects this type of model asset configuration for blend shapes:
+    def setInversionPoseOnTargetGeo(cls,
+                                    pose:Optional[dict],
+                                    targetGeo:Union[str, 'nodes.DagNode']):
+        targetGeo = nodes['DagNode'](targetGeo).toTransform()
 
-        ``<base_geo_name>_<blend_descriptor>_<percent>_<suffix>``
+        if pose is None:
+            if targetGeo.hasAttr('inversionPose'):
+                targetGeo.deleteAttr('inversionPose')
+        else:
+            if not targetGeo.hasAttr('inversionPose'):
+                targetGeo.addAttr('inversionPose', dt='string')
+            plug = targetGeo.attr('inversionPose')
+            plug.set(json.dumps(pose))
 
-        For example:
+    @classmethod
+    def getInversionPoseFromTargetGeo(cls,
+                                      targetGeo:Union[str, 'nodes.DagNode']
+                                      ) -> Optional[dict]:
+        targetGeo = nodes['DagNode'](targetGeo).toTransform()
+        try:
+            plug = targetGeo.attr('inversionPose')
+        except AttributeError:
+            return
 
-        ``face_DMSH_big_smile_100_BLEND``
+        return json.loads(plug())
 
-        :param suffix: the suffix to look for; defaults to ``BLENDSUFFIX`` in
-            :mod:`riggery.core.lib.names` (currently 'BLEND')
-        :return: A dictionary with this structure:
-            ```
-            {
-                <base geo> (str):
-                    <target alias> (str) : {
-                        <tween weight> (float) : <target geo> (str)
-                        ...
-                    },
-                    ...
-            }
-            ```
-        """
+    @classmethod
+    def getSceneMapFromBase(cls, baseGeo:Union[str, 'nodes.DagNode']) -> dict:
+        baseGeo = nodes['DagNode'](baseGeo).toTransform()
+        baseGeoName = baseGeo.shortName()
+        targetLookup = '{}_*_{}'.format(baseGeoName, _nm.BLENDSUFFIX)
+
         out = {}
-        pat = r"^(.*?)_([0-9]+)_" + suffix + r"$"
 
-        for item in m.ls('*_{}'.format(suffix), type='transform'):
-            name = item.split('|')[-1]
-            mt = re.match(pat, name)
-            if mt:
-                head, pc = mt.groups()
-                elems = head.split('_')
-                numElems = len(elems)
+        for _targetGeo in m.ls(targetLookup, type='transform'):
+            if checkTransformUnambiguouslyExists(_targetGeo, quiet=True):
+                pat = (r"^"
+                       + baseGeoName
+                       + r"_(.*?)(?:_([0-9]+))?_"
+                       + _nm.BLENDSUFFIX
+                       + r"$")
 
-                for i in range(1, numElems):
-                    baseName = '_'.join(elems[:numElems-i])
-                    descriptor = '_'.join(elems[numElems-i:])
+                mt = re.match(pat, _targetGeo)
 
-                    matches = m.ls(baseName, type='transform')
+                if mt:
+                    alias, pc = mt.groups()
 
-                    if matches:
+                    if pc is None:
+                        isMain = True
+                    else:
                         ratio = float(pc) / 100.0
-                        out.setdefault(matches[0],
-                                       {}).setdefault(descriptor,
-                                                      {})[ratio] = item
+                        isMain = ratio == 1.0
+
+                    targetInfo = out.setdefault(baseGeoName,
+                                                {}).setdefault(alias, {})
+
+                    innerD = {'geo': _targetGeo}
+
+                    inversionPose = cls.getInversionPoseFromTargetGeo(
+                        _targetGeo
+                    )
+
+                    if inversionPose is not None:
+                        innerD['inversionPose'] = inversionPose
+
+                    if isMain:
+                        targetInfo['main'] = innerD
+                    else:
+                        tweensD = targetInfo.setdefault('tweens', {})
+                        tweensD[ratio] = innerD
 
         return out
+
+    @classmethod
+    def getSceneMapFromTarget(cls,
+                              targetGeo:Union[str, 'nodes.DagNode']) -> dict:
+        targetGeo = nodes['DagNode'](targetGeo).toTransform()
+        targetGeoName = targetGeo.shortName()
+
+        pat = (r"^(.*?)(?:_([0-9]+))?_" + _nm.BLENDSUFFIX + r"$")
+        mt = re.match(pat, targetGeoName)
+
+        out = {}
+
+        if mt:
+            head, pc = mt.groups()
+
+            if pc is None:
+                isMain = True
+            else:
+                ratio = float(pc) / 100.0
+                isMain = ratio == 1.0
+
+            elems = head.split('_')
+            numElems = len(elems)
+
+            for x in reversed(range(numElems)):
+                baseGeoName = '_'.join(elems[:x])
+
+                if checkTransformUnambiguouslyExists(baseGeoName, quiet=True):
+                    alias = '_'.join(elems[x:])
+                    targetInfo = {}
+                    innerD = {'geo': targetGeoName}
+                    inversionPose = cls.getInversionPoseFromTargetGeo(
+                        targetGeoName
+                    )
+                    if inversionPose is not None:
+                        innerD['inversionPose'] = inversionPose
+
+                    if isMain:
+                        targetInfo['main'] = innerD
+                    else:
+                        targetInfo['tweens'] = {ratio: innerD}
+
+                    out[baseGeoName] = {alias: targetInfo}
+                    break
+
+        return out
+
+    @classmethod
+    def getSceneMapFromGeo(cls, geo) -> dict:
+        out = cls.getSceneMapFromBase(geo)
+        if not out:
+            return cls.getSceneMapFromTarget(geo)
+
+    @classmethod
+    def getSceneMap(cls, *geos):
+        if geos:
+            geos = expand_tuples_lists(*geos)
+            geos = without_duplicates((nodes['DagNode'](geo).toTransform()
+                                       for geo in geos))
+            sceneMaps = (cls.getSceneMapFromGeo(x) for x in geos)
+        else:
+            sceneMaps = (cls.getSceneMapFromTarget(x)
+                         for x in m.ls(f'*_{_nm.BLENDSUFFIX}'))
+
+        return deep_merge_dicts(*sceneMaps)
 
     @classmethod
     def createFromSceneMap(cls,
-                           sceneMap:dict,
-                           *baseMeshes,
-                           removeTargets:bool=False) -> list['BlendShape']:
-        """
-        :param sceneMap: the type of dictionary returned by :meth:`getSceneMap`
-        :param \*baseMeshes: the base meshes to create blend shapes on; if
-            omitted, all base meshes defined in the map will be used
-        :param removeTargets: remove any targets that were used; defaults to
-            False
-        """
-        if baseMeshes:
-            baseMeshes = list(without_duplicates(
-                (str(x).split('|')[-1] for x in expand_tuples_lists(baseMeshes))
-            ))
+                           sceneMap:Optional[dict],
+                           *geos,
+                           update:bool=False) -> list['BlendShape']:
+        if geos:
+            geos = expand_tuples_lists(*geos)
+            geos = without_duplicates((nodes['DagNode'](geo).toTransform()
+                                       for geo in geos))
+            geoSceneMaps = (cls.getSceneMapFromGeo(x) for x in geos)
+            geoSceneMap = deep_merge_dicts(*geoSceneMaps)
+
+        if sceneMap is None:
+            if geos:
+                sceneMap = geoSceneMap
+            else:
+                sceneMap = cls.getSceneMap()
+
         else:
-            baseMeshes = list(sceneMap.keys())
+            if geos:
+                sceneMap = deep_intersect_dicts(sceneMap, geoSceneMap)
+
+        # Gather a list of all controls involved in pose inversions
+        controls = set()
+
+        for baseGeo, baseInfo in sceneMap.items():
+            for alias, targetInfo in baseInfo.items():
+                controls = controls.union(
+                    set(
+                        (pair[0] for pair in
+                         targetInfo.get('main',
+                                        {}).get('inversionPose',
+                                                {}).get('controls', []))
+                    )
+                )
+                for ratio, tweenInfo in targetInfo.get('tweens', {}).items():
+                    controls = controls.union(
+                        set(
+                            (pair[0] for pair in
+                             tweenInfo.get('inversionPose',
+                                           {}).get('controls', []))
+                        )
+                    )
+
+        defaultPose = None
+
+        if controls:
+            controls = [x for x in controls
+                        if checkTransformUnambiguouslyExists(x)]
+
+            if controls:
+                defaultPose = _pos.capturePose('default', controls)
 
         out = []
 
-        for baseMesh in baseMeshes:
-            if baseMesh in sceneMap:
-                bsn = nodes['BlendShape'].create(baseMesh)
+        for baseGeo, baseInfo in sceneMap.items():
+            if update:
+                bsn = next(cls.fromGeo(baseGeo), None)
 
-                for targetAlias, tweensMap in sceneMap[baseMesh].items():
-                    ratios = list(sorted(tweensMap, reverse=True))
-
-                    if 1.0 not in ratios:
-                        raise RuntimeError(
-                            "No 100 target for blend shape '{}'".format(
-                                targetAlias
-                            )
-                        )
-
-                    tweenRatios = ratios[1:]
-                    target = bsn.targets.add(tweensMap[1.0], alias=targetAlias)
-
-                    if removeTargets:
-                        m.delete(tweensMap[1.0])
-
-                    for tweenRatio in ratios[1:]:
-                        target.add(tweensMap[tweenRatio], tweenRatio)
-
-                        if removeTargets:
-                            m.delete(tweensMap[tweenRatio])
-
-                out.append(bsn)
-
+                if bsn is None:
+                    bsn = cls.create(baseGeo)
             else:
-                m.warning(
-                    "Base mesh '{}' not in scene map, skipping.".format(
-                        baseMesh
-                    )
-                )
-                continue
+                bsn = cls.create(baseGeo)
+
+            out.append(bsn)
+            skinCluster = UNDEFINED
+
+            for alias, targetInfo in baseInfo.items():
+                mainTarget = None
+
+                if 'main' in targetInfo:
+                    targetGeo = targetInfo['main']['geo']
+
+                    if checkTransformUnambiguouslyExists(targetGeo):
+                        inversionPose = targetInfo['main'].get('inversionPose')
+
+                        if inversionPose is None:
+                            mainTarget = bsn.targets.add(targetGeo,
+                                                         update=update)
+                        else:
+                            if skinCluster is UNDEFINED:
+                                skinCluster = next(
+                                    nodes['SkinCluster'].fromGeo(baseGeo),
+                                    None
+                                )
+
+                            if skinCluster is None:
+                                m.warning(
+                                    f"Can't apply target '{alias}' to base"
+                                    f" '{baseGeo}' because there is no "
+                                    "skinCluster to perform the inversion"
+                                )
+                            else:
+                                _pos.applyPose(inversionPose, quiet=True)
+                                invertedTarget = skinCluster.invertShape(
+                                    targetGeo
+                                ).toTransform()
+
+                                mainTarget = bsn.targets.add(invertedTarget,
+                                                             alias=alias,
+                                                             update=update)
+
+                                m.delete(str(invertedTarget))
+
+                for tweenRatio, tweenInfo in targetInfo.get('tweens',
+                                                            {}).items():
+                    tweenGeo = tweenInfo.get('geo')
+
+                    if checkTransformUnambiguouslyExists(tweenGeo):
+                        if mainTarget is None:
+                            m.warning(
+                                f"Can't apply tween for target '{alias}' on"
+                                f" base {baseGeo} because the main target "
+                                "could not be resolved"
+                            )
+                            continue
+
+                        inversionPose = tweenInfo.get('inversionPose')
+
+                        if inversionPose is None:
+                            mainTarget.add(tweenGeo, tweenRatio, update=update)
+
+                        else:
+                            if skinCluster is UNDEFINED:
+                                skinCluster = next(
+                                    nodes['SkinCluster'].fromGeo(baseGeo),
+                                    None
+                                )
+
+                            if skinCluster is None:
+                                m.warning(
+                                    f"Can't apply tween for target '{alias}' on"
+                                    f" base {baseGeo} because there is no "
+                                    "skinCluster to perform the inversion"
+                                )
+                            else:
+                                invertedTween = skinCluster.invertShape(
+                                    tweenGeo
+                                ).toTransform()
+
+                                mainTarget.add(invertedTween, tweenRatio,
+                                               update=update)
+
+                                m.delete(str(invertedTween))
+
+        if defaultPose is not None:
+            _pos.applyPose(defaultPose)
 
         return out
 
-    def _buildTargetName(self, targetIndex:int, tweenRatio:float=1.0, /):
+    def _buildTargetName(self,
+                         targetIndex:int, *,
+                         ratio:Optional[float]=None) -> str:
+        """
+        :param targetIndex: the target index
+        :param ratio: an optional tween ratio to include in the name, as a
+            percentage
+        """
+        baseShape = next(self.shapes)
+        baseXf = baseShape.parent
+
+        elems = [baseXf.shortName()]
         alias = self.attr('weight')[targetIndex].alias
 
         if alias is None:
-            alias = 'target_{}'.format(str(targetIndex).zfill(3))
+            alias = 'target{}'.format(targetIndex)
 
-        elems = [next(self.shapes).parent.shortName(),
-                 alias,
-                 str(int(tweenRatio * 100)).zfill(3),
-                 _nm.BLENDSUFFIX]
+        elems.append(alias)
 
+        if ratio:
+            pc = str(int(ratio * 100))
+            elems.append(pc)
+
+        elems.append(_nm.BLENDSUFFIX)
         return '_'.join(elems)
 
     #---------------------------|    Granular weight control
@@ -1267,3 +1595,4 @@ class BlendShape(WeightGeometryFilter):
             'inputTargetGroup')[targetIndex].attr('targetWeights')
         weightAttr.writeWeightsMulti(weights)
         return self
+
