@@ -57,6 +57,7 @@ def _updateTypeSuffixes(overwrite:bool=False):
 TYPESUFFIXES = None
 CONTROLSUFFIX = 'CTRL'
 BLENDSUFFIX = 'BLEND'
+SCULPTSUFFIX = 'SCULPT'
 
 #--------------------------------------|
 #--------------------------------------|    NAME CONSTRUCTION
