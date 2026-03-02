@@ -1348,17 +1348,19 @@ class BlendShape(WeightGeometryFilter):
             return cls.getSceneMapFromTarget(geo)
 
     @classmethod
-    def getSceneMap(cls, *geos):
+    def getSceneMap(cls, *geos) -> dict:
         if geos:
             geos = expand_tuples_lists(*geos)
             geos = without_duplicates((nodes['DagNode'](geo).toTransform()
                                        for geo in geos))
-            sceneMaps = (cls.getSceneMapFromGeo(x) for x in geos)
+            sceneMaps = [cls.getSceneMapFromGeo(x) for x in geos]
         else:
-            sceneMaps = (cls.getSceneMapFromTarget(x)
-                         for x in m.ls(f'*_{_nm.BLENDSUFFIX}'))
+            sceneMaps = [cls.getSceneMapFromTarget(x)
+                         for x in m.ls(f'*_{_nm.BLENDSUFFIX}')]
 
-        return deep_merge_dicts(*sceneMaps)
+        if sceneMaps:
+            return deep_merge_dicts(*sceneMaps)
+        return {}
 
     @classmethod
     def createFromSceneMap(cls,
