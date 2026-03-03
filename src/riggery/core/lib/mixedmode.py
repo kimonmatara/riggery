@@ -51,6 +51,16 @@ def isSingleVector(item:Any) -> bool:
         return getattr(plug, '__shape__', None) == 3
     return False
 
+def isPlug(item) -> bool:
+    if isinstance(item, str):
+        try:
+            Attribute.fromStr(item)
+            return True
+        except:
+            return False
+
+    return isinstance(item, _plugs['Attribute'])
+
 def getPlug(item):
     """
     If *item* is a plug, returns a :class:`~riggery.core.plugtypes.Attribute`
