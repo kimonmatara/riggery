@@ -950,7 +950,7 @@ class BlendShape(WeightGeometryFilter):
             nodes['DagNode'](associativeGeometry
                              ).toShape().worldOutput >> wrap.attr(
                 'associativeGeometry'
-            )
+            )[0]
 
         bsn = cls.create(wrapMaster)
         wrap.addDriver(wrapMaster)
