@@ -573,6 +573,7 @@ class SkinCluster(GeometryFilter):
         :return: a reversed version of the sculpted geo, that can be used as a
             pre-bind blend shape.
         """
+        sculptGeo = nodes['DagNode'](sculptGeo).toTransform()
         thisShape = next(self.shapes)
         xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
 
@@ -580,7 +581,7 @@ class SkinCluster(GeometryFilter):
             xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
         else:
             xform.name = "{}_inversion_{}".format(
-                thisShape.parent.shortName(sts=True),
+                sculptGeo.shortName(sts=True),
                 thisShape.__typesuffix__
             )
 
