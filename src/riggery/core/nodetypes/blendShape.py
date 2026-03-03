@@ -1466,7 +1466,7 @@ class BlendShape(WeightGeometryFilter):
                                                              alias=alias,
                                                              update=update)
 
-                                m.delete(str(invertedTarget))
+                                # m.delete(str(invertedTarget))
 
                 for tweenRatio, tweenInfo in targetInfo.get('tweens',
                                                             {}).items():
@@ -1510,7 +1510,7 @@ class BlendShape(WeightGeometryFilter):
                                                tweenRatio,
                                                update=update)
 
-                                m.delete(str(invertedTween))
+                                # m.delete(str(invertedTween))
 
         if defaultPose is not None:
             _pos.applyPose(defaultPose)
