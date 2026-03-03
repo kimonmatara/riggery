@@ -563,6 +563,7 @@ class SkinCluster(GeometryFilter):
 
     #-------------------------------------|    Blend shapes
 
+    @short(editEnvelopes='ee')
     def invertShape(
             self,
             sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform'],
@@ -586,14 +587,13 @@ class SkinCluster(GeometryFilter):
 
             for deformer in deformers:
                 envelopes[deformer] = deformer.attr('envelope')()
+                value = 1.0 if deformer == self else 0.0
                 try:
-                    deformer.attr('envelope').set(
-                        1.0 if deformer == self else 0.0
-                    )
+                    deformer.attr('envelope').set(value)
+                    print(f"Set deformer {deformer} to {value}")
                 except Exception as e:
                     m.warning("Couldn't edit envelope on deformer "
                               f"{deformer}: {e}")
-
 
         inversionXf = nodes['Transform'](m.invertShape(str(baseGeoXf),
                                                        str(sculptGeoXf)))
@@ -612,6 +612,7 @@ class SkinCluster(GeometryFilter):
             for deformer, envelope in envelopes.items():
                 try:
                     deformer.attr('envelope').set(envelope)
+                    print(f"Set deformer {deformer} to {value}")
                 except Exception as e:
                     m.warning("Couldn't edit envelope on deformer "
                               f"{deformer}: {e}")
