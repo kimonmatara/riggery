@@ -1464,7 +1464,8 @@ class BlendShape(WeightGeometryFilter):
                                 _pos.applyPose(inversionPose)
                                 m.refresh()
                                 invertedTarget = skinCluster.invertShape(
-                                    targetGeo
+                                    targetGeo,
+                                    ee=True
                                 ).toTransform()
 
                                 mainTarget = bsn.targets.add(invertedTarget,
@@ -1502,7 +1503,8 @@ class BlendShape(WeightGeometryFilter):
                                 _pos.applyPose(inversionPose)
                                 m.refresh()
                                 invertedTween = skinCluster.invertShape(
-                                    tweenGeo
+                                    tweenGeo,
+                                    ee=True
                                 ).toTransform()
 
                                 mainTarget.add(invertedTween,
