@@ -587,7 +587,8 @@ class SkinCluster(GeometryFilter):
             envelopes = {}
 
             for deformer in deformers:
-                envelopes[deformer] = deformer.attr('envelope')()
+                envelopes[deformer] = initValue = deformer.attr('envelope')()
+                print(f'Original value of deformer {deformer} was {initValue}')
                 value = 1.0 if deformer == self else 0.0
                 try:
                     deformer.attr('envelope').set(value)
