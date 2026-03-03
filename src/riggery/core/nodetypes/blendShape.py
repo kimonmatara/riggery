@@ -1386,10 +1386,13 @@ class BlendShape(WeightGeometryFilter):
 
         # Gather a list of all controls involved in pose inversions
         controls = set()
+        baseGeosWithInversions = []
 
         for baseGeo, baseInfo in sceneMap.items():
+            theseControls = set()
+
             for alias, targetInfo in baseInfo.items():
-                controls = controls.union(
+                theseControls = theseControls.union(
                     set(
                         (pair[0] for pair in
                          targetInfo.get('main',
@@ -1398,13 +1401,17 @@ class BlendShape(WeightGeometryFilter):
                     )
                 )
                 for ratio, tweenInfo in targetInfo.get('tweens', {}).items():
-                    controls = controls.union(
+                    theseControls = theseControls.union(
                         set(
                             (pair[0] for pair in
                              tweenInfo.get('inversionPose',
                                            {}).get('controls', []))
                         )
                     )
+
+            if theseControls:
+                baseGeosWithInversions.append(baseGeo)
+                controls = controls.union(theseControls)
 
         defaultPose = None
 
@@ -1427,7 +1434,23 @@ class BlendShape(WeightGeometryFilter):
                 bsn = cls.create(baseGeo)
 
             out.append(bsn)
-            skinCluster = UNDEFINED
+
+            hasInversions = baseGeo in baseGeosWithInversions
+
+            if hasInversions:
+                skinCluster = next(nodes['SkinCluster'].fromGeo(baseGeo))
+                envelopes = {}
+
+                for deformer in nodes['GeometryFilter'].fromGeo(baseGeo):
+                    envelopes[deformer] = deformer.attr('envelope')()
+                    try:
+                        deformer.attr('envelope').set(deformer == skinCluster)
+                    except Exception as exc:
+                        m.warning(
+                            "Couldn't set envelope for deformer "
+                            f"'{deformer}': {exc}"
+                        )
+                        continue
 
             for alias, targetInfo in baseInfo.items():
                 mainTarget = None
@@ -1443,12 +1466,6 @@ class BlendShape(WeightGeometryFilter):
                                                          alias=alias,
                                                          update=update)
                         else:
-                            if skinCluster is UNDEFINED:
-                                skinCluster = next(
-                                    nodes['SkinCluster'].fromGeo(baseGeo),
-                                    None
-                                )
-
                             if skinCluster is None:
                                 m.warning(
                                     f"Can't apply target '{alias}' to base"
@@ -1466,7 +1483,7 @@ class BlendShape(WeightGeometryFilter):
                                                              alias=alias,
                                                              update=update)
 
-                                # m.delete(str(invertedTarget))
+                                m.delete(str(invertedTarget))
 
                 for tweenRatio, tweenInfo in targetInfo.get('tweens',
                                                             {}).items():
@@ -1487,12 +1504,6 @@ class BlendShape(WeightGeometryFilter):
                             mainTarget.add(tweenGeo, tweenRatio, update=update)
 
                         else:
-                            if skinCluster is UNDEFINED:
-                                skinCluster = next(
-                                    nodes['SkinCluster'].fromGeo(baseGeo),
-                                    None
-                                )
-
                             if skinCluster is None:
                                 m.warning(
                                     f"Can't apply tween for target '{alias}' on"
@@ -1510,7 +1521,18 @@ class BlendShape(WeightGeometryFilter):
                                                tweenRatio,
                                                update=update)
 
-                                # m.delete(str(invertedTween))
+                                m.delete(str(invertedTween))
+
+            if hasInversions:
+                for deformer, envelope in envelopes.items():
+                    try:
+                        deformer.attr('envelope').set(envelope)
+                    except Exception as exc:
+                        m.warning(
+                            "Couldn't set envelope for deformer "
+                            f"'{deformer}': {exc}"
+                        )
+                        continue
 
         if defaultPose is not None:
             _pos.applyPose(defaultPose)
