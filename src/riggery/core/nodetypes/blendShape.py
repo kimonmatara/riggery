@@ -1462,7 +1462,7 @@ class BlendShape(WeightGeometryFilter):
                                 )
                             else:
                                 _pos.applyPose(inversionPose)
-                                m.refresh()
+                                # m.refresh()
 
                                 invertedTarget = skinCluster.invertShape(
                                     targetGeo,
@@ -1471,13 +1471,13 @@ class BlendShape(WeightGeometryFilter):
 
                                 if defaultPose is not None:
                                     _pos.applyPose(defaultPose)
-                                    m.refresh()
+                                    # m.refresh()
 
                                 mainTarget = bsn.targets.add(invertedTarget,
                                                              alias=alias,
                                                              update=update)
 
-                                # m.delete(str(invertedTarget))
+                                m.delete(str(invertedTarget))
 
                 for tweenRatio, tweenInfo in targetInfo.get('tweens',
                                                             {}).items():
@@ -1506,7 +1506,7 @@ class BlendShape(WeightGeometryFilter):
                                 )
                             else:
                                 _pos.applyPose(inversionPose)
-                                m.refresh()
+                                # m.refresh()
                                 invertedTween = skinCluster.invertShape(
                                     tweenGeo,
                                     ee=True
@@ -1514,15 +1514,13 @@ class BlendShape(WeightGeometryFilter):
 
                                 if defaultPose is not None:
                                     _pos.applyPose(defaultPose)
-                                    m.refresh()
+                                    # m.refresh()
 
                                 mainTarget.add(invertedTween,
                                                tweenRatio,
                                                update=update)
 
-                                # m.delete(str(invertedTween))
-
-
+                                m.delete(str(invertedTween))
 
         return out
 
