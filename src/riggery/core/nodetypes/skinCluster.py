@@ -567,13 +567,13 @@ class SkinCluster(GeometryFilter):
     def invertShape(
             self,
             sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform'],
-            editEnvelopes:bool=True
+            editEnvelopes:bool=False
     ) -> 'nodes.Shape':
         """
         :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
             currently at
         :param editEnvelopes/ee: edit other deformers' envelopes to ensure only
-            the skinCluster is active; defaults to True
+            the skinCluster is active; defaults to False
         :return: a reversed version of the sculpted geo, that can be used as a
             pre-bind blend shape.
         """
@@ -609,9 +609,9 @@ class SkinCluster(GeometryFilter):
             )
 
         if editEnvelopes:
-            for deformer, envelope in envelopes.items():
+            for deformer, value in envelopes.items():
                 try:
-                    deformer.attr('envelope').set(envelope)
+                    deformer.attr('envelope').set(value)
                     print(f"Set deformer {deformer} to {value}")
                 except Exception as e:
                     m.warning("Couldn't edit envelope on deformer "
