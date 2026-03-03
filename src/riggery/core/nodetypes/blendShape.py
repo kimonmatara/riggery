@@ -1445,8 +1445,11 @@ class BlendShape(WeightGeometryFilter):
     @classmethod
     def getSceneMapFromGeo(cls, geo) -> dict:
         out = cls.getSceneMapFromBase(geo)
-        if not out:
-            return cls.getSceneMapFromTarget(geo)
+
+        if out:
+            return out
+
+        return cls.getSceneMapFromTarget(geo)
 
     @classmethod
     def getSceneMap(cls, *geos) -> dict:
