@@ -1439,20 +1439,6 @@ class BlendShape(WeightGeometryFilter):
 
             if hasInversions:
                 skinCluster = next(nodes['SkinCluster'].fromGeo(baseGeo))
-                envelopes = {}
-
-                for deformer in nodes['GeometryFilter'].fromGeo(baseGeo):
-                    envelopes[deformer] = deformer.attr('envelope')()
-                    try:
-                        deformer.attr('envelope').set(
-                            1.0 if deformer == skinCluster else 0.0
-                        )
-                    except Exception as exc:
-                        m.warning(
-                            "Couldn't set envelope for deformer "
-                            f"'{deformer}': {exc}"
-                        )
-                        continue
 
             for alias, targetInfo in baseInfo.items():
                 mainTarget = None
@@ -1524,19 +1510,6 @@ class BlendShape(WeightGeometryFilter):
                                                update=update)
 
                                 # m.delete(str(invertedTween))
-
-            if hasInversions:
-                print('resetting..')
-                for deformer, envelope in envelopes.items():
-                    try:
-                        deformer.attr('envelope').set(envelope)
-                        print(f"Set envelope on {deformer} to {envelope}")
-                    except Exception as exc:
-                        m.warning(
-                            "Couldn't set envelope for deformer "
-                            f"'{deformer}': {exc}"
-                        )
-                        continue
 
         if defaultPose is not None:
             _pos.applyPose(defaultPose)
