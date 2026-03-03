@@ -1163,20 +1163,75 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-----------------------------------------|    History
 
-    @short(fullNodeName='fnn')
-    def history(self, **kwargs) -> Iterator['nodes.DependNode']:
-        """
-        Thin wrapper for ``maya.cmds.listHistory``. Returns an iterator.
+    @short(allConnections='ac',
+           allFuture='af',
+           allGraphs='ag',
+           breadthFirst='bf',
+           fastIteration='fi',
+           future='f',
+           futureLocalAttr='fl',
+           futureWorldAttr='fw',
+           groupLevels='gl',
+           historyAttr='ha',
+           interestLevel='il',
+           leaf='lf',
+           pruneDagObjects='pdo')
+    def history(self, *,
+                allConnections:Optional[bool]=None,
+                allFuture:Optional[bool]=None,
+                allGraphs:Optional[bool]=None,
+                breadthFirst:Optional[bool]=None,
+                fastIteration:Optional[bool]=None,
+                future:Optional[bool]=None,
+                futureLocalAttr:Optional[bool]=None,
+                futureWorldAttr:Optional[bool]=None,
+                groupLevels:Optional[bool]=None,
+                historyAttr:Optional[bool]=None,
+                interestLevel:Optional[int]=None,
+                leaf:Optional[bool]=None,
+                levels:Optional[int]=None,
+                pruneDagObjects:Optional[bool]=None) -> Iterator:
+        kwargs = {k: v for k, v in zip(
+            ('allConnections', 'allFuture', 'allGraphs', 'breadthFirst',
+             'fastIteration', 'future', 'futureLocalAttr', 'futureWorldAttr',
+             'groupLevels', 'historyAttr', 'interestLevel', 'leaf', 'levels',
+             'pruneDagObjects'),
+            (allConnections, allFuture, allGraphs, breadthFirst, fastIteration,
+             future, futureLocalAttr, futureWorldAttr, groupLevels, historyAttr,
+             interestLevel, leaf, levels, pruneDagObjects)
+        ) if v is not None}
 
-        :param \*\*kwargs: forwarded to the Maya command, except
-            ``fullNodeName``, which is always overriden to True
-        """
-        kwargs['fullNodeName'] = True
-        history = m.listHistory(str(self), **kwargs)
+        result = m.listHistory(str(self), **kwargs)
 
-        if history:
-            for node in history:
-                yield nodes['DependNode'](node)
+        if result is not None:
+            if isinstance(result, str):
+                return Elem(result)
+
+            elif isinstance(result, list):
+                for item in result:
+                    yield Elem(item)
+
+            else:
+                return result
+
+    @short(allFuture='af',
+           future='f',
+           futureLocalAttr='fl',
+           futureWorldAttr='fw')
+    def future(self, *,
+               allFuture:Optional[bool]=None,
+               futureLocalAttr:Optional[bool]=None,
+               futureWorldAttr:Optional[bool]=None,
+               **kwargs) -> Iterator:
+        """
+        Convenience wrapper for :meth:`history` with ``future=True``.
+        """
+        kwargs['future'] = True
+
+        return self.history(allFuture=allFuture,
+                            futureLocalAttr=futureLocalAttr,
+                            futureWorldAttr=futureWorldAttr,
+                            **kwargs)
 
     def deleteHistory(self):
         """
