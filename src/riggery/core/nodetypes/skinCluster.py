@@ -607,6 +607,9 @@ class SkinCluster(GeometryFilter):
         inversionXf = nodes['Transform'](m.invertShape(str(baseGeoXf),
                                                        str(sculptGeoXf)))
 
+        if inversionXf.parent != sculptGeoXf.parent:
+            inversionXf.parent = sculptGeoXf.parent
+
         if _nm.Name.__elems__:
             inversionXf.name = _nm.Name.evaluate(
                 typeSuffix=thisShape.__typesuffix__
