@@ -1163,6 +1163,21 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-----------------------------------------|    History
 
+    @short(fullNodeName='fnn')
+    def history(self, **kwargs) -> Iterator['nodes.DependNode']:
+        """
+        Thin wrapper for ``maya.cmds.listHistory``. Returns an iterator.
+
+        :param \*\*kwargs: forwarded to the Maya command, except
+            ``fullNodeName``, which is always overriden to True
+        """
+        kwargs['fullNodeName'] = True
+        history = m.listHistory(str(self), **kwargs)
+
+        if history:
+            for node in history:
+                yield nodes['DependNode'](node)
+
     def deleteHistory(self):
         """
         Deletes construction history on this node.

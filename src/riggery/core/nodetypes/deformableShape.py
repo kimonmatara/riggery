@@ -101,10 +101,3 @@ class DeformableShape(nodes['GeometryShape']):
         if (not create) and result == '':
             return None
         return plugs['Attribute'](result).node()
-
-    def history(self) -> Iterator['nodes.DependNode']:
-        history = m.listHistory(str(self), fullNodeName=True)
-
-        if history:
-            for node in history:
-                yield nodes['DependNode'](node)
