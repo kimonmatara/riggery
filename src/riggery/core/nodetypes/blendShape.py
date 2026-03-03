@@ -1455,9 +1455,9 @@ class BlendShape(WeightGeometryFilter):
                                                          update=update)
                         else:
                             missingControls = [
-                                x for x in inversionPose['controls']
+                                x[0] for x in inversionPose['controls']
                                 if not checkTransformUnambiguouslyExists(
-                                    x,
+                                    x[0],
                                     quiet=True
                                 )
                             ]
@@ -1515,9 +1515,9 @@ class BlendShape(WeightGeometryFilter):
 
                         else:
                             missingControls = [
-                                x for x in inversionPose['controls']
+                                x[0] for x in inversionPose['controls']
                                 if not checkTransformUnambiguouslyExists(
-                                    x,
+                                    x[0],
                                     quiet=True
                                 )
                             ]
