@@ -1456,7 +1456,7 @@ class BlendShape(WeightGeometryFilter):
                                     "skinCluster to perform the inversion"
                                 )
                             else:
-                                _pos.applyPose(inversionPose, quiet=True)
+                                _pos.applyPose(inversionPose)
                                 invertedTarget = skinCluster.invertShape(
                                     targetGeo
                                 ).toTransform()
@@ -1499,6 +1499,7 @@ class BlendShape(WeightGeometryFilter):
                                     "skinCluster to perform the inversion"
                                 )
                             else:
+                                _pos.applyPose(inversionPose)
                                 invertedTween = skinCluster.invertShape(
                                     tweenGeo
                                 ).toTransform()
