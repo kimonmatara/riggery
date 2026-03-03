@@ -1526,9 +1526,11 @@ class BlendShape(WeightGeometryFilter):
                                 # m.delete(str(invertedTween))
 
             if hasInversions:
+                print('resetting..')
                 for deformer, envelope in envelopes.items():
                     try:
                         deformer.attr('envelope').set(envelope)
+                        print(f"Set envelope on {deformer} to {envelope}")
                     except Exception as exc:
                         m.warning(
                             "Couldn't set envelope for deformer "
