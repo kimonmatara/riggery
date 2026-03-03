@@ -1463,10 +1463,15 @@ class BlendShape(WeightGeometryFilter):
                             else:
                                 _pos.applyPose(inversionPose)
                                 m.refresh()
+
                                 invertedTarget = skinCluster.invertShape(
                                     targetGeo,
                                     ee=True
                                 ).toTransform()
+
+                                if defaultPose is not None:
+                                    _pos.applyPose(defaultPose)
+                                    m.refresh()
 
                                 mainTarget = bsn.targets.add(invertedTarget,
                                                              alias=alias,
@@ -1507,15 +1512,17 @@ class BlendShape(WeightGeometryFilter):
                                     ee=True
                                 ).toTransform()
 
+                                if defaultPose is not None:
+                                    _pos.applyPose(defaultPose)
+                                    m.refresh()
+
                                 mainTarget.add(invertedTween,
                                                tweenRatio,
                                                update=update)
 
                                 # m.delete(str(invertedTween))
 
-        if defaultPose is not None:
-            _pos.applyPose(defaultPose)
-            m.refresh()
+
 
         return out
 
