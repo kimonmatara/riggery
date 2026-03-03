@@ -565,28 +565,59 @@ class SkinCluster(GeometryFilter):
 
     def invertShape(
             self,
-            sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform']
+            sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform'],
+            editEnvelopes:bool=True
     ) -> 'nodes.Shape':
         """
         :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
             currently at
+        :param editEnvelopes/ee: edit other deformers' envelopes to ensure only
+            the skinCluster is active; defaults to True
         :return: a reversed version of the sculpted geo, that can be used as a
             pre-bind blend shape.
         """
-        sculptGeo = nodes['DagNode'](sculptGeo).toTransform()
-        thisShape = next(self.shapes)
-        xform = nodes.Transform(m.invertShape(str(thisShape), str(sculptGeo)))
+        sculptGeoXf = nodes['DagNode'](sculptGeo).toTransform()
+        baseGeoShape = next(self.shapes)
+        baseGeoXf = baseGeoShape.parent
+
+        if editEnvelopes:
+            deformers = list(nodes['GeometryFilter'].fromGeo(baseGeoShape))
+            envelopes = {}
+
+            for deformer in deformers:
+                envelopes[deformer] = deformer.attr('envelope')()
+                try:
+                    deformer.attr('envelope').set(
+                        1.0 if deformer == self else 0.0
+                    )
+                except Exception as e:
+                    m.warning("Couldn't edit envelope on deformer "
+                              f"{deformer}: {e}")
+
+
+        inversionXf = nodes['Transform'](m.invertShape(str(baseGeoXf),
+                                                       str(sculptGeoXf)))
 
         if _nm.Name.__elems__:
-            xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
+            inversionXf.name = _nm.Name.evaluate(
+                typeSuffix=thisShape.__typesuffix__
+            )
         else:
-            xform.name = "{}_inversion_{}".format(
-                sculptGeo.shortName(),
-                thisShape.__typesuffix__
+            inversionXf.name = "{}_inversion_{}".format(
+                sculptGeoXf.shortName(),
+                baseGeoShape.__typesuffix__
             )
 
-        xform.assignDefaultShader()
-        return xform.shape
+        if editEnvelopes:
+            for deformer, envelope in envelopes.items():
+                try:
+                    deformer.attr('envelope').set(envelope)
+                except Exception as e:
+                    m.warning("Couldn't edit envelope on deformer "
+                              f"{deformer}: {e}")
+
+        inversionXf.assignDefaultShader()
+        return inversionXf.shape
 
     #-------------------------------------|    Weights
 
