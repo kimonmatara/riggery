@@ -1454,30 +1454,46 @@ class BlendShape(WeightGeometryFilter):
                                                          alias=alias,
                                                          update=update)
                         else:
-                            if skinCluster is None:
-                                m.warning(
-                                    f"Can't apply target '{alias}' to base"
-                                    f" '{baseGeo}' because there is no "
-                                    "skinCluster to perform the inversion"
+                            missingControls = [
+                                x for x in inversionPose['controls']
+                                if not checkTransformUnambiguouslyExists(
+                                    x,
+                                    quiet=True
                                 )
+                            ]
+
+                            if missingControls:
+                                _missingControls = ', '.join(missingControls)
+                                m.warning(f"Can't apply target '{alias}' to "
+                                          f"base '{baseGeo}' because of these "
+                                          "missing controls: "
+                                          "{_missingControls}")
+
                             else:
-                                _pos.applyPose(inversionPose)
-                                # m.refresh()
-
-                                invertedTarget = skinCluster.invertShape(
-                                    targetGeo,
-                                    ee=True
-                                ).toTransform()
-
-                                if defaultPose is not None:
-                                    _pos.applyPose(defaultPose)
+                                if skinCluster is None:
+                                    m.warning(
+                                        f"Can't apply target '{alias}' to base"
+                                        f" '{baseGeo}' because there is no "
+                                        "skinCluster to perform the inversion"
+                                    )
+                                else:
+                                    _pos.applyPose(inversionPose)
                                     # m.refresh()
 
-                                mainTarget = bsn.targets.add(invertedTarget,
-                                                             alias=alias,
-                                                             update=update)
+                                    invertedTarget = skinCluster.invertShape(
+                                        targetGeo,
+                                        ee=True
+                                    ).toTransform()
 
-                                m.delete(str(invertedTarget))
+                                    if defaultPose is not None:
+                                        _pos.applyPose(defaultPose)
+                                        # m.refresh()
+
+                                    mainTarget = bsn.targets.add(invertedTarget,
+                                                                 alias=alias,
+                                                                 update=update)
+
+                                    m.delete(str(invertedTarget))
 
                 for tweenRatio, tweenInfo in targetInfo.get('tweens',
                                                             {}).items():
@@ -1498,29 +1514,45 @@ class BlendShape(WeightGeometryFilter):
                             mainTarget.add(tweenGeo, tweenRatio, update=update)
 
                         else:
-                            if skinCluster is None:
-                                m.warning(
-                                    f"Can't apply tween for target '{alias}' on"
-                                    f" base {baseGeo} because there is no "
-                                    "skinCluster to perform the inversion"
+                            missingControls = [
+                                x for x in inversionPose['controls']
+                                if not checkTransformUnambiguouslyExists(
+                                    x,
+                                    quiet=True
                                 )
+                            ]
+
+                            if missingControls:
+                                _missingControls = ', '.join(missingControls)
+                                m.warning(f"Can't apply tween for target "
+                                          f"'{alias}' on base '{baseGeo}' "
+                                          "because of these missing controls: "
+                                          f"{_missingControls}")
                             else:
-                                _pos.applyPose(inversionPose)
-                                # m.refresh()
-                                invertedTween = skinCluster.invertShape(
-                                    tweenGeo,
-                                    ee=True
-                                ).toTransform()
-
-                                if defaultPose is not None:
-                                    _pos.applyPose(defaultPose)
+                                if skinCluster is None:
+                                    m.warning(
+                                        f"Can't apply tween for target "
+                                        f"'{alias}' on base {baseGeo} because"
+                                        " there is no skinCluster to perform"
+                                        " the inversion"
+                                    )
+                                else:
+                                    _pos.applyPose(inversionPose)
                                     # m.refresh()
+                                    invertedTween = skinCluster.invertShape(
+                                        tweenGeo,
+                                        ee=True
+                                    ).toTransform()
 
-                                mainTarget.add(invertedTween,
-                                               tweenRatio,
-                                               update=update)
+                                    if defaultPose is not None:
+                                        _pos.applyPose(defaultPose)
+                                        # m.refresh()
 
-                                m.delete(str(invertedTween))
+                                    mainTarget.add(invertedTween,
+                                                   tweenRatio,
+                                                   update=update)
+
+                                    m.delete(str(invertedTween))
 
         return out
 
