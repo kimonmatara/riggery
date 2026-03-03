@@ -581,7 +581,7 @@ class SkinCluster(GeometryFilter):
             xform.name = _nm.Name.evaluate(typeSuffix=thisShape.__typesuffix__)
         else:
             xform.name = "{}_inversion_{}".format(
-                sculptGeo.shortName(sts=True),
+                sculptGeo.shortName(),
                 thisShape.__typesuffix__
             )
 
