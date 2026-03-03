@@ -567,7 +567,8 @@ class SkinCluster(GeometryFilter):
     def invertShape(
             self,
             sculptGeo:Union[str, 'nodes.Shape', 'nodes.Transform'],
-            editEnvelopes:bool=False
+            editEnvelopes:bool=False,
+            verbose:bool=False
     ) -> 'nodes.Shape':
         """
         :param sculptGeo: a geo sculpted at the same pose as this skinCluster's
@@ -577,7 +578,9 @@ class SkinCluster(GeometryFilter):
         :return: a reversed version of the sculpted geo, that can be used as a
             pre-bind blend shape.
         """
-        print('in invertShape()')
+        if verbose:
+            print('in invertShape()')
+
         sculptGeoXf = nodes['DagNode'](sculptGeo).toTransform()
         baseGeoShape = next(self.shapes)
         baseGeoXf = baseGeoShape.parent
@@ -588,11 +591,15 @@ class SkinCluster(GeometryFilter):
 
             for deformer in deformers:
                 envelopes[deformer] = initValue = deformer.attr('envelope')()
-                print(f'Original value of deformer {deformer} was {initValue}')
+                if verbose:
+                    print(
+                        f'Original value of deformer {deformer} was {initValue}'
+                    )
                 value = 1.0 if deformer == self else 0.0
                 try:
                     deformer.attr('envelope').set(value)
-                    print(f"Set deformer {deformer} to {value}")
+                    if verbose:
+                        print(f"Set deformer {deformer} to {value}")
                 except Exception as e:
                     m.warning("Couldn't edit envelope on deformer "
                               f"{deformer}: {e}")
@@ -614,7 +621,8 @@ class SkinCluster(GeometryFilter):
             for deformer, value in envelopes.items():
                 try:
                     deformer.attr('envelope').set(value)
-                    print(f"Restored deformer {deformer} to {value}")
+                    if verbose:
+                        print(f"Restored deformer {deformer} to {value}")
                 except Exception as e:
                     m.warning("Couldn't edit envelope on deformer "
                               f"{deformer}: {e}")
