@@ -1440,6 +1440,7 @@ class BlendShape(WeightGeometryFilter):
 
                         if inversionPose is None:
                             mainTarget = bsn.targets.add(targetGeo,
+                                                         alias=alias,
                                                          update=update)
                         else:
                             if skinCluster is UNDEFINED:
@@ -1502,7 +1503,8 @@ class BlendShape(WeightGeometryFilter):
                                     tweenGeo
                                 ).toTransform()
 
-                                mainTarget.add(invertedTween, tweenRatio,
+                                mainTarget.add(invertedTween,
+                                               tweenRatio,
                                                update=update)
 
                                 m.delete(str(invertedTween))
