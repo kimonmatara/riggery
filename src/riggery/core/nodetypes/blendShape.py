@@ -1444,7 +1444,9 @@ class BlendShape(WeightGeometryFilter):
                 for deformer in nodes['GeometryFilter'].fromGeo(baseGeo):
                     envelopes[deformer] = deformer.attr('envelope')()
                     try:
-                        deformer.attr('envelope').set(deformer == skinCluster)
+                        deformer.attr('envelope').set(
+                            1.0 if deformer == skinCluster else 0.0
+                        )
                     except Exception as exc:
                         m.warning(
                             "Couldn't set envelope for deformer "
@@ -1483,7 +1485,7 @@ class BlendShape(WeightGeometryFilter):
                                                              alias=alias,
                                                              update=update)
 
-                                m.delete(str(invertedTarget))
+                                # m.delete(str(invertedTarget))
 
                 for tweenRatio, tweenInfo in targetInfo.get('tweens',
                                                             {}).items():
@@ -1521,7 +1523,7 @@ class BlendShape(WeightGeometryFilter):
                                                tweenRatio,
                                                update=update)
 
-                                m.delete(str(invertedTween))
+                                # m.delete(str(invertedTween))
 
             if hasInversions:
                 for deformer, envelope in envelopes.items():
