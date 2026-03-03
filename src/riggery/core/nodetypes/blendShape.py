@@ -802,7 +802,7 @@ class Targets:
         if connect:
             worldSpace = bsn.attr('origin')() == 0
             src = (geoShape.worldOutput
-                       if worldSpace else geoShape.localOutput)
+                   if worldSpace else geoShape.localOutput)
             src >> geoInput
         else:
             geoInput.disconnect(inputs=True)
@@ -899,300 +899,401 @@ class BlendShape(WeightGeometryFilter):
 
     #---------------------------|    Retargeting
 
-    @short(parent='p',
-           smoothInfluences='si',
+    @classmethod
+    @short(smoothInfluences='si',
            softNormalization='sn',
            associativeGeometry='ag')
-    def generateRebasedTargets(
-            self,
-            newBase:'nodes.DagNode',
-            targetIndices:Optional[
-                Union[int, list[int], tuple[int]]
-            ]=None, /,
-            parent:Optional['nodes.Transform']=None,
+    def rebaseTargetGeometries(
+            cls,
+            originalTargets:Iterable[Union[str, 'nodes.DagNode']],
+            originalBase:Union[str, 'nodes.DagNode'],
+            newBase:Union[str, 'nodes.DagNode'], *,
+            associativeGeometry:Optional[Union[str, 'nodes.DagNode']]=None,
             smoothInfluences:Optional[int]=None,
             softNormalization:bool=False,
-            associativeGeometry:Optional['nodes.DagNode']=None,
-    ) -> dict:
+    ) -> list['nodes.Transform']:
         """
-        Recreates target geometries for this blend shape node, but for a
-        different base. A new blend shape node is not created; use
-        :meth:`recreateOnNewBase` for that instead.
+        Class-method implementation for rebasing targets. No blend shape node
+        needs to be present.
 
-        Limitations
-        -----------
-
-        -   Only implemented for meshes
-        -   Intended for topology transfers, so *newBase* must have a similar
-            shape to the current base (uses proximityWrap)
-
-        To-Dos
-        ------
-
-        -   Implement for non-mesh types too
-        -   Implement a 'byUV' option
-
-        :param newBase: the base shape for which to create the targets
-        :param targetIndices: an optional list of target indices to include;
-            defaults to all target indices
-        :param parent/p: an optional destination parent for the generated
-            geometries; defaults to None (world)
+        :param originalTargets: the targets to rebase
+        :param originalBase: the original base geometry; this must be undeformed
+        :param newBase: the target base geometry; this must be undeformed
         :param smoothInfluences/si: forwarded to proximityWrap; defaults to None
         :param softNormalization/sn: forwarded to proximityWrap; defaults to
             None
         :param associativeGeometry/an: forwarded to proximityWrap; defaults to
             None
-
-        :return: A dictionary with the following structure:
-            ```
-            {
-                targetIndex (int): {
-                    'main': <Transform>,
-                    'alias': <str>,
-                    'tweens': {tweenWeight (float): <Transform>, ...}
-                },
-                ...
-            }
-            ```
+        :return: The rebased targets.
         """
-
-        #----------------|    Early erroring
-
-        if self.inPostMode():
-            raise NotImplementedError(
-                'currently only supported for pre-deformation (classic) blend '
-                'shapes'
-            )
-
+        originalBase = nodes['DagNode'](originalBase).toTransform()
+        originalTargets = list(without_duplicates(
+            [nodes['DagNode'](x).toTransform()
+             for x in originalTargets]
+        ))
         newBase = nodes['DagNode'](newBase).toTransform()
-        thisBase = next(self.shapes, None).parent
 
-        meshesToCheck = [newBase, thisBase]
+        # Duplicate original base into 'wrapMaster'
+        wrapMaster = originalBase.duplicate()[0]
+
+        # Duplicate new base into 'wrapSlave'
+        wrapSlave = newBase.duplicate()[0]
+
+        # Wrap from 'wrapMaster' onto 'wrapSlave'
+        wrap = nodes['ProximityWrap'].create(
+            wrapSlave,
+            smoothInfluences=smoothInfluences,
+            softNormalization=softNormalization
+        )
 
         if associativeGeometry is not None:
-            associativeGeometry = nodes['DagNode'](
-                associativeGeometry
-            ).toTransform()
-
-            meshesToCheck.append(associativeGeometry)
-
-        if not all((isinstance(x.shape, nodes.Mesh) for x in meshesToCheck)):
-            raise NotImplementedError('currently only supported for meshes')
-
-        #----------------|    Gather information
-
-        if targetIndices is None:
-            targetIndices = self.attr('weight').indices()
-        else:
-            targetIndices = list(
-                without_duplicates(expand_tuples_lists(targetIndices))
+            nodes['DagNode'](associativeGeometry
+                             ).toShape().worldOutput >> wrap.attr(
+                'associativeGeometry'
             )
 
-        targetSpecs = {}
-
-        for targetIndex in targetIndices:
-            target = self.targets[targetIndex]
-
-            thisSpec = {}
-
-            alias = target.alias
-
-            if alias is None:
-                alias = 'target_{}'.format(str(targetIndex).zfill(3))
-
-            thisSpec['alias'] = alias
-
-            tweenRatios = [tween.ratio for tween in list(target)]
-
-            if 1.0 not in tweenRatios:
-                raise RuntimeError(
-                    "Malformed target at [{}]: no tween at 1.0".format(
-                        targetIndex
-                    )
-                )
-
-            tweenRatios.remove(1.0)
-            tweenRatios.sort(reverse=True)
-
-            if tweenRatios:
-                thisSpec['tweenRatios'] = tweenRatios
-
-            targetSpecs[targetIndex] = thisSpec
-
-        _wrapMaster = self.attr(
-            'originalGeometry')[0].inputs(plugs=True)[0].createShape().parent
-        wrapMaster = _wrapMaster.duplicate(n='wrap_master')[0]
-        m.delete(str(_wrapMaster))
-
-        wrapSlave = newBase.duplicate(name='wrap_slave')[0]
-
-        # For each target index:
-        #     regenerate input geometry, set aside, store in a map
-
-        regeneratedGeos = {} # index: {'main': geo, 'tweens': {float:geo}}
-
-        for targetIndex, targetSpec in targetSpecs.items():
-            srcTarget = self.targets[targetIndex]
-            mainGeo = srcTarget[1.0].createShape(connect=False)
-            tweenGeos = {
-                tweenRatio: srcTarget[tweenRatio].createShape(connect=False)
-                for tweenRatio in targetSpec.get('tweenRatios', [])
-            }
-
-            thisInfo = {'main': mainGeo, 'alias': targetSpec['alias']}
-
-            if tweenGeos:
-                thisInfo['tweens'] = tweenGeos
-
-            regeneratedGeos[targetIndex] = thisInfo
-
-        # Create a blend shape on 'wrapMaster', recreate all the blend shapes,
-        # discard targets
-
-        wrapMasterBsn = self.create(wrapMaster, n='wrap_master_bsn')
-
-        for targetIndex, info in regeneratedGeos.items():
-            newTarget = wrapMasterBsn.targets.add(info['main'],
-                                                  alias=info['alias'])
-
-            m.delete(str(info['main']))
-
-            for tweenRatio, tweenGeo in info.get('tweens', {}).items():
-                newTarget.add(tweenGeo, tweenRatio)
-                m.delete(str(tweenGeo))
-
-        # Wrap
-
-        wrap = nodes.ProximityWrap.create(wrapSlave,
-                                          smoothInfluences=smoothInfluences,
-                                          softNormalization=softNormalization)
-
-        if associativeGeometry is not None:
-            associativeGeometry.worldOutput >> wrap.attr('associativeGeometry')
-
+        bsn = cls.create(wrapMaster)
         wrap.addDriver(wrapMaster)
 
-        # Recreate all targets and tweens
+        newTargets = []
 
-        out = {} # weight index: info
+        originalBaseName = originalBase.shortName()
 
-        for targetIndex, targetSpec in targetSpecs.items():
-            for _target in wrapMasterBsn.targets:
-                _target.weight.set(0.0)
+        pat = re.compile(r"^"
+                         + originalBase.shortName()
+                         + r"_(.*?)(?:_([0-9]+))?_"
+                         + _nm.BLENDSUFFIX
+                         + r"$")
 
-            thisInfo = {'alias': targetSpec['alias']}
+        newBaseName = newBase.shortName()
+        newTargets = []
 
-            # Main
-            target = wrapMasterBsn.targets[targetIndex]
-            target.weight.set(1.0)
+        for originalTarget in originalTargets:
+            targetEntry = bsn.targets.add(originalTarget)
+            targetEntry.weight.set(1.0)
 
-            thisInfo['main'] = geo = wrapSlave.duplicate()[0]
-            geo.show()
+            kwargs = {}
 
-            geo.parent = parent
-            geo.name = targetSpec['alias']
+            originalTargetName = originalTarget.shortName()
+            mt = re.match(pat, originalTargetName)
 
-            tweens = {}
+            if mt:
+                alias, pc = mt.groups()
 
-            for tweenRatio in targetSpec.get('tweenRatios', []):
-                target.weight.set(tweenRatio)
-                pc = str(int(tweenRatio * 100)).zfill(3)
-                name = '{}_{}'.format(targetSpec['alias'], pc)
-                tweens[tweenRatio] = tweenGeo = wrapSlave.duplicate()[0]
-                tweenGeo.show()
-                tweenGeo.parent = parent
-                tweenGeo.name = name
+                elems = [newBaseName, alias]
 
-            if tweens:
-                thisInfo['tweens'] = tweens
+                if pc is not None:
+                    elems.append(pc)
 
-            out[targetIndex] = thisInfo
+                elems.append(_nm.BLENDSUFFIX)
+                kwargs['name'] = '_'.join(elems)
+
+            else:
+                kwargs['name'] = originalTargetName+'_rebased'
+
+            newTarget = wrapSlave.duplicate(**kwargs)[0]
+            targetEntry.weight.set(0.0)
+
+            newTargets.append(newTarget)
 
         m.delete(str(wrapMaster), str(wrapSlave))
 
-        return out
+        return newTargets
 
-    @short(parent='p',
-           smoothInfluences='si',
-           softNormalization='sn',
-           associativeGeometry='ag',
-           name='n')
-    def recreateOnNewBase(
-            self,
-            newBase:'nodes.DagNode',
-            targetIndices:Optional[
-                Union[int, list[int], tuple[int]]
-            ]=None, /,
-            name:Optional[str]=None,
-            parent:Optional['nodes.Transform']=None,
-            smoothInfluences:Optional[int]=None,
-            softNormalization:bool=False,
-            associativeGeometry:Optional['nodes.DagNode']=None,
-            keepTargets:Optional[bool]=False
-    ) -> tuple['BlendShape', Optional[dict]]:
-        """
-        Limitations
-        -----------
-
-        -   Only implemented for meshes
-        -   Intended for topology transfers, so *newBase* must have a similar
-            shape to the current base (uses proximityWrap)
-
-        :param newBase: the new base shape on which to create the blend shape
-        :param targetIndices: an optional list of target indices to include;
-            defaults to all target indices
-        :param keepTargets/kt: keep the regenerated target shapes in the scene;
-            defaults to False
-        :param parent/p: ignored if *keepTargets* is False; an optional
-            destination parent for the generated geometries; defaults to None
-            (world)
-        :param smoothInfluences/si: forwarded to proximityWrap; defaults to None
-        :param softNormalization/sn: forwarded to proximityWrap; defaults to
-            None
-        :param associativeGeometry/an: forwarded to proximityWrap; defaults to
-            None
-
-        :return: A tuple comprising the new node and, if *keepTargets* is True,
-            the dictionary returned by :meth:`generateRebasedTargets`, otherwise
-            None.
-        """
-        newBase = nodes['DagNode'](newBase).toTransform()
-        newTargets = self.generateRebasedTargets(
-            newBase,
-            targetIndices,
-            parent=parent,
-            smoothInfluences=smoothInfluences,
-            softNormalization=softNormalization,
-            associativeGeometry=associativeGeometry
-        )
-
-        newBsn = self.create(newBase, name=name)
-
-        for targetIndex, targetInfo in newTargets.items():
-            newTarget = newBsn.targets.add(targetInfo['main'],
-                                           alias=targetInfo['alias'])
-
-            if not keepTargets:
-                m.delete(str(targetInfo['main']))
-
-            for tweenWeight, tweenGeo in targetInfo.get('tweens', {}).items():
-                newTarget.add(tweenGeo, tweenWeight)
-
-                if not keepTargets:
-                    m.delete(str(tweenGeo))
-
-            # Copy any weight input
-            weightInputs = self.targets[targetIndex].weight.inputs(plugs=True)
-
-            if weightInputs:
-                weightInputs[0] >> newTarget.weight
-
-        out = [newBsn, None]
-
-        if keepTargets:
-            out[1] = newTargets
-
-        return tuple(out)
+    # @short(parent='p',
+    #        smoothInfluences='si',
+    #        softNormalization='sn',
+    #        associativeGeometry='ag')
+    # def generateRebasedTargets(
+    #         self,
+    #         newBase:'nodes.DagNode',
+    #         targetIndices:Optional[
+    #             Union[int, list[int], tuple[int]]
+    #         ]=None, /,
+    #         parent:Optional['nodes.Transform']=None,
+    #         smoothInfluences:Optional[int]=None,
+    #         softNormalization:bool=False,
+    #         associativeGeometry:Optional['nodes.DagNode']=None,
+    # ) -> dict:
+    #     """
+    #     Recreates target geometries for this blend shape node, but for a
+    #     different base. A new blend shape node is not created; use
+    #     :meth:`recreateOnNewBase` for that instead.
+    #
+    #     Limitations
+    #     -----------
+    #
+    #     -   Only implemented for meshes
+    #     -   Intended for topology transfers, so *newBase* must have a similar
+    #         shape to the current base (uses proximityWrap)
+    #
+    #     To-Dos
+    #     ------
+    #
+    #     -   Implement for non-mesh types too
+    #     -   Implement a 'byUV' option
+    #
+    #     :param newBase: the base shape for which to create the targets
+    #     :param targetIndices: an optional list of target indices to include;
+    #         defaults to all target indices
+    #     :param parent/p: an optional destination parent for the generated
+    #         geometries; defaults to None (world)
+    #     :param smoothInfluences/si: forwarded to proximityWrap; defaults to None
+    #     :param softNormalization/sn: forwarded to proximityWrap; defaults to
+    #         None
+    #     :param associativeGeometry/an: forwarded to proximityWrap; defaults to
+    #         None
+    #
+    #     :return: A dictionary with the following structure:
+    #         ```
+    #         {
+    #             targetIndex (int): {
+    #                 'main': <Transform>,
+    #                 'alias': <str>,
+    #                 'tweens': {tweenWeight (float): <Transform>, ...}
+    #             },
+    #             ...
+    #         }
+    #         ```
+    #     """
+    #
+    #     #----------------|    Early erroring
+    #
+    #     if self.inPostMode():
+    #         raise NotImplementedError(
+    #             'currently only supported for pre-deformation (classic) blend '
+    #             'shapes'
+    #         )
+    #
+    #     newBase = nodes['DagNode'](newBase).toTransform()
+    #     thisBase = next(self.shapes, None).parent
+    #
+    #     meshesToCheck = [newBase, thisBase]
+    #
+    #     if associativeGeometry is not None:
+    #         associativeGeometry = nodes['DagNode'](
+    #             associativeGeometry
+    #         ).toTransform()
+    #
+    #         meshesToCheck.append(associativeGeometry)
+    #
+    #     if not all((isinstance(x.shape, nodes.Mesh) for x in meshesToCheck)):
+    #         raise NotImplementedError('currently only supported for meshes')
+    #
+    #     #----------------|    Gather information
+    #
+    #     if targetIndices is None:
+    #         targetIndices = self.attr('weight').indices()
+    #     else:
+    #         targetIndices = list(
+    #             without_duplicates(expand_tuples_lists(targetIndices))
+    #         )
+    #
+    #     targetSpecs = {}
+    #
+    #     for targetIndex in targetIndices:
+    #         target = self.targets[targetIndex]
+    #
+    #         thisSpec = {}
+    #
+    #         alias = target.alias
+    #
+    #         if alias is None:
+    #             alias = 'target_{}'.format(str(targetIndex).zfill(3))
+    #
+    #         thisSpec['alias'] = alias
+    #
+    #         tweenRatios = [tween.ratio for tween in list(target)]
+    #
+    #         if 1.0 not in tweenRatios:
+    #             raise RuntimeError(
+    #                 "Malformed target at [{}]: no tween at 1.0".format(
+    #                     targetIndex
+    #                 )
+    #             )
+    #
+    #         tweenRatios.remove(1.0)
+    #         tweenRatios.sort(reverse=True)
+    #
+    #         if tweenRatios:
+    #             thisSpec['tweenRatios'] = tweenRatios
+    #
+    #         targetSpecs[targetIndex] = thisSpec
+    #
+    #     _wrapMaster = self.attr(
+    #         'originalGeometry')[0].inputs(plugs=True)[0].createShape().parent
+    #     wrapMaster = _wrapMaster.duplicate(n='wrap_master')[0]
+    #     m.delete(str(_wrapMaster))
+    #
+    #     wrapSlave = newBase.duplicate(name='wrap_slave')[0]
+    #
+    #     # For each target index:
+    #     #     regenerate input geometry, set aside, store in a map
+    #
+    #     regeneratedGeos = {} # index: {'main': geo, 'tweens': {float:geo}}
+    #
+    #     for targetIndex, targetSpec in targetSpecs.items():
+    #         srcTarget = self.targets[targetIndex]
+    #         mainGeo = srcTarget[1.0].createShape(connect=False)
+    #         tweenGeos = {
+    #             tweenRatio: srcTarget[tweenRatio].createShape(connect=False)
+    #             for tweenRatio in targetSpec.get('tweenRatios', [])
+    #         }
+    #
+    #         thisInfo = {'main': mainGeo, 'alias': targetSpec['alias']}
+    #
+    #         if tweenGeos:
+    #             thisInfo['tweens'] = tweenGeos
+    #
+    #         regeneratedGeos[targetIndex] = thisInfo
+    #
+    #     # Create a blend shape on 'wrapMaster', recreate all the blend shapes,
+    #     # discard targets
+    #
+    #     wrapMasterBsn = self.create(wrapMaster, n='wrap_master_bsn')
+    #
+    #     for targetIndex, info in regeneratedGeos.items():
+    #         newTarget = wrapMasterBsn.targets.add(info['main'],
+    #                                               alias=info['alias'])
+    #
+    #         m.delete(str(info['main']))
+    #
+    #         for tweenRatio, tweenGeo in info.get('tweens', {}).items():
+    #             newTarget.add(tweenGeo, tweenRatio)
+    #             m.delete(str(tweenGeo))
+    #
+    #     # Wrap
+    #
+    #     wrap = nodes.ProximityWrap.create(wrapSlave,
+    #                                       smoothInfluences=smoothInfluences,
+    #                                       softNormalization=softNormalization)
+    #
+    #     if associativeGeometry is not None:
+    #         associativeGeometry.worldOutput >> wrap.attr('associativeGeometry')
+    #
+    #     wrap.addDriver(wrapMaster)
+    #
+    #     # Recreate all targets and tweens
+    #
+    #     out = {} # weight index: info
+    #
+    #     for targetIndex, targetSpec in targetSpecs.items():
+    #         for _target in wrapMasterBsn.targets:
+    #             _target.weight.set(0.0)
+    #
+    #         thisInfo = {'alias': targetSpec['alias']}
+    #
+    #         # Main
+    #         target = wrapMasterBsn.targets[targetIndex]
+    #         target.weight.set(1.0)
+    #
+    #         thisInfo['main'] = geo = wrapSlave.duplicate()[0]
+    #         geo.show()
+    #
+    #         geo.parent = parent
+    #         geo.name = targetSpec['alias']
+    #
+    #         tweens = {}
+    #
+    #         for tweenRatio in targetSpec.get('tweenRatios', []):
+    #             target.weight.set(tweenRatio)
+    #             pc = str(int(tweenRatio * 100)).zfill(3)
+    #             name = '{}_{}'.format(targetSpec['alias'], pc)
+    #             tweens[tweenRatio] = tweenGeo = wrapSlave.duplicate()[0]
+    #             tweenGeo.show()
+    #             tweenGeo.parent = parent
+    #             tweenGeo.name = name
+    #
+    #         if tweens:
+    #             thisInfo['tweens'] = tweens
+    #
+    #         out[targetIndex] = thisInfo
+    #
+    #     m.delete(str(wrapMaster), str(wrapSlave))
+    #
+    #     return out
+    #
+    # @short(parent='p',
+    #        smoothInfluences='si',
+    #        softNormalization='sn',
+    #        associativeGeometry='ag',
+    #        name='n')
+    # def recreateOnNewBase(
+    #         self,
+    #         newBase:'nodes.DagNode',
+    #         targetIndices:Optional[
+    #             Union[int, list[int], tuple[int]]
+    #         ]=None, /,
+    #         name:Optional[str]=None,
+    #         parent:Optional['nodes.Transform']=None,
+    #         smoothInfluences:Optional[int]=None,
+    #         softNormalization:bool=False,
+    #         associativeGeometry:Optional['nodes.DagNode']=None,
+    #         keepTargets:Optional[bool]=False
+    # ) -> tuple['BlendShape', Optional[dict]]:
+    #     """
+    #     Limitations
+    #     -----------
+    #
+    #     -   Only implemented for meshes
+    #     -   Intended for topology transfers, so *newBase* must have a similar
+    #         shape to the current base (uses proximityWrap)
+    #
+    #     :param newBase: the new base shape on which to create the blend shape
+    #     :param targetIndices: an optional list of target indices to include;
+    #         defaults to all target indices
+    #     :param keepTargets/kt: keep the regenerated target shapes in the scene;
+    #         defaults to False
+    #     :param parent/p: ignored if *keepTargets* is False; an optional
+    #         destination parent for the generated geometries; defaults to None
+    #         (world)
+    #     :param smoothInfluences/si: forwarded to proximityWrap; defaults to None
+    #     :param softNormalization/sn: forwarded to proximityWrap; defaults to
+    #         None
+    #     :param associativeGeometry/an: forwarded to proximityWrap; defaults to
+    #         None
+    #
+    #     :return: A tuple comprising the new node and, if *keepTargets* is True,
+    #         the dictionary returned by :meth:`generateRebasedTargets`, otherwise
+    #         None.
+    #     """
+    #     newBase = nodes['DagNode'](newBase).toTransform()
+    #     newTargets = self.generateRebasedTargets(
+    #         newBase,
+    #         targetIndices,
+    #         parent=parent,
+    #         smoothInfluences=smoothInfluences,
+    #         softNormalization=softNormalization,
+    #         associativeGeometry=associativeGeometry
+    #     )
+    #
+    #     newBsn = self.create(newBase, name=name)
+    #
+    #     for targetIndex, targetInfo in newTargets.items():
+    #         newTarget = newBsn.targets.add(targetInfo['main'],
+    #                                        alias=targetInfo['alias'])
+    #
+    #         if not keepTargets:
+    #             m.delete(str(targetInfo['main']))
+    #
+    #         for tweenWeight, tweenGeo in targetInfo.get('tweens', {}).items():
+    #             newTarget.add(tweenGeo, tweenWeight)
+    #
+    #             if not keepTargets:
+    #                 m.delete(str(tweenGeo))
+    #
+    #         # Copy any weight input
+    #         weightInputs = self.targets[targetIndex].weight.inputs(plugs=True)
+    #
+    #         if weightInputs:
+    #             weightInputs[0] >> newTarget.weight
+    #
+    #     out = [newBsn, None]
+    #
+    #     if keepTargets:
+    #         out[1] = newTargets
+    #
+    #     return tuple(out)
 
     #---------------------------|    Scene mapping
 
