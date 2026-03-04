@@ -220,6 +220,16 @@ class Matrix(plugs['Tensor']):
 
     @cache_dg_output
     @short(reuse='re')
+    def transpose(self):
+        """
+        :return: The transposition of this matrix.
+        """
+        node = nodes['TransposeMatrix'].createNode()
+        self >> node.attr('inputMatrix')
+        return node.attr('outputMatrix')
+
+    @cache_dg_output
+    @short(reuse='re')
     def inverse(self):
         """
         :return: The inverse of this matrix.
