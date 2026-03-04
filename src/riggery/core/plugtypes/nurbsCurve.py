@@ -741,7 +741,9 @@ class NurbsCurve(plugs['Geometry']):
                                                 scaleRatio)
             translateMatrix = scalePivot.asTranslateMatrix()
             matrix = translateMatrix.inverse() * scaleMatrix * translateMatrix
-            return self * matrix
+            out = self * matrix
+            print('matrix out type is ', type(out))
+            return out
 
         tolerance = 1e-6
 
@@ -772,8 +774,6 @@ class NurbsCurve(plugs['Geometry']):
 
         T = type(self)
 
-        print("The type should be ", T)
-
         out = (extensionLength > tolerance).ifElse(
             extensionOutput,
             (retractionLength > tolerance).ifElse(
@@ -784,7 +784,6 @@ class NurbsCurve(plugs['Geometry']):
             T
         )
 
-        print("The out type is ", type(out))
         return out
 
     def squashStretch(self,
