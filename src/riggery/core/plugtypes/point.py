@@ -14,53 +14,53 @@ class Point(plugs['Vector']):
 
     __datacls__ = data['Point']
 
-    @short(origin='o', asVector='av')
-    def snapToUnitSphere(
-            self,
-            origin:Optional[Union['plugs.Point', 'data.Point']]=None,
-            asVector:bool=False
-    ) -> Union['plugs.Point', 'plugs.Vector']:
-        """
-        Projects this point to the surface of a unit sphere. This is intended
-        for local solving within an arbitrary (possibly skewed) matrix.
-
-        If *origin* itself ever exits the unit range, the solution will default
-        to the local origin instead.
-
-        :param origin: the projection origin; if omitted, the return is
-            equivalent to :meth:`normal`; defaults to None
-        :param asVector/av: return the vector rather than the point; getting the
-            vector is useful if you want to chain-up other effects like
-            :meth:`~riggery.core.lib.plugtypes.Vector.coneClamp` etc.
-        """
-        if origin is None:
-            out = self.normal()
-            if asVector:
-                return out.asVector()
-            return out
-
-        origin = _mm.conform(origin,
-                             (plugs['Point'], data['Point']),
-                             force=True)
-
-        ray = self - origin
-        a = ray.dot(ray)
-        b = 2 * origin.dot(ray)
-        c = origin.dot(origin) - 1.0
-        discriminant = (b ** 2) - 4 * a * c
-        isValid = discriminant >= 1e-5
-
-        pb = nodes['Network'].createNode()
-        one = pb.addAttr('one', dv=1.0, l=True)
-
-        discriminant = isValid.ifElse(discriminant, one, plugs['Float'])
-        t = (-b + (discriminant ** 0.5)) / (2 * a)
-        outVector = t * ray
-
-        if asVector:
-            return isValid.ifElse(outVector, self.normal(), plugs['Vector'])
-
-        return isValid.ifElse(origin + outVector, self.normal(), plugs['Point'])
+    # @short(origin='o', asVector='av')
+    # def snapToUnitSphere(
+    #         self,
+    #         origin:Optional[Union['plugs.Point', 'data.Point']]=None,
+    #         asVector:bool=False
+    # ) -> Union['plugs.Point', 'plugs.Vector']:
+    #     """
+    #     Projects this point to the surface of a unit sphere. This is intended
+    #     for local solving within an arbitrary (possibly skewed) matrix.
+    #
+    #     If *origin* itself ever exits the unit range, the solution will default
+    #     to the local origin instead.
+    #
+    #     :param origin: the projection origin; if omitted, the return is
+    #         equivalent to :meth:`normal`; defaults to None
+    #     :param asVector/av: return the vector rather than the point; getting the
+    #         vector is useful if you want to chain-up other effects like
+    #         :meth:`~riggery.core.lib.plugtypes.Vector.coneClamp` etc.
+    #     """
+    #     if origin is None:
+    #         out = self.normal()
+    #         if asVector:
+    #             return out.asVector()
+    #         return out
+    #
+    #     origin = _mm.conform(origin,
+    #                          (plugs['Point'], data['Point']),
+    #                          force=True)
+    #
+    #     ray = self - origin
+    #     a = ray.dot(ray)
+    #     b = 2 * origin.dot(ray)
+    #     c = origin.dot(origin) - 1.0
+    #     discriminant = (b ** 2) - 4 * a * c
+    #     isValid = discriminant >= 1e-5
+    #
+    #     pb = nodes['Network'].createNode()
+    #     one = pb.addAttr('one', dv=1.0, l=True)
+    #
+    #     discriminant = isValid.ifElse(discriminant, one, plugs['Float'])
+    #     t = (-b + (discriminant ** 0.5)) / (2 * a)
+    #     outVector = t * ray
+    #
+    #     if asVector:
+    #         return isValid.ifElse(outVector, self.normal(), plugs['Vector'])
+    #
+    #     return isValid.ifElse(origin + outVector, self.normal(), plugs['Point'])
 
     #-----------------------------------------|    Set
 
