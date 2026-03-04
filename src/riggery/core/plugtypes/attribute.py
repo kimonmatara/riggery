@@ -1196,8 +1196,8 @@ class Attribute(Elem, metaclass=AttributeMeta):
             dgMod = om.MDGModifier()
 
             for index in indices:
-                dgMod.removeMultiInstance(mplug.elementByLogicalIndex(index,
-                                                                      True))
+                dgMod.removeMultiInstance(mplug.elementByLogicalIndex(index),
+                                                                      True)
 
             dgMod.doIt()
 
