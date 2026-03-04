@@ -211,4 +211,6 @@ class Geometry(Attribute, metaclass=GeometryMeta):
         node = nodes['TransformGeometry'].createNode()
         self >> node.attr('inputGeometry')
         other >> node.attr('transform')
-        return node.attr('outputGeometry')
+        out = node.attr('outputGeometry')
+        out.__class__ = type(self)
+        return out
