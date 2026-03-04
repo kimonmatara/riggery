@@ -294,7 +294,7 @@ class Joint(nodes['Transform']):
     def iterSkinClusters(self) -> Iterator['nodes.SkinCluster']:
         return self.attr('worldMatrix')[0].outputs(type='skinCluster')
 
-    skinClusters = property(getSkinClusters)
+    skinClusters = property(iterSkinClusters)
 
     #------------------------------------------|    Serialization
 
