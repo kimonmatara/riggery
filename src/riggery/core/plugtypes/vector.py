@@ -206,104 +206,6 @@ class Vector(plugs['Tensor3Float']):
 
         return aligned.ifElse(zero, outAngle, plugs['Angle'])
 
-    # def angleTo(self, otherVector, normal=None, *, shortest=False):
-    #     """
-    #     :param otherVector: the vector towards which to measure an angle
-    #     :param normal: if this is provided then, if *shortest* is True, the
-    #         angle will be in the -180 -> +180 range; otherwise, it will be
-    #         in the 0 -> 360 range; if omitted, it will be in the 0 -> 180
-    #         range; defaults to None
-    #     :param shortest: ignored if *normal* is omitted
-    #     """
-    #     if normal is None:
-    #         node = nodes.AngleBetween.createNode()
-    #         self >> node.attr('vector1')
-    #         otherVector >> node.attr('vector2')
-    #         return node.attr('angle')
-    #     return self._correctedAngle(otherVector,
-    #                                 normal,
-    #                                 shortest=shortest).asType(plugs['Angle'])
-    #
-    # def _correctedAngle(self, otherVector, normal, shortest:bool=False):
-    #     otherVector, otherVectorShape, otherVectorIsPlug = \
-    #         _mm.info(otherVector, data['Vector'])
-    #
-    #     normal, normalShape, normalIsPlug = _mm.info(normal, data['Vector'])
-    #
-    #     # Get 180 angle
-    #     with _nm.Name('angle_calc'):
-    #         node = nodes.AngleBetween.createNode()
-    #         self >> node.attr('vector1')
-    #         otherVector >> node.attr('vector2')
-    #         partialAngle = node.attr('angle')
-    #
-    #     with _nm.Name('cross_calc'):
-    #         # Get cross of this vector and other, detect if zero length
-    #         crossThisOther = self.cross(otherVector)
-    #         crossThisOtherLength = crossThisOther.length()
-    #         crossThisOtherIsZero = crossThisOtherLength.lt(1e-6)
-    #
-    #     # If the dot of this and other is 1.0, return 0.0. Otherwise,
-    #     # if the dot is -1.0, return 180.0. Otherwise:
-    #     # Get the (safe) dot of the cross and normal. If it's above 0.0,
-    #     # return the partial angle. Otherwise, return unwound angle.
-    #
-    #     with _nm.Name('dot_calc'):
-    #         dotThisOther = self.dot(otherVector, normalize=True)
-    #         dotThisOtherIsOne = dotThisOther.ge(1.0-1e-7)
-    #         dotThisOtherIsMinusOne = dotThisOther.le(-1.0+1e-7)
-    #
-    #     with _nm.Name('operand_pick'):
-    #         operand = crossThisOtherIsZero.ifElse(normal,
-    #                                               crossThisOther,
-    #                                               plugs.Vector)
-    #         operand.evaluate()
-    #         print("dotThisOther is ", dotThisOther())
-    #         print("dotThisOtherIsOne is ", dotThisOtherIsOne())
-    #         print("dotThisOtherIsMinusOne is ", dotThisOtherIsMinusOne())
-    #
-    #         with _nm.Name('dot_cross'):
-    #             normal.loc(name='the_normal')
-    #             operand.loc(name='the_operand')
-    #             dotCrossNormal = normal.dot(operand, normalize=True)
-    #
-    #         with _nm.Name('do_correct'):
-    #             doCorrectAngle = dotCrossNormal.lt(0.0)
-    #
-    #     if shortest:
-    #         correctedAngle = -partialAngle
-    #     else:
-    #         correctedAngle = math.radians(360.0)-partialAngle
-    #
-    #     nw = nodes.Network.createNode()
-    #
-    #     zeroAngle = nw.addAttr('zeroAngle',
-    #                            at='doubleAngle',
-    #                            dv=0.0,
-    #                            lock=True,
-    #                            k=True)
-    #
-    #     halfAngle = nw.addAttr(
-    #         'halfAngle',
-    #         at='doubleAngle',
-    #         dv=om.MAngle(180, unit=om.MAngle.kDegrees
-    #                      ).asUnits(om.MAngle.uiUnit()),
-    #         lock=True,
-    #         k=True)
-    #
-    #     outAngle = dotThisOtherIsOne.ifElse(
-    #         zeroAngle,
-    #         dotThisOtherIsMinusOne.ifElse(
-    #             halfAngle,
-    #             doCorrectAngle.ifElse(
-    #                 correctedAngle,
-    #                 partialAngle
-    #             )
-    #         )
-    #     )
-    #
-    #     return outAngle.asType(plugs['Angle'])
-
     @cache_dg_output
     def length(self):
         """
@@ -564,6 +466,51 @@ class Vector(plugs['Tensor3Float']):
 
     #-----------------------------------------|    Effects
 
+    def sphereClamp(
+            self,
+            origin:Optional[Union['plugs.Point', 'data.Point']]=None, /
+    ) -> 'Vector':
+        """
+        Intended for use within a context matrix (which can be skewed). Add to
+        the origin point to get the point on the sphere surface.
+
+        If *origin* is omitted, the result is equivalent to :meth:`normal`. If
+        *origin* ever escapes the unit bounds, the local origin will be used
+        instead.
+
+        Top tip:
+        When working with a world matrix, to get the normal at the surface, do
+        this:
+
+        ```
+        localNormal = (originPoint + outVector).normal()
+        worldNormal = (localNormal * worldMatrix.inverse().transpose()).normal()
+        ```
+        """
+        selfN = self.normal()
+
+        if origin is None:
+            return selfN
+
+        origin = _mm.conform(origin,
+                             (plugs['Point'], data['Point']),
+                             force=True)
+
+        a = self.dot(self)
+        b = 2 * origin.dot(self)
+        c = origin.dot(origin) - 1.0
+        discriminant = (b ** 2) - 4 * a * c
+        isValid = discriminant >= 1e-5
+
+        pb = nodes['Network'].createNode()
+        one = pb.addAttr('one', dv=1.0, l=True)
+
+        discriminant = isValid.ifElse(discriminant, one, plugs['Float'])
+        t = (-b + (discriminant ** 0.5)) / (2 * a)
+        outVector = t * self
+
+        return isValid.ifElse(outVector, selfN, plugs['Vector'])
+
     def coneClamp(self, maxAngle:float, normal=None):
         """
         Only works within a 180 spherical range.
@@ -584,7 +531,7 @@ class Vector(plugs['Tensor3Float']):
 
         return out.normal() * self.length()
 
-    def coneFalloff(self, maxAngle:float, spreadFactor=1.0, power:int=2):
+    def coneFalloff(self, lowerMaxAngle, upperMaxAngle, damping=2, /):
         """
         The current vector state will be captured, therefore this is best
         calculated in local space and then transformed as needed.
@@ -608,7 +555,39 @@ class Vector(plugs['Tensor3Float']):
         liveAngle = ab.attr('angle')
         axis = ab.attr('axis')
 
-        targetAngle = liveAngle.slowDownAndStop(maxAngle, spreadFactor, power)
+        targetAngle = liveAngle.dampCeiling(lowerMaxAngle,
+                                            upperMaxAngle,
+                                            damping)
+
         outVector = initPose.rotateByAxisAngle(axis, targetAngle)
 
         return outVector
+
+    # def coneFalloff(self, maxAngle:float, spreadFactor=1.0, power:int=2):
+    #     """
+    #     The current vector state will be captured, therefore this is best
+    #     calculated in local space and then transformed as needed.
+    #
+    #     A neat trick is to calculate within deformed space, for ellipsoid cones.
+    #
+    #     :param maxAngle: the clamping angle (in radians)
+    #     :param spreadFactor: higher values will make the slowdown slower; lower
+    #         values will make the slowdown faster; experiment in the range of
+    #         0.5 -> 1.5 at first; defaults to 1.0
+    #     :param power: the easing power; must be one of 2, 3 or 4; higher powers
+    #         work better with higher spread factors; defaults to 2
+    #     :return: The constrained vector.
+    #     """
+    #     initPose = self()
+    #
+    #     ab = nodes['AngleBetween'].createNode()
+    #     ab.attr('vector1').set(initPose)
+    #     self >> ab.attr('vector2')
+    #
+    #     liveAngle = ab.attr('angle')
+    #     axis = ab.attr('axis')
+    #
+    #     targetAngle = liveAngle.slowDownAndStop(maxAngle, spreadFactor, power)
+    #     outVector = initPose.rotateByAxisAngle(axis, targetAngle)
+    #
+    #     return outVector
