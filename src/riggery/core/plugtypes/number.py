@@ -524,13 +524,26 @@ class Number(__pool__['Math']):
         :param damping: the amount of damping; 1 yields a regular 'clamp';
             higher values 'spread out' the damping more; defaults to 2
         """
+        # Capture into patchbay
+        pb = nodes['Network'].createNode()
+
+        dampingStart = pb.addAttr('dampingStart',
+                                  at='double',
+                                  i=dampingStart, l=True)
+
+        ceiling = pb.addAttr('ceiling',
+                             at='double',
+                             i=ceiling, l=True)
+
+        damping = pb.addAttr('damping',
+                             at='double',
+                             i=damping, l=True)
+
+        one = pb.addAttr('one', k=1, at='double', dv=1, l=True)
+
         isBelow = self.le(dampingStart)
         regularRange = ceiling - dampingStart
         hasNoRange = regularRange <= 1e-5
-
-        with _nm.Name('patchbay'):
-            one = nodes.Network.createNode().addAttr('one', k=1, at='double',
-                                                     dv=1, l=True)
 
         T = type(self)
 
@@ -561,15 +574,16 @@ class Number(__pool__['Math']):
         :param damping: the amount of damping; 1 yields a regular 'clamp';
             higher values 'spread out' the damping more; defaults to 2
         """
-        isAbove = self.ge(dampingStart)
+        pb = nodes['Network'].createNode()
+        one = pb.addAttr('one', k=1, at='double', dv=1, l=True)
+        dampingStart = pb.addAttr('dampingStart', at='double',
+                                  i=dampingStart, l=True)
+        floor = pb.addAttr('floor', at='double', i=floor, l=True)
+        damping = pb.addAttr('damping', at='double', i=damping, l=True)
 
+        isAbove = self.ge(dampingStart)
         regularRange = dampingStart - floor
         hasNoRange = regularRange <= 1e-5
-
-        with _nm.Name('patchbay'):
-            one = nodes.Network.createNode().addAttr('one', k=1, at='double',
-                                                     dv=1, l=True)
-
         expandedRange = regularRange * damping
 
         T = type(self)
