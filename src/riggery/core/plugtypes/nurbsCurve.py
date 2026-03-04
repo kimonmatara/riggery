@@ -742,7 +742,6 @@ class NurbsCurve(plugs['Geometry']):
             translateMatrix = scalePivot.asTranslateMatrix()
             matrix = translateMatrix.inverse() * scaleMatrix * translateMatrix
             out = self * matrix
-            print('matrix out type is ', type(out))
             return out
 
         tolerance = 1e-6
