@@ -772,7 +772,9 @@ class NurbsCurve(plugs['Geometry']):
 
         T = type(self)
 
-        return (extensionLength > tolerance).ifElse(
+        print("The type should be ", T)
+
+        out = (extensionLength > tolerance).ifElse(
             extensionOutput,
             (retractionLength > tolerance).ifElse(
                 retractionOutput,
@@ -781,6 +783,9 @@ class NurbsCurve(plugs['Geometry']):
             ),
             T
         )
+
+        print("The out type is ", type(out))
+        return out
 
     def squashStretch(self,
                       squashyAttr,
