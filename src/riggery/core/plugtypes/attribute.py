@@ -1193,7 +1193,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         indices = mplug.getExistingArrayAttributeIndices()
 
         if len(indices):
-            dgMod = om.DGModifier()
+            dgMod = om.MDGModifier()
 
             for index in indices:
                 dgMod.removeMultiInstance(mplug.elementByLogicalIndex(index,
