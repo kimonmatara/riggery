@@ -284,5 +284,8 @@ class SGStream:
             return str(self.parent / basename)
         return basename
 
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, repr(str(self)))
+
     def __eq__(self, other):
         return str(self) == str(other)
