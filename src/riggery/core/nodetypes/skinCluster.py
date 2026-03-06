@@ -737,6 +737,43 @@ class SkinCluster(GeometryFilter):
             r.skinCluster(self, e=True, nw=nw)
             m.setToolTo(initCtx)
 
+    def _setLockInfls(self, infls:list, state:bool, flipOthers:bool=False):
+        if infls:
+            infls = map(nodes['DependNode'], expand_tuples_lists(infls))
+            infls = filter(lambda x: isinstance(x, nodes['Joint']), infls)
+            infls = [x for x in infls if x in self.influence]
+
+            if infls:
+                if flipOthers:
+                    toFlip = (x for x in self.influence if x not in infls)
+                    if toFlip:
+                        for x in toFlip:
+                            m.skinCluster(str(self),
+                                          e=True,
+                                          lw=not state,
+                                          inf=str(x))
+
+                for x in infls:
+                    m.skinCluster(str(self),
+                                  e=True,
+                                  lw=state,
+                                  inf=str(x))
+
+        else:
+            infls = list(self.influence)
+            for x in infls:
+                m.skinCluster(str(self),
+                                  e=True,
+                                  lw=state,
+                                  inf=str(x))
+
+    def lockInfluence(self, *influences, flipOthers:bool=False):
+        self._setLockInfls(influences, True, flipOthers=flipOthers)
+        return self
+
+    def unlockInfluence(self, *influences, flipOthers:bool=False):
+        self._setLockInfls(influences, False, flipOthers=flipOthers)
+        return self
 
     @short(maximumInfluences='mi')
     def configInfluencesForRealtimeBETA(self, maximumInfluences:int=4):
