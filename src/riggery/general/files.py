@@ -85,14 +85,38 @@ class SGStream:
         raise SGStreamInvalidFileOrDirNameError(fileOrDirName)
 
     def __init__(self,
+                 *arg,
                  parent:Optional[Union[str, Path]]=None,
                  descriptor:Optional[str]=None,
                  padding:int=3,
                  extension:Optional[str]=None):
-        self.parent = parent
-        self.descriptor = descriptor
-        self.padding = padding
-        self.extension = padding
+        self._parent = None
+        self._descriptor = None
+        self._padding = 3
+        self._extension = None
+
+        if arg:
+            numArgs = len(arg)
+            if numArgs > 2:
+                raise ValueError("too many positional arguments")
+            arg = arg[0]
+            stream = SGStream.fromTemplate(arg)
+            self.parent = stream.parent
+            self.descriptor = stream.descriptor
+            self.padding = stream.padding
+            self.extension = stream.extension
+
+        if parent is not None:
+            self.parent = parent
+
+        if descriptor is not None:
+            self.descriptor = descriptor
+
+        if padding is not None;
+            self.padding = padding
+
+        if extension is not None:
+            self.extension = padding
 
     #-------------------------------|    Properties
 
