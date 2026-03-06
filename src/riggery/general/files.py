@@ -2,12 +2,22 @@ import os
 from typing import Optional, Iterator, Union
 from pathlib import Path
 import re
+from .functions import short
 
 class SGStreamInvalidTemplateError(ValueError):
     ...
 
-class SGStreamInvalidVersionError(ValueError):
+class SGStreamInvalidFileOrDirNameError(ValueError):
     ...
+
+SG_PARSE_PAT = re.compile(r"^(?:(.*?)_)?v([0-9]+)(?:\.([^.]+))?$")
+SG_TMPL_PAT = re.compile(r"^(?:(.*?)_)?v(#+)(?:\.([^.]+))?$")
+
+def conformExtension(ext) -> Optional[str]:
+    if ext:
+        if ext.startswith('.'):
+            ext = ext[1:]
+        return ext
 
 class SGStream:
     """
@@ -16,66 +26,103 @@ class SGStream:
 
     Templates must follow this format:
     <any identifier>_v<any number of hashes ('#')>.<file extension>
+    or
+    v<any number of hashes ('#')>.<file extension>
 
     All version listings are yielded *in reverse* (highest version first).
     """
-
-    #-------------------------------------|    Inst
+    #-------------------------------|    Init
 
     @classmethod
-    def prep(cls, parentDir, basename, padding=3):
-        basename, ext = os.path.splitext(basename)
+    def iterFromDir(cls, parentdir:Union[str, Path]) -> Iterator['SGStream']:
+        visited = []
+        parentdir = Path(str(parentdir))
 
-        if not ext:
-            raise SGStreamInvalidTemplateError(
-                "basename must have an extension"
-            )
+        for item in os.scandir(parentdir):
+            try:
+                stream = cls.fromName(parentdir / item.name)
+            except SGStreamInvalidFileOrDirNameError:
+                continue
 
-        baseTemplate = "{}_v{}.{}".format(basename, '#'*padding, ext[1:])
-        return cls(Path(parentDir) / baseTemplate)
+            if stream not in visited:
+                visited.append(stream)
+                yield stream
 
-    def __init__(self, template:str):
-        """
-        Templates must follow this format:
-        <any identifier>_v<any number of hashes ('#')>.<file extension>
+    @classmethod
+    def fromTemplate(cls, template:Union[str, Path]):
+        template = Path(str(template))
 
-        For example: ``C:\renders\render_v003.exr``
-        """
-        template = Path(template)
-        parentDir = template.parent
-        templateBasename = str(template.name)
-
-        templatePat = r"^(.*?)_v(#+)\.([^\.]+)$"
-
-        mt = re.match(templatePat, templateBasename)
+        mt = re.match(SG_TMPL_PAT, template.name)
 
         if mt:
-            name, hashes, ext = mt.groups()
+            descriptor, hashes, extension = mt.groups()
+            inst = cls()
+            inst.descriptor = descriptor
+            inst.padding = len(hashes)
+            inst.extension = extension
+            inst.parent = template.parent
 
-            self._parent = parentDir
-            self._name = name
-            self._padding = len(hashes)
-            self._extension = ext
-        else:
-            raise SGStreamInvalidTemplateError("invalid template")
+            return inst
 
-    #-------------------------------------|    Properties
+        raise SGStreamInvalidTemplateError(template)
 
-    def getName(self) -> str:
-        return self._name
+    @classmethod
+    def fromName(cls, fileOrDirName:Union[str, Path]):
+        fileOrDirName = Path(fileOrDirName)
 
-    def setName(self, name:str):
-        self._name = name
+        mt = re.match(SG_PARSE_PAT, fileOrDirName.name)
 
-    name = property(getName, setName)
+        if mt:
+            descriptor, version, extension = mt.groups()
+            inst = cls()
+            inst.descriptor = descriptor
+            inst.padding = len(version)
+            inst.extension = extension
+            inst.parent = fileOrDirName.parent
 
-    def getParent(self) -> Path:
+            return inst
+
+        raise SGStreamInvalidFileOrDirNameError(fileOrDirName)
+
+    def __init__(self,
+                 parent:Optional[Union[str, Path]]=None,
+                 descriptor:Optional[str]=None,
+                 padding:int=3,
+                 extension:Optional[str]=None):
+        self.parent = parent
+        self.descriptor = descriptor
+        self.padding = padding
+        self.extension = padding
+
+    #-------------------------------|    Properties
+
+    def getParent(self):
         return self._parent
 
-    def setParent(self, parent):
-        self._parent = Path(parent)
+    def setParent(self, parentDir:Optional[Union[str, Path]]):
+        if parentDir:
+            self._parent = Path(parentDir)
+        else:
+            self._parent = None
 
-    parent = property(getParent, setParent)
+    def clearParent(self):
+        self._parent = None
+        return self
+
+    parent = property(getParent, setParent, clearParent)
+
+    def getDescriptor(self) -> Optional[str]:
+        return self._descriptor
+
+    def setDescriptor(self, descriptor:Optional[str]):
+        self._descriptor = descriptor
+        return self
+
+    def clearDescriptor(self):
+        self._descriptor = None
+        return self
+
+    descriptor = property(getDescriptor, setDescriptor, clearDescriptor)
 
     def getPadding(self) -> int:
         return self._padding
@@ -88,94 +135,130 @@ class SGStream:
     def getExtension(self) -> str:
         return self._extension
 
-    def setExtension(self, ext):
-        self._extension = ext.strip('.')
+    def setExtension(self, ext:Optional[str]):
+        self._extension = conformExtension(ext)
+        return self
 
-    extension = property(getExtension, setExtension)
+    def clearExtension(self):
+        self._extension = None
+        return self
 
-    #-------------------------------------|    Member path construction
+    extension = property(getExtension, setExtension, clearExtension)
 
-    def __getitem__(self, version:int) -> Path:
-        if version >= 0:
-            return self.parent / "{}_v{}.{}".format(
-                self.name,
-                str(version).zfill(self.padding),
-                self.extension
-                )
-        elif version == -1:
-            return self.last()
+    #-------------------------------|    Access
 
-        raise SGStreamInvalidVersionError("version must be >= 0 or -1")
+    @short(ignorePadding='ip')
+    def getPattern(self, ignorePadding:bool=False) -> re.Pattern:
+        elems = []
 
-    #-------------------------------------|    Actual I/O
+        if self.descriptor:
+            elems.append(self.descriptor)
 
-    def exists(self) -> bool:
-        """This does NOT strictly check for padding."""
+        if ignorePadding:
+            elems.append(r"v([0-9]+)")
+        else:
+            elems.append(r"v([0-9]{" + str(self.padding) + "})")
 
-        if self.parent.is_dir():
-            listing = os.listdir(self.parent)
+        pat = '_'.join(elems)
+        if self.extension:
+            pat += '.' + self.extension
 
-            if listing:
-                pat = re.compile("^" + self.name + "_v[0-9]+" + r"\."
-                                 + self.extension + r"$")
+        pat = r"^" + pat + "$"
+        return re.compile(pat)
 
-                for item in listing:
-                    if re.match(pat, item):
-                        return True
+    pattern = property(getPattern)
 
-        return False
+    def _items(self) -> Iterator[tuple[int, Path]]:
+        if self.parent is not None:
+            pat = self.pattern
 
-    def __iter__(self) -> Iterator[tuple[int, Path]]:
-        """:raises FileNotFoundError: the parent directory doesn't exist"""
-        pat = re.compile("^" + self.name + "_v([0-9]+)" + r"\."
-                             + self.extension + r"$")
-        versionMap = []
+            for item in os.scandir(self.parent):
 
-        pdir = self.parent
+                n = item.name
+                mt = re.match(pat, n)
 
-        for item in os.scandir(self.parent):
-            name = item.name
-            mt = re.match(pat, name)
+                if mt:
+                    version = int(mt.group(1))
+                    yield version, self.parent / n
 
-            if mt:
-                versionMap.append((int(mt.group(1)), pdir / name))
+    def items(self) -> Iterator[tuple[int, Path]]:
+        yield from sorted(self._items(), key=lambda pair: pair[0])
 
-        yield from reversed(sorted(versionMap, key=lambda pair: pair[0]))
+    def _versions(self) -> Iterator[int]:
+        for version, path in self._items():
+            yield version
 
-    def first(self) -> tuple[int, Path]:
-        return list(self)[-1]
+    def versions(self) -> Iterator[int]:
+        yield from sorted(self._versions())
 
-    def last(self) -> tuple[int, Path]:
-        """:raises FileNotFoundError: the parent directory doesn't exist"""
-        return next(iter(self), None)
+    def _paths(self) -> Iterator[Path]:
+        for version, path in self._items():
+            yield path
 
-    def next(self) -> tuple[int, Path]:
-        """
-        This is forgiving; if the parent path doesn't exist, it will construct
-        a nominal version 1.
-        """
-        try:
-            lastVersion, lastPath = self.last()
-            nextVersion = lastVersion + 1
-            return nextVersion, self[nextVersion]
+    def paths(self) -> Iterator[Path]:
+        for version, path in self.items():
+            yield path
 
-        except FileNotFoundError:
-            return 1, self[1]
+    def __contains__(self, version:int) -> bool:
+        return version in self._versions()
+
+    def first(self) -> Optional[Path]:
+        return next(self.paths(), None)
+
+    def last(self) -> Optional[Path]:
+        paths = list(self.paths())
+        if paths:
+            return paths[-1]
+
+    def firstVersion(self) -> Optional[int]:
+        return next(self.versions(), None)
+
+    def lastVersion(self) -> Optional[int]:
+        versions = list(self.versions())
+        if versions:
+            return versions[-1]
+
+    def nextVersion(self) -> int:
+        lastVersion = self.lastVersion()
+        if lastVersion is None:
+            return 1
+        return lastVersion + 1
+
+    def next(self) -> Path:
+        return self[self.nextVersion()]
+
+    def __getitem__(self, version:int):
+        tmpl = Path(str(self))
+        basename = tmpl.name
+        basename = basename.replace(
+            '#' * self.padding, str(version).zfill(self.padding)
+        )
+        return tmpl.parent / basename
 
     def __len__(self):
-        return len(list(iter(self)))
+        return len(list(self.items()))
 
-    #-------------------------------------|    Repr
+    def exists(self) -> bool:
+        return next(self._items(), None) is not None
+
+    #-------------------------------|    Repr
 
     def __str__(self):
-        return str(self.parent / "{}_v{}.{}".format(self.name,
-                                                    '#'*self.padding,
-                                                    self.extension))
+        elems = []
 
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, repr(str(self)))
+        if self.descriptor:
+            elems.append(self.descriptor)
 
+        elems.append('v' + ('#' * self.padding))
 
-def force_ext(filePath:Union[Path, str], extension:str) -> Path:
-    extension = extension.strip('.')
-    return Path(os.path.splitext(str(filePath))[0] + '.' + extension)
+        basename = '_'.join(elems)
+
+        if self.extension:
+            basename += '.' + self.extension
+
+        if self.parent:
+            return str(self.parent / basename)
+        return basename
+
+    def __eq__(self, other):
+        return str(self) == str(other)
