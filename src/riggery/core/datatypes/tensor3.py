@@ -1,14 +1,36 @@
+from functools import reduce
 from ..lib import mixedmode as _mm
 from ..datatypes import __pool__
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
-
 
 class Tensor3(__pool__['Tensor']):
 
     __shape__ = 3
 
     #-----------------------------------------|    Add
+
+    def sum(self, *others):
+        infos = [_mm.info(x) for x in others]
+        numInfos = len(infos)
+
+        if numInfos == 0:
+            return self
+
+        arePlugs = [infos[2] for info in infos]
+
+        if any(arePlugs):
+            arePlugs = [False] + arePlugs
+
+            pma = nodes['PlusMinusAverage'].createNode()
+
+            for i, src, isPlug in enumerate(zip([self] + list(others),
+                                                arePlugs)):
+                pma.attr('input3D')[i].put(src, isPlug=isPlug)
+            return pma.attr('output3D')
+
+        allItems = [self] + [infos[0] for info in infos]
+        return type(self(reduce(lambda x, y: x + y, allItems)))
 
     def __add__(self, other):
         other, shape, isPlug = _mm.info(other)
