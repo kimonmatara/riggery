@@ -1,3 +1,5 @@
+from typing import Union, Optional
+from functools import reduce
 import maya.api.OpenMaya as om
 
 from riggery.general.functions import short
@@ -98,6 +100,49 @@ class Point(Vector):
         :param tolerance/tol: the matching tolerance; defaults to 1e-10
         """
         return self.api.isEquivalent(om.MPoint(other), tolerance=tolerance)
+
+    def sum(self, *others) -> Union['Point', 'plugs.Point']:
+        out = super().sum(*others)
+
+        if isinstance(out, plugs['Attribute']):
+            return out.asType(plugs['Point'])
+
+        return out
+
+    def center(self, *others) -> 'Point':
+        return self.sum(*others) / (len(others) + 1)
+
+    def getLoopMatrix(self,
+                      *others,
+                      normal:Optional['__pool__.Vector']=None
+                      ) -> '__pool__.Matrix':
+        """
+        Considers this point, along with *others*, as part of an edge loop, and
+        attempts to return a matrix for the loop.
+
+        The returned matrix will use x for the normal, and z for the 'side'
+        vector from the center to this point.
+
+        :param normal: if omitted, a normal will be derived using the loop
+            cross products
+        """
+        center = self.center(*others)
+
+        if normal is None:
+            others = list(map(Point, others))
+            allPoints = [self] + others
+            allPointsExtended = allPoints + [self]
+
+            crosses = [x.cross(y) for x, y in zip(allPointsExtended,
+                                                  allPointsExtended[1:])]
+            normal = crosses[0].sum(*crosses[1:])
+
+            if len(normal) < 1e-5:
+                raise RuntimeError("couldn't derive a normal for the loop")
+
+        return _mm.createOrthoMatrix('x', normal,
+                                     'z', self - center,
+                                     w=center).pick(t=1, r=1)
 
     #-----------------------------------------|    Blending
 
