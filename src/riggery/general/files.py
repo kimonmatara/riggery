@@ -112,7 +112,7 @@ class SGStream:
         if descriptor is not None:
             self.descriptor = descriptor
 
-        if padding is not None;
+        if padding is not None:
             self.padding = padding
 
         if extension is not None:
