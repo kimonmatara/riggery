@@ -7,7 +7,6 @@ DependNode = nodes['DependNode']
 
 from riggery.general.functions import short
 from riggery.general.iterables import without_duplicates, expand_tuples_lists
-from riggery.general.files import force_ext
 
 import maya.cmds as m
 

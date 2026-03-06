@@ -21,7 +21,6 @@ import riggery.internal.plugutil.reorder2 as _reo
 import riggery.internal.str2api as _s2a
 from riggery.general.functions import short, get_shorthands, get_long_kwargs
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
-from riggery.general.files import force_ext
 from riggery.general.strings import cap, uncap
 from riggery.general.modules import LazyModule
 from riggery.core.lib.serialize import simplify
