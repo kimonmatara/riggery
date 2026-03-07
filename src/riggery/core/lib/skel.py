@@ -746,7 +746,8 @@ class Chain(list):
         if maxNumber is not None and len(out) > maxNumber:
             joints, weights = zip(*out[:maxNumber])
             weights = _mo.calcDistanceWeights(refPoint,
-                                              [j.worldPosition() for j in joints])
+                                              [j.worldPosition()
+                                               for j in joints])
             return list(zip(joints, weights))
 
         return out
