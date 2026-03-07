@@ -797,3 +797,17 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
         return [1 / num] * num
 
     return [x / total for x in weights]
+
+def calcDistanceWeights(refPoint:'data.Point',
+                        targetPoints:list['data.Point']) -> list[float]:
+    """
+    Soft-only for now. Returns a weight for each *targetPoint* based on its
+    proximity to *refPoint*.
+    """
+    refPoint = data['Point'](refPoint)
+    targetPoints = list(map(data['Point'], targetPoints))
+    distances = [(x - refPoint).length() for x in targetPoints]
+    longestDistance = max(distances)
+
+    return normalizeWeights([longestDistance / distance
+                             for distance in distances])

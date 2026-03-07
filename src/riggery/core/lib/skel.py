@@ -380,8 +380,7 @@ class Chain(list):
                 curlVectors.append(cross)
 
             try:
-                curlVectors = pad_nones(curlVectors,
-                                        conserve=True)
+                curlVectors = pad_nones(curlVectors, conserve=True)
             except ValueError:
                 raise RuntimeError(
                     "can't auto-derive curl vector, provide explicitly"
@@ -681,73 +680,6 @@ class Chain(list):
         self[:] = self + lowerChain
         return self
 
-    # The below is buggy, rewrite more carefully
-    # def splitAtRatios(self, atRatios:list[float]):
-    #     """
-    #     This is an in-place operation; the chain instance will be updated to
-    #     include the inserted joints.
-    #
-    #     :param atRatios: the length ratios at which to insert joints
-    #     :return: A list of lists, where each sublist comprises a tuple of
-    #         (startJoint, endJoint) and a second tuple with the joints inserted
-    #         inbetween.
-    #     """
-    #     points = list(self.points)
-    #     existingRatios = _mo.getLengthRatios(points)
-    #     existingJoints = {existingRatio:existingJoint \
-    #                       for existingRatio, existingJoint \
-    #                       in zip(existingRatios, self)}
-    #
-    #     outJoints = []
-    #     out = []
-    #     Joint = nodes['Joint']
-    #
-    #     for (thisExistingRatio, nextExistingRatio), \
-    #             (thisExistingJoint, nextExistingJoint), \
-    #             (thisPoint, nextPoint) in zip(
-    #         zip(existingRatios, existingRatios[1:]),
-    #         zip(self, self[1:]),
-    #         zip(points, points[1:])
-    #     ):
-    #         outJoints.append(thisExistingJoint)
-    #         requestedRatios = [ratio for ratio in atRatios \
-    #                            if ratio > thisExistingRatio \
-    #                            and ratio < nextExistingRatio]
-    #
-    #         if requestedRatios:
-    #             matrix = thisExistingJoint.getMatrix(worldSpace=True)
-    #             interp = _mo.Interpolator()
-    #             interp[thisExistingRatio] = thisPoint
-    #             interp[nextExistingRatio] = nextPoint
-    #
-    #             newJoints = []
-    #
-    #             for requestedRatio in requestedRatios:
-    #                 newMatrix = matrix.copy()
-    #                 newMatrix.w = interp[requestedRatio]
-    #                 newJoint = Joint.create(matrix=newMatrix, worldSpace=True)
-    #                 newJoints.append(newJoint)
-    #
-    #             newStack = [thisExistingJoint] + newJoints + [nextExistingJoint]
-    #             for thisJoint, nextJoint in zip(newStack, newStack[1:]):
-    #                 nextJoint.setParent(thisJoint)
-    #
-    #             outJoints += newJoints
-    #
-    #             out.append([(thisExistingJoint,
-    #                          nextExistingJoint),
-    #                         tuple(newJoints)])
-    #
-    #     outJoints.append(self[-1])
-    #     self[:] = outJoints
-    #
-    #     return out
-    #
-    # def splitAtIndices(self,
-    #                    indexPairs:Iterable[tuple[int, int]],
-    #                    splitsPerPair:Iterable[int]):
-    #     raise NotImplementedError
-
     def getClosestJointsOn(self, otherChain, indices:bool=False) -> list:
         """
         For each joint on this chain, returns the closest joint on *otherChain*.
@@ -796,6 +728,36 @@ class Chain(list):
 
         candidates.sort(key=lambda x: x[0])
         return candidates[0][1]
+
+    def getClosestJointsWithWeights(self,
+                                    refPoint:'data.Point',
+                                    maxNumber:Optional[int]=None, /
+                                    ) -> list[tuple['nodes.Transform', float]]:
+        """
+        Returns joints, and associated weights, ranked by proximity to
+        *refPoint*. Useful for quickly calculating multi-joint constraint
+        weights.
+
+        :return: list of tuple(joint, weight)
+        """
+        weights = _mo.calcDistanceWeights(refPoint, list(self.points))
+        out = list(sorted(zip(self, weights), key=lambda x: x[1], reverse=True))
+
+        if maxNumber is not None and len(out) > maxNumber:
+            joints, weights = zip(*out[:maxNumber])
+            weights = _mo.calcDistanceWeights(refPoint,
+                                              [j.worldPosition() for j in joints])
+            return list(zip(joints, weights))
+
+        return out
+
+    def getClosestJoints(self, refPoint:'data.Point') -> list['nodes.Joint']:
+        """
+        :return: A list of this chain's member, ranked by proximity to
+        *refPoint*.
+        """
+        refPoint = data['Point'](refPoint)
+        ranked = ((joint.worldposition()))
 
     #-------------------------------------------|    Transformations
 
