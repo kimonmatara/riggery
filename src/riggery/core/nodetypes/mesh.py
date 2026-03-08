@@ -48,7 +48,7 @@ class Mesh(SurfaceShape):
     POLYINFO_INDICES_RETURN_PAT = re.compile(r"(?<=\:|[0-9])\s+([0-9]+)")
     
     def vertsToEdges(self, *vertIndices) -> list[list[int]]:
-        """
+        """q
         :return: A list of lists, where each sub-list comprises the indices for
             the edges connected to the specified vertex.
         """
