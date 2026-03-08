@@ -1,12 +1,13 @@
 """Defines the 'Trunk' base class."""
 import os
+from pathlib import Path
 import inspect
 
 class TrunkMeta(type):
     def __new__(meta, clsname, bases, dct):
-        dct['__homedir__'] = os.path.dirname(
+        dct['__homedir__'] = Path(os.path.dirname(
             inspect.currentframe().f_back.f_code.co_filename
-        )
+        ))
         return super().__new__(meta, clsname, bases, dct)
 
 
