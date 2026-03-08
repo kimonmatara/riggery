@@ -930,3 +930,29 @@ class ProximityWrap(WeightGeometryFilter):
             attrName = join_camel(('driver', detailName))
             plug = slot.attr(attrName)
             detailContent >> plug
+
+    #------------------|    Granular weight management
+
+    def getWeights(self, shapeIndex:int) -> list[float]:
+        """
+        Returns the basic (paintable) weights for the deformer on the whole.
+
+        :param shapeIndex: the shape index
+        :return: All component weights for the shape at the specified index.
+        """
+        return self.attr('weightList'
+                         )[shapeIndex].attr('weights').readWeightsMulti(
+            self.numPoints(shapeIndex), 1.0)
+
+    def setWeights(self,
+                   shapeIndex:int,
+                   weights:list[float]) -> 'ProximityWrap':
+        """
+        Sets the basic (paintable) weights for the deformer on the whole.
+
+        :param shapeIndex: the shape index for which to set weights
+        :param weights: the complete weight list (one per vertex)
+        """
+        self.attr('weightList')[shapeIndex].attr(
+            'weights').writeWeightsMulti(weights)
+        return self
