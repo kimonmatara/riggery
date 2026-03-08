@@ -562,32 +562,3 @@ class Vector(plugs['Tensor3Float']):
         outVector = initPose.rotateByAxisAngle(axis, targetAngle)
 
         return outVector
-
-    # def coneFalloff(self, maxAngle:float, spreadFactor=1.0, power:int=2):
-    #     """
-    #     The current vector state will be captured, therefore this is best
-    #     calculated in local space and then transformed as needed.
-    #
-    #     A neat trick is to calculate within deformed space, for ellipsoid cones.
-    #
-    #     :param maxAngle: the clamping angle (in radians)
-    #     :param spreadFactor: higher values will make the slowdown slower; lower
-    #         values will make the slowdown faster; experiment in the range of
-    #         0.5 -> 1.5 at first; defaults to 1.0
-    #     :param power: the easing power; must be one of 2, 3 or 4; higher powers
-    #         work better with higher spread factors; defaults to 2
-    #     :return: The constrained vector.
-    #     """
-    #     initPose = self()
-    #
-    #     ab = nodes['AngleBetween'].createNode()
-    #     ab.attr('vector1').set(initPose)
-    #     self >> ab.attr('vector2')
-    #
-    #     liveAngle = ab.attr('angle')
-    #     axis = ab.attr('axis')
-    #
-    #     targetAngle = liveAngle.slowDownAndStop(maxAngle, spreadFactor, power)
-    #     outVector = initPose.rotateByAxisAngle(axis, targetAngle)
-    #
-    #     return outVector
