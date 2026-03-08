@@ -1,13 +1,15 @@
 import re
-from typing import Union, Optional, Iterable
+from typing import Union, Optional, Iterable, Literal
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
 
 from riggery.general.iterables import expand_tuples_lists
+import riggery.core.lib.names as _nm
 SurfaceShape = nodes['SurfaceShape']
 
 from riggery.general.functions import short
 
+import maya.api.OpenMaya as om
 import maya.cmds as m
 
 
@@ -42,6 +44,65 @@ class Mesh(SurfaceShape):
         if out:
             return out
         return []
+
+    @short(name='n', axis='a', uvSet='uv')
+    def createMeshFromUVSet(self, *,
+                            uvSet:Optional[str]=None,
+                            axis:Literal['x', 'y', 'z', '-x', '-y', '-z']='y',
+                            name:Optional[str]=None) -> 'nodes.Mesh':
+        """
+        Generates a flat mesh from the specified UV set.
+
+        :param uvSet/uv: the UV set to use; omit to use the current UV set
+        :param name/n: falls back to block naming if omitted
+        :return: The new mesh shape.
+        """
+        args = []
+
+        if uvSet:
+            args.append(uvSet)
+
+        # Get the UV data
+        shapeMDagPath = self.__apimdagpath__()
+        shapeMObject = shapeMDagPath.node()
+        shapeMFn = om.MFnMesh(shapeMObject)
+        uvs = zip(*shapeMFn.getUVs(*args))
+        uvCounts, uvIds = shapeMFn.getAssignedUVs(*args)
+
+        # Build up points
+        if axis == 'x':
+            points = [om.MPoint(0.0, v, -u) for u, v in uvs]
+        elif axis == '-x':
+            points = [om.MPoint(0.0, v, u) for u, v in uvs]
+        elif axis == 'y':
+            points = [om.MPoint(u, 0, -v) for u, v in uvs]
+        elif axis == '-y':
+            points = [om.MPoint(u, 0, v) for u, v in uvs]
+        elif axis == 'z':
+            points = [om.MPoint(u, v, 0) for u, v in uvs]
+        elif axis == '-z':
+            points = [om.MPoint(-u, v, 0) for u, v in uvs]
+        else:
+            raise ValueError("expected 'x', 'y', 'z', '-x', '-y' or 'z'")
+
+        # Create mesh
+        uvCounts, uvIds = shapeMFn.getAssignedUVs(*args)
+        xform = nodes['Transform'].fromMObject(om.MFnMesh().create(points,
+                                                                   uvCounts,
+                                                                   uvIds))
+
+        # Clean up
+        if not name:
+            if _nm.Name.__elems__:
+                name = _nm.Name.evaluate(typeSuffix=self.__typesuffix__)
+
+        if name:
+            xform.name = name
+
+        shape = xform.shape
+        shape.assignDefaultShader()
+
+        return shape
 
     #-------------------------------------|    Component conversions
 
