@@ -30,11 +30,11 @@ class _Interface:
         self.o = owner
 
 
-class Slave(_Interface):
+class Driven(_Interface):
 
     #------------------|    Init
 
-    def __init__(self, owner:'Slaves', index:int):
+    def __init__(self, owner:'Drivens', index:int):
         super().__init__(owner)
         self._index = index
 
@@ -73,7 +73,7 @@ class Slave(_Interface):
 
     def setBaseShape(self,
                      geoSource:Union['nodes.DagNode', 'plugs.Geometry']
-                     ) -> 'Slave':
+                     ) -> 'Driven':
         """
         :param geoSource: a DAG geometry node or geometry output
         """
@@ -91,7 +91,7 @@ class Slave(_Interface):
         return "{}[{}]".format(repr(self.o), self._index)
 
 
-class Slaves(_Interface):
+class Drivens(_Interface):
 
     #------------------|    Basics
 
@@ -111,27 +111,27 @@ class Slaves(_Interface):
     def __getitem__(self, index):
         node = self.node()
         node.checkDrivenIndex(index)
-        return Slave(self, index)
+        return Driven(self, index)
 
     def __iter__(self):
         for index in self.indices():
-            yield Slave(self, index)
+            yield Driven(self, index)
 
     #------------------|    Add
 
-    def add(self, drivenGeo) -> 'Slave':
+    def add(self, drivenGeo) -> 'Driven':
         """
         :param drivenGeo: the driven geometry
-        :return: A :class:`Slave` instance.
+        :return: A :class:`Driven` instance.
         """
         node = self.node()
         node.addDriven(drivenGeo)
-        return Slave(self, node.findDrivenIndex(drivenGeo))
+        return Driven(self, node.findDrivenIndex(drivenGeo))
 
     #------------------|    Remove
 
     @short(force='f')
-    def removeByGeo(self, drivenGeo, force=False) -> 'Slaves':
+    def removeByGeo(self, drivenGeo, force=False) -> 'Drivens':
         """
         :param force/f: if the operation fails, attempt to force-remove the
             array slots; defaults to False
@@ -140,7 +140,7 @@ class Slaves(_Interface):
         return self
 
     @short(force='f')
-    def removeByIndex(self, index, force=False) -> 'Slaves':
+    def removeByIndex(self, index, force=False) -> 'Drivens':
         """
         :param force/f: if the operation fails, attempt to force-remove the
             array slots; defaults to False
@@ -148,14 +148,14 @@ class Slaves(_Interface):
         self.node().removeDrivenAtIndex(index, force=force)
         return self
 
-    def remove(self, slave:'Slaves', force:bool=False) -> 'Slaves':
+    def remove(self, driven:'Drivens', force:bool=False) -> 'Drivens':
         """
         :param force/f: if the operation fails, attempt to force-remove the
             array slots; defaults to False
         """
-        if not isinstance(slave, Slave):
-            raise TypeError("expected a Slave instance")
-        return self.removeByIndex(int(slave), force=force)
+        if not isinstance(driven, Driven):
+            raise TypeError("expected a Driven instance")
+        return self.removeByIndex(int(driven), force=force)
 
     def __delitem__(self, index:int):
         self.removeByIndex(index, force=True)
@@ -163,14 +163,14 @@ class Slaves(_Interface):
     #------------------|    Repr
 
     def __repr__(self):
-        return "{}.slaves".format(repr(self.o))
+        return "{}.drivens".format(repr(self.o))
 
 
-class Master(_Interface):
+class Driver(_Interface):
 
     #------------------|    Init
 
-    def __init__(self, owner:'Masters', index:int):
+    def __init__(self, owner:'Drivers', index:int):
         super().__init__(owner)
         self._index = index
 
@@ -227,7 +227,7 @@ class Master(_Interface):
     def setBaseShape(
             self,
             source:Union['nodes.DagNode', 'plugs.Geometry']
-    ) -> 'Master':
+    ) -> 'Driver':
         """
         :param baseShape: a geometry plug or a shape
         """
@@ -249,7 +249,7 @@ class Master(_Interface):
         """
         return self.node().getDriverDetail(self.index)
 
-    def setDetail(self, detailName:str, detailContent:Any) -> 'Master':
+    def setDetail(self, detailName:str, detailContent:Any) -> 'Driver':
         """
         :param detailName: the name of a child attribute under ``drivers``
             minus the 'driver' prefix, e.g. 'bindGeometry'
@@ -258,7 +258,7 @@ class Master(_Interface):
         self.node().setDriverDetail(self.index, detailName, detailContent)
         return self
 
-    def setDriverDetails(self, **details) -> 'Master':
+    def setDriverDetails(self, **details) -> 'Driver':
         """
         :param \*\*details: k, v pairs where each key is the the name of a child
             attribute under ``drivers`` minus the 'driver' prefix, e.g.
@@ -276,7 +276,7 @@ class Master(_Interface):
         return "{}[{}]".format(repr(self.o), self._index)
 
 
-class Masters(_Interface):
+class Drivers(_Interface):
 
     #------------------|    Basics
 
@@ -285,34 +285,34 @@ class Masters(_Interface):
 
     #------------------|    Add
 
-    def add(self, masterGeo:'nodes.DagNode') -> 'Master':
+    def add(self, driverGeo:'nodes.DagNode') -> 'Driver':
         """
-        :param masterGeo: the driver geometry
-        :return: A :class:`Master` instance for the driver.
+        :param driverGeo: the driver geometry
+        :return: A :class:`Driver` instance for the driver.
         """
         node = self.node()
-        node.addDriver(masterGeo)
-        return Master(self, node.findDriverIndex(masterGeo))
+        node.addDriver(driverGeo)
+        return Driver(self, node.findDriverIndex(driverGeo))
 
     #------------------|    Remove
 
     @short(force='f')
-    def remove(self, master:'Master', force:bool=False) -> 'Masters':
+    def remove(self, driver:'Driver', force:bool=False) -> 'Drivers':
         """
         :param force/f: if the driver can't be removed using the
             ``proximityWrap`` command (e.g. due to a complex connection), fall
             back to ``removeMultiInstance``; defaults to False
         """
-        if not isinstance(master, Master):
-            raise TypeError("expected a Master instance")
-        return self.removeByIndex(int(master))
+        if not isinstance(driver, Driver):
+            raise TypeError("expected a Driver instance")
+        return self.removeByIndex(int(driver))
 
     @short(indirect='i',
            force='f')
     def removeByGeo(self,
-                    masterGeo:'nodes.DagNode',
+                    driverGeo:'nodes.DagNode',
                     indirect:bool=False,
-                    force:bool=False) -> 'Masters':
+                    force:bool=False) -> 'Drivers':
         """
         This is a quiet operation. Nothing will happen if the geometry is not
         a driver.
@@ -322,21 +322,21 @@ class Masters(_Interface):
         :param force/f: if a match is found, but the operation fails, force-
             remove the slot instance; defaults to False
         """
-        self.node().removeDriver(masterGeo, indirect=indirect, force=force)
+        self.node().removeDriver(driverGeo, indirect=indirect, force=force)
         return self
 
     @short(force='f')
-    def removeByIndex(self, masterIndex:int, force:bool=False) -> 'Masters':
+    def removeByIndex(self, driverIndex:int, force:bool=False) -> 'Drivers':
         """
         :param force/f: if the driver can't be removed using the
             ``proximityWrap`` command (e.g. due to a complex connection), fall
             back to ``removeMultiInstance``; defaults to False
         """
-        self.node().removeDriverAtIndex(masterIndex, force=force)
+        self.node().removeDriverAtIndex(driverIndex, force=force)
         return self
 
-    def __delitem__(self, masterIndex:int):
-        self.removeByIndex(masterIndex, force=True)
+    def __delitem__(self, driverIndex:int):
+        self.removeByIndex(driverIndex, force=True)
 
     #------------------|    Get
 
@@ -350,16 +350,16 @@ class Masters(_Interface):
 
     def __iter__(self):
         for index in self.node().attr('drivers').indices():
-            yield Master(self, index)
+            yield Driver(self, index)
 
     def __getitem__(self, index):
         self.node().checkDriverIndex(index)
-        return Master(self, index)
+        return Driver(self, index)
 
     #------------------|    Repr
 
     def __repr__(self):
-        return "{}.masters".format(repr(self.o))
+        return "{}.drivers".format(repr(self.o))
 
 #---------------------------------------------|
 #---------------------------------------------|    MAIN CLASS
@@ -389,7 +389,7 @@ class ProximityWrap(WeightGeometryFilter):
         """
         Similar to :class:`~riggery.core.nodetypes.BlendShape`, this merely
         initializes the deformer on a single deformed object; use the
-        ``masters`` and ``slaves`` interfaces`` for further editing.
+        ``drivers`` and ``drivens`` interfaces`` for further editing.
 
         :param driven: the initial driven geometry
         """
@@ -422,12 +422,12 @@ class ProximityWrap(WeightGeometryFilter):
     #-------------------------------------|
 
     @property
-    def masters(self) -> Masters:
-        return Masters(self)
+    def drivers(self) -> Drivers:
+        return Drivers(self)
 
     @property
-    def slaves(self) -> Slaves:
-        return Slaves(self)
+    def drivens(self) -> Drivens:
+        return Drivens(self)
 
     #-------------------------------------|
     #-------------------------------------|    Errors
