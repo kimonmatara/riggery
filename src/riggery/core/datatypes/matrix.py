@@ -621,6 +621,10 @@ class Matrix(data['Tensor']):
                               refVector,
                               asString:bool=False,
                               worldSpace:bool=False):
+        """
+        :return: The axis on this matrix that's most perpendicular to
+            *refVector*.
+        """
         refVector = data['Vector'](refVector).normal()
 
         bestDot = None
@@ -675,6 +679,25 @@ class Matrix(data['Tensor']):
         if asString:
             return bestAxis
         return bestVector
+
+    def snappedToWorld(self) -> 'Matrix':
+        """
+        :return: A version of this matrix that has been rotated to fit to the
+            nearest world axes. The snapping will happen orthogonally.
+        """
+        thisMatrix = self.createOrtho('x', self.x, 'y', self.y).pick(r=1)
+        xAxis = thisMatrix.closestAxis((1, 0, 0), includeNegative=True,
+                                         asString=True)
+        yAxis = thisMatrix.closestAxis((0, 1, 0), includeNegative=True,
+                                         asString=True)
+        rotMatrix = self.createOrtho(xAxis, (1, 0, 0),
+                                     yAxis,
+                                     (0, 1, 0)).pick(r=1)
+
+        return (self.pick(scale=True)
+                * self.pick(shear=True)
+                * rotMatrix *
+                self.pick(translate=True))
 
     def averageScale(self) -> float:
         """
