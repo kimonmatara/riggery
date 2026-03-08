@@ -582,6 +582,12 @@ class Matrix(data['Tensor']):
         """
         return type(self).fromApi(self.api.inverse())
 
+    def transpose(self) -> 'Matrix':
+        """
+        :return: The transposition of this matrix.
+        """
+        return type(self).fromApi(self.api.transpose())
+
     @short(weight='w')
     def blend(self, matrixPlug, weight=0.5):
         """
