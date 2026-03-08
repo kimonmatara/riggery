@@ -19,10 +19,18 @@ def _fuzzySelect(items):
                     if matches:
                         allMatches += matches
 
-        m.select(list(without_duplicates(allMatches)), replace=True)
-    else:
-        m.select(cl=True)
+        allMatches = list(without_duplicates(allMatches))
 
+        def deferredSelect():
+            m.select(allMatches, replace=True)
+
+        m.evalDeferred(deferredSelect)
+
+    else:
+        def deferredSelect():
+            m.select(cl=True)
+
+        m.evalDeferred(deferredSelect)
 
 class Selection:
     def __enter__(self):
