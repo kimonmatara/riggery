@@ -468,7 +468,7 @@ class Vector(plugs['Tensor3Float']):
 
     def sphereClamp(
             self,
-            origin:Optional[Union['plugs.Point', 'data.Point']]=None, /
+            origin:Optional[Union['plugs.Point', 'data.Point']]=None
     ) -> 'Vector':
         """
         Intended for use within a context matrix (which can be skewed). Add to
