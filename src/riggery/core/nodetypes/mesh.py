@@ -55,6 +55,7 @@ class Mesh(SurfaceShape):
 
         :param uvSet/uv: the UV set to use; omit to use the current UV set
         :param name/n: falls back to block naming if omitted
+        :param axis/a: the 'normal' axis for the UVs; defaults to 'y'
         :return: The new mesh shape.
         """
         args = []
