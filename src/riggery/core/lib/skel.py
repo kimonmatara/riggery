@@ -924,6 +924,73 @@ class Chain(list):
         for thisJoint, nextJoint in zip(self, self[1:]):
             yield Chain([thisJoint, nextJoint])
 
+    #-------------------------------------------|    Rigging
+
+    @short(boneAxis='ba',
+           radiusFactor='rf',
+           radius='r')
+    def createCircleProfiles(
+            self,
+            radius:Optional[float]=None,
+            parent:Optional['nodes.Transform']=None,
+            radiusFactor:float=0.05,
+            boneAxis:Optional[Literal['x', 'y', 'z', '-x', '-y', 'z']]=None
+    ) -> list['nodes.Transform']:
+        """
+        Creates attached circle profiles along the chain. Useful for quick
+        remeshing, proxy binding etc.
+        """
+        numJoints = len(self)
+
+        if numJoints == 0:
+            raise ValueError('empty chain')
+
+        if numJoints == 1:
+            if boneAxis is None:
+                raise ValueError('boneAxis required for single-joint chains')
+
+        if boneAxis is None:
+            boneAxis = self.detectBoneAxis()
+
+        normalVector = data['Vector'](_mo.AXISVECS[boneAxis])
+        curves = []
+
+        if radius is None:
+            radius = self.length() * radiusFactor
+
+        resolvedRadius = None
+
+        template = {'normal': normalVector,
+                    'degree': 3,
+                    'sweep': math.radians(360),
+                    'sections': 8}
+
+        for i, joint in enumerate(self):
+            with _nm.Name(joint.shortName(), 'profile'):
+                node = nodes['MakeNurbCircle'].createNode()
+                for k, v in template.items():
+                    node.attr(k).set(v)
+
+                shape = node.attr('outputCurve').createShape()
+                xf = shape.parent
+
+                if parent:
+                    xf.parent = parent
+
+                xf.attr('it').set(False).lock()
+                joint.attr('wm') >> xf.attr('opm')
+
+                radiusAttr = xf.addAttr('profileRadius',
+                                        at='double',
+                                        min=0,
+                                        dv=1.0,
+                                        cb=True)
+                resolvedRadius = radius * radiusAttr
+                resolvedRadius >> node.attr('radius')
+                curves.append(xf)
+
+        return curves
+
     #-------------------------------------------|    Instance editing
 
     def __add__(self, other):
