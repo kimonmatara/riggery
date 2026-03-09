@@ -711,6 +711,39 @@ def getPoleVector(
             'chordVector': chordVector,
             'points': points}
 
+def intersectVectorsPlugs(p1:'plugs.Point',
+                          v1:'plugs.Vector',
+                          p2:'plugs.Point',
+                          v2:'plugs.Vector') -> 'plugs.Point':
+    """
+    :param p1: the origin of the first line segment
+    :param v1: the direction of the first line segment
+    :param p2: the origin of the second line segment
+    :param v2: the direction of the second line segment
+    """
+    p1 = _mm.conform(p1, (plugs.Point, data.Point), force=True)
+    p2 = _mm.conform(p2, (plugs.Point, data.Point), force=True)
+    v1 = _mm.conform(v1, (plugs.Vector, data.Vector), force=True)
+    v2 = _mm.conform(v2, (plugs.Vector, data.Vector), force=True)
+
+    w = p1 - p2
+
+    a = v1.dot(v1)
+    b = v1.dot(v2)
+    c = v2.dot(v2)
+    d = v1.dot(w)
+    e = v2.dot(w)
+
+    denom = (a * c) - (b * b)
+
+    t = (b * e - c * d) / denom
+    s = (a * e - b * d) / denom
+
+    pointA = p1 + t * v1
+    pointB = p2 + s * v2
+
+    return (pointA + pointB) / 2
+
 def intersectLinesValues(p1, p2, p3, p4, tolerance:float=1e-6) -> 'data.Point':
     """
     Assumes infinite lines. Only works with values (not plugs).
