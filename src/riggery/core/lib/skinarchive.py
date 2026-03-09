@@ -137,8 +137,10 @@ def dumpSkinCluster(skinCluster, destDir, captureGeometry=False):
     #--------------------------|    Dump blend weights separately, as iffy
 
     if info['skinMethod'] == 2:
-        skinCluster._padBlendWeights()
-        weights = m.getAttr(f'{skinCluster}.blendWeights')[0]
+        weights = skinCluster.getBlendWeights()
+        # skinCluster._padBlendWeights()
+        # weights = m.getAttr(f'{skinCluster}.blendWeights')[0]
+
         blendWeightsPath = destDir / '{}_blend_weights.json'.format(prefix)
         _data = json.dumps(weights)
 
@@ -442,10 +444,12 @@ def loadSkinCluster(infoFilePath,
                     data = f.read()
 
                 data = json.loads(data)
-                _skin = str(skinCluster)
+                skinCluster.setBlendWeights(data)
 
-                for i in range(len(data)):
-                    m.setAttr(f'{_skin}.blendWeights[{i}]', data[i])
+                # _skin = str(skinCluster)
+                #
+                # for i in range(len(data)):
+                #     m.setAttr(f'{_skin}.blendWeights[{i}]', data[i])
 
     # Normalize weights
     r.skinCluster(skinCluster, e=True, fnw=True)
