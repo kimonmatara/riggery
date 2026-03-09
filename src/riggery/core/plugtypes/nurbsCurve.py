@@ -925,13 +925,16 @@ class NurbsCurve(plugs['Geometry']):
         """
         if self.type() == 'dataBezierCurve':
             return True
+
         data = self._getData()
         apiType = data.apiType()
+
         if apiType == 0:
             shape = self.findShape()
             if shape:
                 return isinstance(shape, nodes['BezierCurve'])
             return False
+
         return data.hasFn(om.MFn.kBezierCurveData)
 
     #--------------------------------------|    Surfaces
@@ -1038,3 +1041,33 @@ class NurbsCurve(plugs['Geometry']):
             inputCurve >> node.attr('inputCurve')[i]
 
         return node.attr('outputSurface')
+
+    def blend(self,
+              other:'NurbsCurve',
+              weight:Union[float, 'plugs.Float']=0.5) -> 'NurbsCurve':
+        """
+        Thin wrapper for ``avgCurves``.
+        """
+        node = nodes['AvgCurves'].createNode()
+        self >> node.attr('inputCurve1')
+        other >> node.attr('inputCurve2')
+        weight >> node.attr('weight2')
+        node.attr('automaticWeight').set(False)
+        node.attr('normalizeWeights').set(False)
+        (1 - node.attr('weight2')) >> node.attr('weight1')
+        return node.attr('outputCurve')
+
+    def fan(self,
+            other:'NurbsCurve',
+            ratiosOrNumTweens:Union[
+                int, Iterable[Union[int, float, 'plugs.Number']]
+            ]):
+        """
+        'Multi' version of :meth:`blend`.
+        """
+        if isinstance(ratiosOrNumTweens, int):
+            ratios = list(floatrange(0, 1, ratiosOrNumTweens+2))[1:-1]
+        else:
+            ratios = list(ratiosOrNumTweens)
+
+        return [self.blend(other, ratio) for ratio in ratios]
