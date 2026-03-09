@@ -1515,7 +1515,7 @@ class SkinCluster(GeometryFilter):
         shape = self._getShapeMDagPathAtIndex(0)
         comps = _cu.getCompMObjectFromIndices(shape, components)
 
-        return mfn.getBlendWeights(shape, comps)
+        return list(mfn.getBlendWeights(shape, comps))
 
     def setBlendWeights(self,
                         weights:Union[float, int, list[Union[float, int]]],
