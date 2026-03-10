@@ -256,5 +256,5 @@ def loadPose(filePath:str) -> dict:
         pose = f.read()
 
     out = json.loads(pose)
-    print("Loaded pose '{}' from: {}".format(pose['name'], filePath))
+    print("Loaded pose '{}' from: {}".format(out['name'], filePath))
     return out
