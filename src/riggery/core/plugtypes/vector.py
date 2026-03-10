@@ -464,6 +464,12 @@ class Vector(plugs['Tensor3Float']):
             child >> node.attr(field)
         return node.attr('output')
 
+    def asPoint(self) -> 'plugs.Point':
+        """
+        This is purely a type change; no DG modifications are performed.
+        """
+        return self.asType(plugs['Point'])
+
     #-----------------------------------------|    Effects
 
     def sphereClamp(
