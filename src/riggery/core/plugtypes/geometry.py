@@ -1,5 +1,5 @@
 import re
-from typing import Union, Optional
+from typing import Union, Optional, Iterator
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -9,6 +9,7 @@ from riggery.general.functions import short, resolve_flags
 from riggery.core.elem import Elem
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
+from ..datatypes import __pool__ as data
 from riggery.internal.nodeinfo import UNCAPMAP
 from riggery.general.strings import uncap
 
@@ -64,6 +65,134 @@ class Geometry(Attribute, metaclass=GeometryMeta):
 
         if out != 'invalid':
             return out
+
+    #--------------------------------------|    Inspections (geometryAttrInfo)
+
+    def getPoints(self) -> list['data.Point']:
+        """:return: A list of points for the geometry."""
+        return [data['Point'](x) for x in m.geometryAttrInfo(str(self),
+                                                             points=True)]
+
+    def getMatrix(self) -> 'data.Matrix':
+        """
+        :return: The matrix associated with this geometry.
+        """
+        return data['Matrix'](m.geometryAttrInfo(str(self), matrix=True))
+
+    def getPointIndices(self) -> list[int]:
+        """:return: The indices of the geometry."""
+        return m.geometryAttrInfo(str(self), pointIndices=True)
+
+    def getPointCount(self) -> int:
+        """:return: The point count of the geometry."""
+        return m.geometryAttrInfo(str(self), pointCount=True)
+
+    def getElementCount(self) -> int:
+        """:return: The element count of the components."""
+        return m.geometryAttrInfo(str(self), elementCount=True)
+
+    def getComponentTagNames(self) -> list[str]:
+        """
+        :return: The names of the component tags being carried by this geometry
+            stream.
+        """
+        return m.geometryAttrInfo(str(self), componentTagNames=True)
+
+    def getBoundingBox(self) -> 'data.BoundingBox':
+        """
+        Static query. Returns the bounding box of the geometry.
+        """
+        result = m.geometryAttrInfo(str(self), boundingBox=True)
+        return data['BoundingBox'](result)
+
+    @short(castToEdges='cte',
+           castToFaces='ctf',
+           castToVerts='ctv')
+    def evalComponentTagExpression(self,
+                                   componentTagExpression:str,
+                                   castToEdges:bool=False,
+                                   castToFaces:bool=False,
+                                   castToVerts:bool=False) -> list[str]:
+        """
+        Evaluates the given component tag expression (as would be entered into
+        deformers, e.g. 'left_vertices', '*' etc.) and returns the components
+        being referenced in their short form, e.g. ``['f[5]']``.
+
+        :param castToEdges/cte: convert to edges; defaults to False
+        :param castToFaces/ctf: convert to faces; defaults to False
+        :param castToVerts/ctv: convert to vertices; defaults to False
+        """
+        kwargs = {}
+
+        if castToEdges:
+            kwargs['castToEdges'] = True
+        elif castToFaces:
+            kwargs['castToFaces'] = True
+        elif castToVerts:
+            kwargs['castToVerts'] = True
+
+        return m.geometryAttrInfo(str(self),
+                                  componentTagExpression=componentTagExpression,
+                                  components=True,
+                                  **kwargs)
+
+    def iterDeformerChain(self) -> Iterator['nodes.GeometryFilter']:
+        """
+        Yields deformers through which the geometry in this plug has travelled.
+        """
+        out = m.geometryAttrInfo(str(self), deformerChain=True)
+        if out:
+            for deformer in out:
+                yield nodes['DependNode'](deformer)
+
+    def getDeformerChain(self) -> list['nodes.GeometryFilter']:
+        """
+        List version of :meth:`iterDeformerChain`.
+        """
+        return list(self.iterDeformerChain())
+
+    def iterNodeChain(self) -> Iterator['nodes.DependNode']:
+        """
+        Yields nodes through which the geometry in this plug has travelled.
+        """
+        out = m.geometryAttrInfo(str(self), nodeChain=True)
+
+        if out:
+            for node in out:
+                yield nodes['DependNode'](node)
+                    
+    def getNodeChain(self) -> list['nodes.GeometryFilter']:
+        """
+        List version of :meth:`iterNodeChain`.
+        """
+        return list(self.iterNodeChain())
+
+    @short(outputsOnly='oo')
+    def iterPlugChain(self, outputsOnly:bool=False) -> Iterator['Geometry']:
+        """
+        Yields plugs through which the geometry in this plug has travelled.
+
+        :param outputsOnly/oo: only include output plugs (the default is both
+            input and output plugs); defaults to False
+        """
+        if outputsOnly:
+            k = 'outputPlugChain'
+        else:
+            k = 'plugChain'
+
+        kwargs = {k: True}
+
+        out = m.geometryAttrInfo(str(self), **kwargs)
+
+        for x in out:
+            yield plugs[x]
+
+    @short(outputsOnly='oo')
+    def getPlugChain(self, outputsOnly:bool=False) -> list['Geometry']:
+        """
+        List version of :meth:`iterPlugChain`.
+        """
+        return list(self.iterPlugChain(oo=outputsOnly))
 
     #--------------------------------------|    Shape interops
 
