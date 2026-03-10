@@ -599,6 +599,30 @@ class Number(__pool__['Math']):
                                                 T),
                               T)
 
+    def easeOut(self,
+                minRange:Union['plugs.Number', float],
+                maxRange:Union['plugs.Numer', float],
+                power:Union['plugs.Numer', float]=2.0) -> 'Number':
+        """
+        Simple exponential ease implementation. Increase *power* to approach
+        stepping.
+        """
+        t = (self - minRange) / (maxRange - minRange)
+        t = 1.0 - (1.0 - t) ** power
+        return minRange + t * (maxRange - minRange)
+
+    def easeIn(self,
+               minRange:Union['plugs.Number', float],
+               maxRange:Union['plugs.Numer', float],
+               power:Union['plugs.Numer', float]=2.0) -> 'Number':
+        """
+        Simple exponential ease implementation. Increase *power* to approach
+        stepping.
+        """
+        t = (self - minRange) / (maxRange - minRange)
+        t = t ** power
+        return minRange + t * (maxRange - minRange)
+
     def splitBias(self,
                   minRange:_mm.MixedScalar,
                   maxRange:_mm.MixedScalar
