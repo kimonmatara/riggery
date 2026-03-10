@@ -1,9 +1,11 @@
-from typing import Iterator
+import re
+from typing import Iterator, Optional, Union, Iterable
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
 
-from riggery.general.functions import short
+from riggery.general.functions import short, resolve_flags
+from riggery.general.iterables import without_duplicates, expand_tuples_lists
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 
@@ -101,3 +103,72 @@ class DeformableShape(nodes['GeometryShape']):
         if (not create) and result == '':
             return None
         return plugs['Attribute'](result).node()
+
+    #-------------------------------------|    Component tag management
+
+    COMP_TAIL_PAT = re.compile(r"^.*?\.?((?:vtx|e|f|cv)\[.*?\])$")
+
+    def _parseComponents(self, *components):
+        out = []
+        _self = str(self)
+
+        for component in filter(
+                bool,
+                without_duplicates(
+                    expand_tuples_lists(*components)
+                )
+        ):
+            mt = re.match(self.COMP_TAIL_PAT, component)
+
+            if mt:
+                out.append('.'.join((_self, mt.group(1))))
+            else:
+                raise ValueError(f"can't parse component: {component}")
+
+        return out
+
+    # # use geometryAttrInfo() for more
+    # @short(uniqueTagName='utn')
+    # def createComponentTag(self,
+    #                        newTagName:str,
+    #                        *components,
+    #                        uniqueTagName:bool=False,
+    #                        replace:bool=False) -> str:
+    #     """
+    #     :param newTagName: the new tag name
+    #     :param compType: the type of component indices being passed in; one of
+    #         'vtx', 'e', 'f', 'cv'
+    #     :param compIndices: the component indices
+    #     :param uniqueTagName/utn: make the tag name unique; defaults to False
+    #     :param replace: if the component tag already exists, and *uniqueTagName*
+    #         if False, replace it instead of throwing RuntimeError; defaults to
+    #         False
+    #     :return: The resolved component tag name.
+    #     """
+    #     components = self._parseComponents(*components)
+    #
+    #     if components:
+    #         args = (components,)
+    #     else:
+    #         args = (str(self),)
+    #
+    #     kwargs = {'newTagName': newTagName, 'create': True}
+    #
+    #     if uniqueTagName:
+    #         kw['uniqueTagName'] = True
+    #
+    #     return m.componentTag(*args, **kwargs)
+    #
+    # def getComponentTagNames(self) -> list[str]:
+    #     """
+    #     Note that, on shapes with no history, tags are regarded as 'pending' and
+    #     not 'final'.
+    #
+    #     :return: The names of component tags on this node.
+    #     """
+    #     out = m.geometryAttrInfo(str(self.localOutput), componentTagNames=True)
+    #
+    #     if out:
+    #         return out
+    #
+    #     return []
