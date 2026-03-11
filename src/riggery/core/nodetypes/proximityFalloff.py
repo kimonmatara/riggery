@@ -29,10 +29,7 @@ class ProximityFalloff(DependNode):
         :param \*\*attrConfig: optional values or inputs for node attributes
         :return: The configured ``ProximityFalloff`` node.
         """
-        node = cls.createNode(name=name)
-
-        for k, v in attrConfig.items():
-            node.attr(k).put(v)
+        node = cls.createNode(name=name, **attrConfig)
 
         if geometry:
             geometry = Elem(geometry)
