@@ -1,5 +1,8 @@
+from typing import Optional, Union
 import maya.api.OpenMaya as om
 import maya.cmds as m
+
+from riggery.general.functions import resolve_flags, short
 
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
@@ -70,4 +73,31 @@ class Mesh(plugs['Geometry']):
             output.node().unlock()
 
         return [outputPlug[index].outputs(type='groupParts'
-                )[0].attr('outputGeometry') for index in outputPlug.indices()]
+                                          )[0].attr('outputGeometry')
+                for index in outputPlug.indices()]
+
+    #--------------------------------------|    Transfers
+
+    @short(uvSets='uv',
+           vertexColor='vc',
+           vertices='v')
+    def polyTransferFrom(self,
+                         otherPlug:'plugs.Mesh',
+                         verts:Optional[bool]=None,
+                         uvSets:Optional[bool]=None,
+                         vertexColor:Optional[bool]=None) -> 'Mesh':
+        """
+        Transfers attributes from *otherPlug* and returns the result. Uses the
+        older ``polyTransfer`` node. Flags are evaluated by omission.
+        """
+        verts, uvSets, vertexColor = resolve_flags(verts, uvSets, vertexColor)
+        node = nodes['PolyTransfer'].createNode()
+
+        for k, v in zip(('vertices', 'uvSets', 'vertexColor'),
+                        (verts, uvSets, vertexColor)):
+            node.attr(k).set(v)
+
+        self >> node.attr('inputPolymesh')
+        otherPlug >> node.attr('otherPoly')
+
+        return node.attr('output')
