@@ -303,26 +303,30 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     @classmethod
     @short(name='n')
-    def createNode(cls, name:Optional[str]=None):
+    def createNode(cls, *, name:Optional[str]=None, **attrConfig):
         """
         Creates a simple instance of this node.
 
-        Note that this *should* be overriden under
-        :class:`~zulu.core.nodetypes.Shape`, otherwise naming will be mangled,
-        and the wrong node type will be returned, owing to
-        :meth:`~maya.api.OpenMaya.MFnDependencyNode.create` works.
-
         :param name/n: if omitted, name blocks will be used
+        :param \*\*attrConfig: optional inputs or values for the node attributes
         :return: The node.
         """
         nodeType = cls.__melnode__
+
         name = _n.resolveNameArg(name, nodeType=nodeType)
         kwargs = {}
+
         if name is not None:
             kwargs['name'] = name
 
         mFn = om.MFnDependencyNode()
-        return cls.fromMObject(mFn.create(nodeType, **kwargs))
+
+        out = cls.fromMObject(mFn.create(nodeType, **kwargs))
+
+        for k, v in attrConfig.items():
+            out.attr(k).put(v)
+
+        return out
 
     #-----------------------------------------|    Instantiation
 
