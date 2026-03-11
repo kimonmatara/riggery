@@ -991,6 +991,27 @@ class Chain(list):
 
         return curves
 
+    #-------------------------------------------|    Curves
+
+    @short(degree='d', plug='p')
+    def fitCurve(self,
+                 *,
+                 degree:int=3,
+                 ep:bool=False,
+                 plug:bool=False,
+                 parent:Optional['nodes.Transform']=None) -> 'nodes.Transform':
+        """
+        :return: The curve transform.
+        """
+        points = list(self.iterPoints(plug=plug))
+        curveShape = nodes['NurbsCurve'].create(points, degree=degree, ep=ep)
+        curveXform = curveShape.parent
+
+        if parent is not None:
+            curveXform.parent = parent
+
+        return curveXform
+
     #-------------------------------------------|    Instance editing
 
     def __add__(self, other):
