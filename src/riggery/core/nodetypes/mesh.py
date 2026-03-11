@@ -2,6 +2,7 @@ import re
 from typing import Union, Optional, Iterable, Literal
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
+from ..elem import Elem
 
 from riggery.general.iterables import expand_tuples_lists
 import riggery.core.lib.names as _nm
@@ -108,7 +109,7 @@ class Mesh(SurfaceShape):
     #-------------------------------------|    Component conversions
 
     POLYINFO_INDICES_RETURN_PAT = re.compile(r"(?<=\:|[0-9])\s+([0-9]+)")
-    
+
     def vertsToEdges(self, *vertIndices) -> list[list[int]]:
         """q
         :return: A list of lists, where each sub-list comprises the indices for
