@@ -98,3 +98,18 @@ class DeltaMush(WeightGeometryFilter):
             node.attr(attrName).setState(attrState)
 
         return node
+
+    def getWeights(self, shapeIndex:int) -> list[float]:
+        """
+        :return: The full weight list for the specified shape index.
+        """
+        plug = self.attr('weightList')[0].attr('weights')
+        return plug.readWeightsMulti(self.numPoints(0), 1.0)
+
+    def setWeights(self, shapeIndex:int, weights:list[float]):
+        """
+        Sets the full weight list fot he specified shape index.
+        """
+        plug = self.attr('weightList')[0].attr('weights')
+        plug.writeWeightsMulti(weights)
+        return self
