@@ -152,6 +152,13 @@ class Matrix(plugs['Tensor']):
     #-----------------------------------------|    Mult
 
     def multiply(self, *others):
+        """
+        Shorthand: ``mul()``. Uses a single ``multMatrix`` node for chained
+        multiplications with other matrices. Doesn't work with vectors or
+        points.
+
+        :param \*\*others: the matrices to multiply with (values or plugs)
+        """
         T = plugs['Attribute']
         others = [T(x) for x in expand_tuples_lists(others)]
         if others:

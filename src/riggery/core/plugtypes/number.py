@@ -759,6 +759,14 @@ class Number(__pool__['Math']):
     #-----------------------------------------|    Multi read / write
 
     def readWeightsMulti(self, length:int, default:float) -> list[float]:
+        """
+        Reads a deformer weights plug.
+
+        :param length: The number of expected elements.
+        :param default: The value to use for elements missing from the multi-
+            array.
+        :return: The weights.
+        """
         values = [default] * length
 
         mplug = self.__apimplug__()
@@ -777,6 +785,14 @@ class Number(__pool__['Math']):
         return values
 
     def writeWeightsMulti(self, values:list[float], *, chunkSize:int=10000):
+        """
+        Writes into deformer weights plug. All values are written in index
+        sequence, but the array is not resized if it has legacy overflow.
+
+        :param values: the weight values (floats)
+        :param chunkSize: the size of the ``setAttr`` chunks (to prevent Python
+            memory issues); defaults to 10000
+        """
         totalLength = len(values)
     
         if totalLength == 0:
