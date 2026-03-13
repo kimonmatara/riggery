@@ -872,11 +872,31 @@ class Matrix(plugs['Tensor']):
 
             _matrix >> slave.attr('offsetParentMatrix')
 
-    def asOffset(self):
+    @short(reuse='re')
+    def asOffset(self, reuse:bool=False):
         """
         Equivalent to ``self.get().inverse() * self``.
+
+        :param reuse/re: if a previous calculation is detected, reuse it;
+            defaults to False
         """
-        return self.get().inverse() * self
+        if self.isMulti():
+            src = self[0]
+        else:
+            src = self
+
+        if reuse:
+            for outputNode in src.iterOutputs(type='multMatrix'):
+                tagAttr = outputNode.attr('offsetSrc')
+
+                for input in tagAttr.iterInputs(plugs=True):
+                    if input == src:
+                        return outputNode.attr('matrixSum')
+
+        out = src.get().inverse() * src
+        src >> out.node().addAttr('offsetSrc', at='message')
+
+        return out
 
     @cache_dg_output
     def asCachedOffset(self):
