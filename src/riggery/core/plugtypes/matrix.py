@@ -893,7 +893,10 @@ class Matrix(plugs['Tensor']):
             src = self
 
         if reuse:
-            for outputNode in src.iterOutputs(type='multMatrix'):
+            # Reversing so that the last-created calculation will be used
+            for outputNode in reversed(
+                    list(src.iterOutputs(type='multMatrix'))
+            ):
                 tagAttr = outputNode.attr('offsetSrc')
 
                 for input in tagAttr.iterInputs(plugs=True):
