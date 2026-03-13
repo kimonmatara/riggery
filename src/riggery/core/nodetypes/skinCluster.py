@@ -494,6 +494,44 @@ class SkinCluster(GeometryFilter):
 
         return self
 
+    @staticmethod
+    def mirrorDirectionToMirrorMode(
+            mirrorDirection:Optional[Literal['x', 'y', 'z', '-x', '-y', '-z']]
+    ) -> dict:
+        """
+        Takes a simpler axis expression for mirror-mode (a literal of 'x', 'y'
+        'z', '-x', '-y', '-z') and converts it to kwargs for the
+        :func:`maya.cmds.copySkinWeights` command. If None is passed in, the
+        ``noMirror`` option will be specified.
+
+        In most cases the mirror direction will be '-x' (i.e. character left to
+        character right).
+        """
+        out = {}
+
+        if mirrorDirection:
+            if mirrorDirection == 'x':
+                out['mirrorMode'] = 'YZ'
+            elif mirrorDirection == '-x':
+                out['mirrorMode'] = 'YZ'
+                out['mirrorInverse'] = True
+            elif mirrorDirection == 'y':
+                out['mirrorMode'] = 'XZ'
+                out['mirrorInverse'] = True
+            elif mirrorDirection == '-y':
+                out['mirrorMode'] = 'XZ'
+            elif mirrorDirection == 'z':
+                out['mirrorMode'] = 'XY'
+            elif mirrorDirection == '-z':
+                out['mirrorMode'] = 'XY'
+                out['mirrorInverse'] = True
+            else:
+                raise ValueError("expected x, y, z, -x, -y, -z or None")
+        else:
+            out['noMirror'] = True
+
+        return out
+
     def clampMaxInfluences(self, maxInfluences:int=4, normalizeAround=None):
         """
         An alternative method to limit influences (for, say, a games
