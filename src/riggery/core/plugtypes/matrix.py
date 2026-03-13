@@ -905,14 +905,6 @@ class Matrix(plugs['Tensor']):
 
         return out
 
-    @cache_dg_output
-    def asCachedOffset(self):
-        """
-        Similar to :meth:`asOffset`, but reuses outputs. Best for rig builds
-        where things won't move while getting built.
-        """
-        return self.get().inverse() * self
-
     #-----------------------------------------|    Misc inspections
 
     @cache_dg_output
