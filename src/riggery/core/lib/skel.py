@@ -4,6 +4,7 @@ import math
 from typing import Iterator, Optional, Union, Iterable, Literal
 
 import riggery.core.lib.mathops as _mo
+from riggery.core.lib import meshutil as _mu
 import riggery.core.lib.mixedmode as _mm
 import riggery.core.lib.triadutil as _tr
 from riggery.general.functions import short
@@ -481,8 +482,8 @@ class Chain(list):
 
             tweenMatrices = [
                 _mm.createOrthoMatrix(boneAxis, startBoneVector,
-                                    twistAxis, tweenTwistVector,
-                                    w=point).pick(t=True, r=True)
+                                      twistAxis, tweenTwistVector,
+                                      w=point).pick(t=True, r=True)
                 for point, tweenTwistVector in zip(tweenPoints,
                                                    tweenTwistVectors)
             ]
@@ -491,7 +492,7 @@ class Chain(list):
             tweenMatrices = [rmtx * x.asTranslateMatrix() for x in tweenPoints]
 
         tweenJoints = [nodes.Joint.create(matrix=matrix, worldSpace=True)
-                     for matrix in tweenMatrices]
+                       for matrix in tweenMatrices]
 
         newJoints = [self[0]] + tweenJoints + [self[1]]
 
@@ -925,6 +926,75 @@ class Chain(list):
             yield Chain([thisJoint, nextJoint])
 
     #-------------------------------------------|    Rigging
+
+    def iterVerticesAlongBoneAxis(
+            self,
+            mesh:Union[str, nodes['DagNode']],
+            radius:float,
+            firstHit:bool=False,
+            indices:bool=False
+    ) -> Iterator[Union[str, int]]:
+        """
+        Detects vertices on *mesh* using a cylindrical projection / containment
+        test.
+
+        :param mesh: the mesh on which to detect vertices
+        :param radius: the cylinder radius
+        :param firstHit: skip vertices that are occluded from the cylinder axis
+            by *mesh* itself; defaults to False
+        :param indices: return vertex indices rather than full component paths;
+            defaults to False
+        :return: The selected vertices on *mesh*.
+        """
+        if len(self) == 2:
+            points = list(self.points)
+            cylinderVector = points[1]-points[0]
+            cylinderOrigin = points[0]
+
+            _mesh = str(mesh)
+
+            for x in _mu.selectVertsInsideCylinder(
+                    _mesh,
+                    cylinderOrigin.api,
+                    cylinderVector.api,
+                    radius,
+                    firstHit=firstHit
+            ):
+                if indices:
+                    yield x
+                else:
+                    yield f"{_mesh}.vtx[{x}]"
+        else:
+            raise TypeError("not a bone chain")
+
+    def selectVerticesAlongBoneAxis(self,
+                                    mesh:Union[str, nodes['DagNode']],
+                                    radius:float,
+                                    firstHit:bool=False,
+                                    add:bool=False) -> list[str]:
+        """
+        Selects vertices on *mesh* using a cylindrical projection / containment
+        test.
+
+        :param mesh: the mesh on which to select vertices
+        :param radius: the cylinder radius
+        :param firstHit: don't select vertices that are occluded from the
+            cylinder axis by *mesh* itself; defaults to False
+        :return: The selected vertices on *mesh*.
+        """
+        verts = list(
+            self.iterVerticesAlongBoneAxis(mesh,
+                                           radius,
+                                           firstHit=firstHit)
+        )
+        kwargs = {}
+        if add:
+            kwargs['add'] = True
+        else:
+            kwargs['replace'] = True
+        m.select(verts, **kwargs)
+
+        return verts
 
     @short(boneAxis='ba',
            radiusFactor='rf',
