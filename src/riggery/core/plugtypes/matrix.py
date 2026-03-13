@@ -908,6 +908,18 @@ class Matrix(plugs['Tensor']):
     #-----------------------------------------|    Misc inspections
 
     @cache_dg_output
+    def adjoint(self) -> 'Matrix':
+        """
+        Returns the adjoint of this matrix. Useful for multiplying normals in a
+        local matrix space into world while keeping them perpendicular to the
+        implied surface.
+
+        Equivalent to ``self.inverse().transpose()``, but this is a DG cached
+        method.
+        """
+        return self.inverse().transpose()
+
+    @cache_dg_output
     def determinant(self):
         """
         :return: The determinant of this matrix
