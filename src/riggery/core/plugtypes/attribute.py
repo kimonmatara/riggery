@@ -2004,4 +2004,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         return _hsh.forMPlug(self.__apimplug__())
 
     def __eq__(self, other):
-        return self.__hash__() == Attribute(other).__hash__()
+        try:
+            return self.__hash__() == Attribute(other).__hash__()
+        except TypeError:
+            return False
