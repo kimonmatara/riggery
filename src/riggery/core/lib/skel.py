@@ -26,6 +26,19 @@ class Chain(list):
     #-------------------------------------------|    Loaders
 
     @classmethod
+    def iterBonesFrom(cls, startJoint:'nodes.Joint') -> Iterator['Chain']:
+        """
+        Iterates across every bone (two-joint chain) that can be detected from
+        *startJoint* downwards.
+        """
+        def chase(parentJoint):
+            for child in parentJoint.iterChildren(type='joint'):
+                yield Chain((parentJoint, child))
+                yield from chase(child)
+
+        yield from chase(nodes['Joint'](startJoint))
+
+    @classmethod
     def fromStartEnd(cls, startJoint, endJoint):
         """
         :param startJoint: the chain root joint
@@ -76,7 +89,10 @@ class Chain(list):
     #-------------------------------------------|    Constructor(s)
 
     @classmethod
-    def createTriad(cls, p1, p2, p3,
+    def createTriad(cls,
+                    p1:data['Point'],
+                    p2:data['Point'],
+                    p3:data['Point'],
                     boneAxis:str,
                     curlAxis:str, *,
                     bevel:Optional[float]=None,
@@ -953,13 +969,11 @@ class Chain(list):
 
             _mesh = str(mesh)
 
-            for x in _mu.selectVertsInsideCylinder(
-                    _mesh,
-                    cylinderOrigin.api,
-                    cylinderVector.api,
-                    radius,
-                    firstHit=firstHit
-            ):
+            for x in _mu.selectVertsInsideCylinder(_mesh,
+                                                   cylinderOrigin.api,
+                                                   cylinderVector.api,
+                                                   radius,
+                                                   firstHit=firstHit):
                 if indices:
                     yield x
                 else:
