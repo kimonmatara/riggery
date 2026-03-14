@@ -299,15 +299,64 @@ class Vector(plugs['Tensor3Float']):
         angle >> node.attr('inputAngle')
         return self * node.attr('outputQuat').asMatrix()
 
-    def rejectFrom(self, other):
+    def _rejectFrom(self, other:Union['data.Vector', 'plugs.Vector']):
+        """Internal. Non-caching implementation of :meth:`rejectFrom`."""
+
+        cosTheta = self.dot(other, normalize=True)
+        return self - (self.length() * cosTheta) * other.normal()
+
+    def _retrieveRejectFrom(self,
+                            other:Union['data.Vector', 'plugs.Vector']
+                            ) -> Optional['Vector']:
+        """
+        Internal. Looks for a cached calculation of :meth:`rejectFrom` and
+        returns it.
+        """
+        for output in self.iterOutputs(plugs=True, type='network'):
+            if output.attrName() == 'rejectFrom_caller':
+                try:
+                    nw = output.node()
+                    _other, _ = nw.attr('otherVector').getInputOrValue()
+
+                    if _other == other:
+                        result = next(
+                            nw.attr('outVectorRejection').iterInputs(plugs=True),
+                            None
+                        )
+                        if result is not None:
+                            return result
+                except AttributeError:
+                    continue
+
+    def rejectFrom(self,
+                   other:Union['data.Vector', 'plugs.Vector'],
+                   reuse:bool=True):
         """
         Makes this vector perpendicular to *otherVector*.
         See https://en.wikipedia.org/wiki/Vector_projection.
+
+        :param other: the other vector
+        :param reuse/re: if a calculation with the same argument is detected,
+            reuse it; defaults to True
         """
-        other, _, _ = _mm.info(other, data['Vector'])
-        cosTheta = self.dot(other, normalize=True)
-        rejection = self - (self.length() * cosTheta) * other.normal()
-        return rejection
+        other = _mm.conform(other,
+                            (plugs['Vector'], data['Vector']),
+                            force=True)
+        if reuse:
+            found = self._retrieveRejectFrom(other)
+
+            if found is not None:
+                return found
+
+        output = self._rejectFrom(other)
+
+        nw = nodes['Network'].createNode()
+
+        nw.addVectorAttr('otherVector', i=other, l=True)
+        nw.addVectorAttr('outVectorRejection', i=output, l=True)
+        nw.addAttr('rejectFrom_caller', at='message', i=self, l=True)
+
+        return output
 
     def mostPerpendicular(self, others):
         """
