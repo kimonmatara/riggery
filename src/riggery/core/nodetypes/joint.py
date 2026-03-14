@@ -123,6 +123,14 @@ class Joint(nodes['Transform']):
 
         raise RuntimeError('no unambiguous joint child')
 
+    def bonesFromHere(self) -> Iterator['_sk.Chain']:
+        """
+        Yields all possible bones (two-joint
+        :meth:`~riggery.core.lib.skel.Chain` instances) from this joint
+        downwards. Iteration will terminate at junctions.
+        """
+        yield from _sk.iterBonesFrom(self)
+
     #------------------------------------------|    Joint labels
 
     def getLabelState(self) -> dict:
@@ -303,7 +311,7 @@ class Joint(nodes['Transform']):
                         axis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
                         diskRadius:float,
                         diskThickness:float,
-                        firstHit:bool=False):
+                        firstHit:bool=False) -> Iterator[str]:
         """
         Yields vertices on *mesh* that fall within a 'coin'-like disk projected
         from this joint.
