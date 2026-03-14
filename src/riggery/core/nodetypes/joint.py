@@ -1,17 +1,19 @@
 from copy import deepcopy
 import re
-from typing import Union, Optional, Iterator
+from typing import Union, Optional, Iterator, Literal
 
 from riggery.core.lib.serialize import simplify
 from riggery.general.functions import short
 from riggery.internal.typeutil import UNDEFINED
 import riggery.core.lib.skel as _sk
 from riggery.core.lib import names as _nm
+from riggery.core.lib import meshutil as _mu
 
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
 
 import maya.cmds as m
+import maya.api.OpenMaya as om
 
 
 class Joint(nodes['Transform']):
@@ -116,9 +118,7 @@ class Joint(nodes['Transform']):
         """
         children = list(self.iterChildren(type='joint'))
 
-        num = len(children)
-
-        if num == 1:
+        if len(children) == 1:
             return _sk.Chain([self, children[0]])
 
         raise RuntimeError('no unambiguous joint child')
@@ -295,6 +295,40 @@ class Joint(nodes['Transform']):
         return self.attr('worldMatrix')[0].outputs(type='skinCluster')
 
     skinClusters = property(iterSkinClusters)
+
+    #------------------------------------------|    Weights
+
+    def iterVertsByDisk(self,
+                        mesh:Union[str, 'nodes.DagNode'],
+                        axis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+                        diskRadius:float,
+                        diskThickness:float,
+                        firstHit:bool=False):
+        """
+        Yields vertices on *mesh* that fall within a 'coin'-like disk projected
+        from this joint.
+
+        :param mesh: the mesh from which to yield vertices
+        :param axis: the joint axis to use; one of 'x', 'y', 'z', '-x', '-y' or
+            '-z'
+        :param diskRadius: the disk radius
+        :param diskThickness: the disk height
+        :param firstHit: exclude re-entrant areas, e.g. an elbow that's further
+            out from already-captured trunk vertices; defaults to False
+        """
+        jointMatrix = self.getMatrix(ws=True)
+        diskCenter = jointMatrix.w
+        diskVector = jointMatrix.getAxis(axis).normal() * diskThickness
+
+        cylinderBase = diskCenter - diskVector * 0.5
+        _mesh = str(mesh)
+
+        for i in _mu.selectVertsInsideCylinder(_mesh,
+                                               om.MPoint(cylinderBase),
+                                               om.MVector(diskVector),
+                                               diskRadius,
+                                               firstHit=firstHit):
+            yield f"{_mesh}.vtx[{i}]"
 
     #------------------------------------------|    Serialization
 
