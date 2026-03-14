@@ -30,6 +30,7 @@ def cache_dg_output(f):
     arguments beyond *self*, and return a single node or plug.
     """
     signature = inspect.signature(f)
+
     if len(list(signature.parameters)) > 1:
         raise TypeError("method has arguments")
 
