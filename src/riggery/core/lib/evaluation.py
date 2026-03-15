@@ -105,6 +105,15 @@ class _SkipNetworkError(Exception):
     ...
 
 def cache_plug_method(f):
+    """
+    Caches the outputs of plug methods.
+
+    Requires *exhaustive* type hinting (including for return type) to work
+    reliably. Don't use it on methods which can't be type hinted. Alternatively,
+    combine it with :func:`riggery.general.functions.enforce_type_hints` to cut
+    down on the amount of type checks you're doing (just force everything into
+    riggery types instead).
+    """
 
     @wraps(f)
     def wrapper(self, *args, **kwargs):
@@ -119,11 +128,20 @@ def cache_plug_method(f):
 
         hints = get_type_hints(f)
 
+        if 'return' not in hints:
+            raise TypeError("no return type hint")
+
         for paramName, param in params.items():
             if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+                if param.annotation is param.empty:
+                    raise TypeError("no type hint for '{paramName}'")
+
                 pos_only.append(paramName)
 
             elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                if param.annotation is param.empty:
+                    raise TypeError("no type hint for '{paramName}'")
+
                 pos_or_kw.append(paramName)
 
             elif param.kind in (inspect.Parameter.VAR_POSITIONAL,
@@ -175,16 +193,15 @@ def cache_plug_method(f):
                                 inp = next(slot.iterInputs(plugs=True))
                                 if inp.type() == 'message':
                                     return inp.node()
-                                return inp
-                        raise TypeError
-
+                                return inp, False
+                        return instance, False
                     try:
                         nwParamNames = ast.literal_eval(nw.attr('_dgParams')())
 
                         if set(nwParamNames) == set(receivedParamNames):
                             for (paramName,
                                  receivedValue) in receivedParams.items():
-                                nwParamSlot = nw.attr(f'_dgParam{paramName}')
+                                nwParamSlot = nw.attr(f'_dgParam_{paramName}')
                                 nwParamContent = ast.literal_eval(
                                     nwParamSlot()
                                 )
@@ -226,15 +243,18 @@ def cache_plug_method(f):
         if hint is not UNDEFINED:
             result = conform_instance(result, hint, False, True)
 
-        nw = nodes['Network'].createNode()
+        with _nm.Name('cache'):
+            nw = nodes['Network'].createNode()
+
         nw.addAttr('_dgCaller', at='message', i=self, l=True)
         nw.addAttr('_dgMethod', dt='string').set(f.__name__).lock()
         nw.addAttr('_dgMessage', at='message', multi=True)
-        nw.addAttr('_dgParams', dt='string').set(repr(receivedParamNames))
+        nw.addAttr('_dgParams',
+                   dt='string').set(repr(receivedParamNames)).lock()
 
         msgIndex = {'index': 0}
 
-        def handler(item):
+        def handler(item, msgIndex=msgIndex):
             if isinstance(item, (om.MVector,
                                  om.MMatrix,
                                  om.MQuaternion,
@@ -262,7 +282,7 @@ def cache_plug_method(f):
         nw.addAttr('_dgOutput', dt='string').set(repr(_result)).lock()
 
         for paramName, paramValue in receivedParams.items():
-            nw.addAttr(f'_dgParam{paramName}', dt='string').set(
+            nw.addAttr(f'_dgParam_{paramName}', dt='string').set(
                 repr(simplify(paramValue, handler))
             ).lock()
 
