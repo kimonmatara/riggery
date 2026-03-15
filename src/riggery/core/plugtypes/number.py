@@ -4,13 +4,14 @@ from typing import Optional, Union, Literal, Iterable
 import maya.api.OpenMaya as om
 import maya.cmds as m
 
-from riggery.core.lib.evaluation import cache_dg_output
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 from ..plugtypes import __pool__
+from ..lib.evaluation import cache_plug_method, cache_dg_output
 from ..lib import mixedmode as _mm
 from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
+from ..plugtypes import __pool__ as plugs
 
 
 class Number(__pool__['Math']):
@@ -31,7 +32,9 @@ class Number(__pool__['Math']):
             return node.attr('output').asType(type(self))
         return self
 
-    def __add__(self, other):
+    @cache_plug_method
+    def __add__(self,
+                other:Union[str, 'plugs.Number', int, float]) -> 'Number':
         other, shape, isPlug = _mm.info(other)
 
         if shape is None:
@@ -97,7 +100,7 @@ class Number(__pool__['Math']):
     #-----------------------------------------|    Multiply
 
     @cache_dg_output
-    def __neg__(self):
+    def __neg__(self) -> 'Number':
         node = nodes.MultDL.createNode()
         self >> node.attr('input1')
         node.attr('input2').set(-1.0)
