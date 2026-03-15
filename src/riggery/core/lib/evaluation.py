@@ -99,28 +99,32 @@ def cache_dg_output(f):
     return wrapper
 
 def cache_plug_method(f):
-    # Get type hints for all arguments past ``self``
-    params = dict(list(signature.parameters.items())[1:])
-    pos_only = []
-    pos_or_kw = []
-
-    hints = get_type_hints(f)
-
-    for paramName, param in params.items():
-        if param.kind == inspect.Parameter.POSITIONAL_ONLY:
-            pos_only.append(paramName)
-
-        elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
-            pos_or_kw.append(paramName)
-
-        elif param.kind in (inspect.Parameter.VAR_POSITIONAL,
-                            inspect.Parameter.VAR_KEYWORD):
-
-            raise TypeError("*args / **kwargs not supported")
 
     @wraps(f)
     def wrapper(self, *args, **kwargs):
-        
+        # Get type hints for all arguments past ``self``; this parsing must
+        # happen inside the wrapper, and not outside, otherwise we run into
+        # grief with annotation evaluations
+
+        signature = inspect.signature(f)
+        params = dict(list(signature.parameters.items())[1:])
+        pos_only = []
+        pos_or_kw = []
+
+        hints = get_type_hints(f)
+
+        for paramName, param in params.items():
+            if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+                pos_only.append(paramName)
+
+            elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                pos_or_kw.append(paramName)
+
+            elif param.kind in (inspect.Parameter.VAR_POSITIONAL,
+                                inspect.Parameter.VAR_KEYWORD):
+
+                raise TypeError("*args / **kwargs not supported")
+
         #--------------|    Figure out which arguments we got
 
         _pos_only = pos_only.copy()
@@ -156,6 +160,7 @@ def cache_plug_method(f):
                                                      True)
 
         receivedParamNames = set(receivedParams.keys())
+        print("The received param names are: ", receivedParamNames)
 
         #--------------|    Look for a match
 
@@ -202,16 +207,16 @@ def cache_plug_method(f):
                 if bail:
                     continue
 
-                output = nw.attr('_dgOutput').getInputOrValue()
+                outputSlot = nw.attr('_dgOutput')
 
-                if output.type() == 'message':
-                    out = next(output.iterInputs(plugs=True))
+                if outputSlot.type() == 'message':
+                    out = next(outputSlot.iterInputs(plugs=True))
 
                     if out.type() == 'message':
                         return out.node()
+                    return out
 
-                else:
-                    out, _ = output.getInputOrValue()
+                out = eval(output())
 
                 try:
                     hint = hints['return']
@@ -238,8 +243,10 @@ def cache_plug_method(f):
             result = conform_instance(result, hint, False, True)
 
         nw = nodes['Network'].createNode()
-        self >> nw.addAttr('_dgCaller', type='message')
+        self >> nw.addAttr('_dgCaller', at='message')
         nw.addAttr('_dgMethod', dt='string').set(f.__name__).lock()
+        nw.addAttr('_dgParams',
+                   dt='string').set(repr(receivedParamNames)).lock()
 
         for receivedParamName, receivedParamValue in receivedParams.items():
             slotName = f'_dgParam{receivedParamName}'
