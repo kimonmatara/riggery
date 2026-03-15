@@ -25,19 +25,19 @@ def issubclass_quiet(classA:_th.Type, classB:_th.Type) -> bool:
     except TypeError:
         return False
 
-def isnone(instance:Any) -> bool:
+def isnone(instance:_th.Any) -> bool:
     return instance is None or isinstance_quiet(instance, _t.NoneType)
 
-def isiterable(instance:Any) -> bool:
+def isiterable(instance:_th.Any) -> bool:
     return isinstance_quiet(instance, _abc.Iterable)
 
-def isiterator(instance:Any) -> bool:
+def isiterator(instance:_th.Any) -> bool:
     return isinstance_quiet(instance, _abc.Iterator)
 
-def isgenerator(instance:Any) -> bool:
+def isgenerator(instance:_th.Any) -> bool:
     return isinstance_quiet(instance, _abc.Generator)
 
-def ismapping(instance:Any) -> bool:
+def ismapping(instance:_th.Any) -> bool:
     return isinstance_quiet(instance, _abc.Mapping)
 
 def hint_matches(hint:_th.Type,
@@ -50,7 +50,8 @@ def hint_matches(hint:_th.Type,
 def conform_instance(instance:_th.Any,
                      hint:_th.Type,
                      exact:bool=False,
-                     quiet:bool=False) -> _th.Any:
+                     quiet:bool=False,
+                     handler:_th.Optional[_th.Callable]=None) -> _th.Any:
     """
     Attempts to conform a value (typically passed-in through an argument) into
     a hinted type.
@@ -58,11 +59,22 @@ def conform_instance(instance:_th.Any,
     :warning:
         This *will* break mutability where various custom flavours of mappings,
         lists etc. have to be re-instantiated.
+
+    :param handler: if provided, should be a callable that will receive the
+        instance, the hint, and the *exact* flag as positional arguments, and
+        should always throw TypeError if it can't handle the conversion;
+        defaults to None
     """
     if hint is _th.Any:
         return instance
 
-    origin = get_origin(hint)
+    if handler is not None:
+        try:
+            return handler(instance, hint, exact)
+        except TypeError:
+            pass
+
+    origin = _th.get_origin(hint)
     base_hint = hint if origin is None else origin
 
     # Try basic, non-parameterizable types first
@@ -84,7 +96,7 @@ def conform_instance(instance:_th.Any,
         return None
 
     else:
-        hint_params = get_args(hint)
+        hint_params = _th.get_args(hint)
 
         if base_hint is _th.Union:
             if hint_params:
@@ -98,7 +110,11 @@ def conform_instance(instance:_th.Any,
 
                 for t in hint_params:
                     try:
-                        return conform_instance(instance, t, exact, quiet)
+                        return conform_instance(instance,
+                                                t,
+                                                exact,
+                                                quiet,
+                                                handler)
                     except (TypeError, ValueError):
                         pass
             else:
@@ -106,7 +122,11 @@ def conform_instance(instance:_th.Any,
 
         elif base_hint is _th.Annotated:
             try:
-                return conform_instance(instance, hint_params[0], exact, quiet)
+                return conform_instance(instance,
+                                        hint_params[0],
+                                        exact,
+                                        quiet,
+                                        handler)
             except:
                 pass
 
@@ -118,8 +138,8 @@ def conform_instance(instance:_th.Any,
 
                 try:
                     conformed = {
-                        conform_instance(k, k_type, exact, quiet):
-                            conform_instance(v, v_type, exact, quiet)
+                        conform_instance(k, k_type, exact, quiet, handler):
+                            conform_instance(v, v_type, exact, quiet, handler)
                         for k, v in instance.items()
                     }
                     proceed = True
@@ -183,10 +203,11 @@ def conform_instance(instance:_th.Any,
 
                     if proceed:
                         if varlen:
-                            t = Union[tuple(expected_types)]
+                            t = _th.Union[tuple(expected_types)]
                             try:
                                 conformed = [
-                                    conform_instance(member, t, exact, quiet)
+                                    conform_instance(member, t, exact, quiet,
+                                                     handler)
                                     for member in received_members
                                 ]
                                 proceed = True
@@ -214,7 +235,8 @@ def conform_instance(instance:_th.Any,
                                         conform_instance(member,
                                                          t,
                                                          exact,
-                                                         quiet)
+                                                         quiet,
+                                                         handler)
                                         for member, t in zip(received_members,
                                                              expected_types)
                                     ]
@@ -233,7 +255,6 @@ def conform_instance(instance:_th.Any,
                                             return tuple(conformed)
                                         except (TypeError, ValueError):
                                             pass
-
                 else:
                     if exact:
                         if type(instance) is base_hint:
@@ -254,7 +275,8 @@ def conform_instance(instance:_th.Any,
                             conform_instance(member,
                                              hint_params[0],
                                              exact,
-                                             quiet)
+                                             quiet,
+                                             handler)
                             for member in instance
                         ]
                         proceed = True
@@ -288,7 +310,8 @@ def conform_instance(instance:_th.Any,
             else:
                 if hint_params:
                     conform_gen = (
-                        conform_instance(member, hint_params[0], exact, quiet)
+                        conform_instance(member, hint_params[0], exact, quiet,
+                                         handler)
                         for member in instance
                     )
 
