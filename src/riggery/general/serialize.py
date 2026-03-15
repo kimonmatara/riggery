@@ -1,3 +1,4 @@
+from pathlib import PurePath
 from typing import Callable, Optional
 import collections.abc as _abc
 
@@ -29,6 +30,9 @@ def simplify(value, handler:Optional[Callable]=None):
 
     if value is None:
         return None
+
+    if isinstance(value, PurePath):
+        return str(value)
 
     if isinstance(value, _abc.Mapping):
         return {simplify(k, handler): simplify(v, handler)
