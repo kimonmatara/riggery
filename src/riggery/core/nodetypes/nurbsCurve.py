@@ -1,3 +1,4 @@
+import math
 from copy import deepcopy
 from typing import Optional, Union, Iterator, Iterable, Literal
 
@@ -18,6 +19,65 @@ from ..plugtypes import __pool__ as plugs
 class NurbsCurve(nodes['CurveShape']):
 
     #-------------------------------------|    Constructor
+
+    @classmethod
+    @short(center='c',
+           degree='d',
+           normal='nr',
+           sections='s',
+           sweep='sw')
+    def createCircle(cls,
+                     radius:float=1.0,
+                     normal:Union[
+                         'data.Vector', 'plugs.Vector', tuple[float]
+                     ]=(0, 1, 0),
+                     sweep:Union[float, 'plugs.Number' ]=math.radians(360.0),
+                     degree:Union[int, 'plugs.Number']=3,
+                     sections:Union[int, 'plugs.Number']=8,
+                     center:Union[
+                         'data.Vector',
+                         'plugs.Vector',
+                         tuple[float]
+                     ]=(0, 0, 0),
+                     name:Optional[str]=None):
+        radius, _, radiusIsPlug = _mm.info(radius)
+        sweep, _, sweepIsPlug = _mm.info(sweep)
+        degree, _, degreeIsPlug = _mm.info(degree)
+        sections, _, sectionsIsPlug = _mm.info(sections)
+        center, _, centerIsPlug = _mm.info(center, (data.Vector, plugs.Vector),
+                                           force=True)
+        normal, _, normalIsPlug = _mm.info(normal, (data.Vector, plugs.Vector),
+                                           force=True)
+
+        node = nodes['MakeNurbCircle'].createNode()
+        node.attr('radius').put(radius, radiusIsPlug)
+        node.attr('sweep').put(sweep, sweepIsPlug)
+        node.attr('degree').put(degree, degreeIsPlug)
+        node.attr('sections').put(sections, sectionsIsPlug)
+        node.attr('center').put(center, centerIsPlug)
+        node.attr('normal').put(normal, normalIsPlug)
+
+        shape = node.attr('outputCurve').createShape()
+
+        if not any((radiusIsPlug,
+                    sweepIsPlug,
+                    degreeIsPlug,
+                    sectionsIsPlug,
+                    centerIsPlug,
+                    normalIsPlug)):
+            shape.deleteHistory()
+
+        xf = shape.parent
+
+        if name is None:
+            if _nm.Name.__elems__:
+                name = _nm.Name.evaluate(typeSuffix=cls.__typesuffix__)
+
+        if name:
+            xf.name = name
+            xf.conformShapeNames()
+
+        return xf
 
     @classmethod
     @short(degree='d',
@@ -461,9 +521,9 @@ class NurbsCurve(nodes['CurveShape']):
            asComponent='ac',
            worldSpace='ws')
     def getAnchorGroups(self,
-                         asIndex:bool=False,
-                         asComponent:bool=False,
-                         worldSpace:bool=False) -> list[dict]:
+                        asIndex:bool=False,
+                        asComponent:bool=False,
+                        worldSpace:bool=False) -> list[dict]:
         indices = list(range(self.numCVs(visible=True)))
 
         if asIndex:
@@ -651,7 +711,7 @@ class NurbsCurve(nodes['CurveShape']):
         #---------------------------|    Loop
 
         for i, (_oldPoint, newPoint) in enumerate(
-            zip(_oldPoints, newPoints)
+                zip(_oldPoints, newPoints)
         ) :
             with _nm.Name(i+1):
                 # Create the cluster node
