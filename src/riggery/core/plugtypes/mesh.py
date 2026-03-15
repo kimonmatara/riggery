@@ -7,6 +7,7 @@ from riggery.general.functions import resolve_flags, short
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from ..elem import Elem
+from ..lib.evaluation import cache_plug_method
 
 
 class Mesh(plugs['Geometry']):
@@ -24,7 +25,8 @@ class Mesh(plugs['Geometry']):
 
     #--------------------------------------|    Edits
 
-    def separate(self) -> list:
+    @cache_plug_method
+    def separate(self) -> list['Mesh']:
         """
         Separates this mesh and returns the outputs in a list.
         """
