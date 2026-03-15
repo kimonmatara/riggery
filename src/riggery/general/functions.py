@@ -2,8 +2,9 @@
 import inspect
 from types import FunctionType
 from functools import wraps
-from typing import Callable, Any, Optional, Literal, Iterator
+from typing import Callable, Any, Optional, Literal, Iterator, get_type_hints
 from warnings import warn
+from .types import conform_instance
 
 
 class Callbacks:
@@ -209,3 +210,61 @@ class lazy_property:
             meth = getattr(inst, self._fdel)
             return meth()
         raise AttributeError("can't delete attribute")
+
+def cast_params(f):
+    """
+    Decorator. Attempts to cast any received args / kwargs to their type hints
+    before passing them along to the wrapped function.
+    """
+    signature = inspect.signature(f)
+
+    pos_only = []
+    pos_or_kw = []
+
+    for param_name, param in signature.parameters.items():
+        if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+            pos_only.append(param_name)
+
+        elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+            pos_or_kw.append(param_name)
+
+    hints = get_type_hints(f)
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        _pos_only = pos_only.copy()
+        _pos_or_kw = pos_or_kw.copy()
+
+        out_args = []
+
+        for arg in args:
+            try:
+                name = _pos_only.pop(0)
+            except IndexError:
+                try:
+                    name = _pos_or_kw.pop(0)
+                except IndexError:
+                    out_args.append(arg)
+                    continue
+
+                try:
+                    hint = hints[name]
+                except KeyError:
+                    out_args.append(arg)
+                    continue
+
+                out_args.append(conform_instance(arg, hint, False, True))
+
+        out_kwargs = {}
+
+        for k, v in kwargs.items():
+            try:
+                hint = hints[k]
+            except KeyError:
+                out_kwargs[k] = v
+                continue
+
+            out_kwargs[k] = conform_instance(v, hint, False, True)
+
+        return f(*out_args, **out_kwargs)
+    return wrapper
