@@ -1,20 +1,9 @@
 from pathlib import PurePath
 import maya.api.OpenMaya as om
 from ..elem import Elem
+from ...general import serialize as _ser
 
-def simplify(item):
-    if isinstance(item, (int, float, str)):
-        return item
-
-    if isinstance(item, list):
-        return [simplify(member) for member in item]
-
-    if isinstance(item, tuple):
-        return tuple([simplify(member) for member in item])
-
-    if isinstance(item, dict):
-        return {simplify(k): simplify(v) for k, v in item.items()}
-
+def handler(x):
     if isinstance(item, (om.MVector,
                          om.MMatrix,
                          om.MQuaternion,
@@ -24,10 +13,10 @@ def simplify(item):
     if isinstance(item, om.MPoint):
         return list(item)[:-3]
 
-    if isinstance(item, (Elem, PurePath)):
+    if isinstance(item, Elem):
         return str(item)
 
-    if item is None:
-        return item
+    raise TypeError
 
-    raise TypeError("can't simplify item of type '{}'".format(type(item)))
+def simplify(item):
+    return _ser.simplify(item, handler)
