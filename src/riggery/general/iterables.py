@@ -25,16 +25,28 @@ def pairiter(sequence):
     it = iter(sequence)
     return zip(it, it)
 
-def without_duplicates(items:Iterable) -> Iterator[Any]:
+def without_duplicates(items:Iterable,
+                       fast:bool=True) -> Iterator[Any]:
     """
     Yields members of *items* only once, in order.
-    """
-    out = set()
 
-    for item in items:
-        if item not in out:
-            out.add(item)
-            yield item
+    :param fast: set this to False if you expect unhashable types; defaults to
+        True
+    """
+    if fast:
+        out = set()
+
+        for item in items:
+            if item not in out:
+                out.add(item)
+                yield item
+    else:
+        out = []
+
+        for item in items:
+            if item not in out:
+                out.append(item)
+                yield item
 
 def crop_overlaps(groups):
     """
