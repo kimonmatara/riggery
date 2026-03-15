@@ -1,19 +1,22 @@
 """Tools to manage DG evaluation."""
 
+import ast
 from typing import get_type_hints
 import inspect
 from functools import wraps
 import re
 import maya.cmds as m
+import maya.api.OpenMaya as om
 
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 
 from ..lib import names as _nm
-from ..lib.serialize import simplify
+from ...internal.typeutil import UNDEFINED
 
 from ...general.types import conform_instance
 from ...general.functions import get_shorthands
+from ...general.serialize import simplify
 
 
 class DGEval:
@@ -98,6 +101,9 @@ def cache_dg_output(f):
         return input
     return wrapper
 
+class _SkipNetworkError(Exception):
+    ...
+
 def cache_plug_method(f):
 
     @wraps(f)
@@ -127,25 +133,20 @@ def cache_plug_method(f):
 
         #--------------|    Figure out which arguments we got
 
-        _pos_only = pos_only.copy()
-        _pos_or_kw = pos_or_kw.copy()
-
         receivedParams = {}
 
         for arg in args:
             try:
-                name = _pos_only.pop(0)
+                name = pos_only.pop(0)
             except IndexError:
                 try:
-                    name = _pos_or_kw.pop(0)
+                    name = pos_or_kw.pop(0)
                 except IndexError:
                     raise TypeError("unexpected positional argument")
 
             receivedParams[name] = arg
 
         receivedParams.update(kwargs.copy())
-
-        hints = get_type_hints(f)
 
         if hints:
             for k in list(receivedParams.keys()):
@@ -159,105 +160,111 @@ def cache_plug_method(f):
                                                      False,
                                                      True)
 
-        receivedParamNames = set(receivedParams.keys())
-        print("The received param names are: ", receivedParamNames)
-
-        #--------------|    Look for a match
+        receivedParamNames = list(receivedParams.keys())
 
         for output in self.iterOutputs(plugs=True, type='network'):
-            if (output.type() == 'message'
-                    and output.attrName() == '_dgCaller'):
+            if output.type() == 'message' and output.attrName() == '_dgCaller':
                 nw = output.node()
 
-                if nw.attr('_dgMethod')() != f.__name__:
-                    continue
+                if nw.attr('_dgMethod')() == f.__name__:
+                    def conformHandler(instance, *_):
+                        if isinstance(instance, str):
+                            mt = re.match(r"^\$([0-9])$", instance)
+                            if mt:
+                                slot = nw.attr('_dgMessage')[int(mt.group(1))]
+                                inp = next(slot.iterInputs(plugs=True))
+                                if inp.type() == 'message':
+                                    return inp.node()
+                                return inp
+                        raise TypeError
 
-                bail = False
-                nwReceivedParamNames = eval(nw.attr('_dgParams')())
+                    try:
+                        nwParamNames = ast.literal_eval(nw.attr('_dgParams')())
 
-                if set(nwReceivedParamNames) == receivedParamNames:
-                    for (receivedParamName,
-                         receivedParamValue) in receivedParams.items():
-                        slot = nw.attr('_dgParam{}'.format(paramName))
-                        nwReceivedInputOrValue, isPlug = slot.getInputOrValue()
+                        if set(nwParamNames) == set(receivedParamNames):
+                            for (paramName,
+                                 receivedValue) in receivedParams.items():
+                                nwParamSlot = nw.attr(f'_dgParam{paramName}')
+                                nwParamContent = ast.literal_eval(
+                                    nwParamSlot()
+                                )
+                                hint = hints.get(paramName, UNDEFINED)
 
-                        if not isPlug:
-                            nwReceivedInputOrValue = eval(
-                                newReceivedInputOrValue
-                            )
+                                if hint is not UNDEFINED:
+                                    nwParamContent = conform_instance(
+                                        nwParamContent,
+                                        hint,
+                                        False,
+                                        True,
+                                        conformHandler
+                                    )
 
-                        try:
-                            hint = hints[paramName]
-                            doCast = True
-                        except KeyError:
-                            doCast = False
+                                if nwParamContent != receivedValue:
+                                    raise _SkipNetworkError
+                        else:
+                            continue
 
-                        if doCast:
-                            nwReceivedInputOrValue = conform_instance(
-                                nwReceivedInputOrValue,
-                                hint,
-                                False,
-                                True
-                            )
+                        # If we're still here, it's a match
+                        nwOutputAttr = nw.attr('_dgOutput')
+                        nwOutputContent = ast.literal_eval(nwOutputAttr())
+                        hint = hints.get('return', UNDEFINED)
 
-                        if nwReceivedInputOrValue != receivedParamValue:
-                            bail = True
-                            break
+                        if hint is not UNDEFINED:
+                            output = conform_instance(nwOutputContent,
+                                                      hint,
+                                                      False,
+                                                      True,
+                                                      conformHandler)
+                        return output
 
-                if bail:
-                    continue
-
-                outputSlot = nw.attr('_dgOutput')
-
-                if outputSlot.type() == 'message':
-                    out = next(outputSlot.iterInputs(plugs=True))
-
-                    if out.type() == 'message':
-                        return out.node()
-                    return out
-
-                out = eval(output())
-
-                try:
-                    hint = hints['return']
-                    doCast = True
-                except KeyError:
-                    doCast = False
-
-                if doCast:
-                    out = conform_instance(out, hint, False, True)
-
-                return out
-
-        #--------------|    Get return, capture
+                    except _SkipNetworkError:
+                        continue
 
         result = f(self, *args, **kwargs)
+        hint = hints.get('return', UNDEFINED)
 
-        try:
-            hint = hints['return']
-            doCast = True
-        except KeyError:
-            doCast = False
-
-        if doCast:
+        if hint is not UNDEFINED:
             result = conform_instance(result, hint, False, True)
 
         nw = nodes['Network'].createNode()
-        self >> nw.addAttr('_dgCaller', at='message')
+        nw.addAttr('_dgCaller', at='message', i=self, l=True)
         nw.addAttr('_dgMethod', dt='string').set(f.__name__).lock()
-        nw.addAttr('_dgParams',
-                   dt='string').set(repr(receivedParamNames)).lock()
+        nw.addAttr('_dgMessage', at='message', multi=True)
+        nw.addAttr('_dgParams', dt='string').set(repr(receivedParamNames))
 
-        for receivedParamName, receivedParamValue in receivedParams.items():
-            slotName = f'_dgParam{receivedParamName}'
+        msgIndex = {'index': 0}
 
-            if isinstance(receivedParamValue, plugs['Attribute']):
-                slot = nw.addAttr(slotName, at='message', i=receivedParamName)
-            else:
-                slot = nw.addAttr(slotName, dt='string')
-                slot.set(repr(simplify(receivedParamValue)))
+        def handler(item):
+            if isinstance(item, (om.MVector,
+                                 om.MMatrix,
+                                 om.MQuaternion,
+                                 om.MEulerRotation)):
+                return list(item)
 
-            slot.lock()
+            if isinstance(item, om.MPoint):
+                return list(item)[:-3]
+
+            if isinstance(item, plugs['Attribute']):
+                out = '${}'.format(msgIndex['index'])
+                item >> nw.attr('_dgMessage')[msgIndex['index']]
+                msgIndex['index'] += 1
+                return out
+
+            elif isinstance(item, nodes['DependNode']):
+                out = '${}'.format(msgIndex['index'])
+                item.attr('message') >> nw.attr('_dgMessage')[msgIndex['index']]
+                msgIndex['index'] += 1
+                return out
+
+            raise TypeError
+
+        _result = simplify(result, handler)
+        nw.addAttr('_dgOutput', dt='string').set(repr(_result)).lock()
+
+        for paramName, paramValue in receivedParams.items():
+            nw.addAttr(f'_dgParam{paramName}', dt='string').set(
+                repr(simplify(paramValue, handler))
+            ).lock()
 
         return result
 
