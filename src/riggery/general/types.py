@@ -62,17 +62,19 @@ def conform_instance(instance:_th.Any,
 
     :param handler: if provided, should be a callable that will receive the
         instance, the hint, and the *exact* flag as positional arguments, and
-        should always throw TypeError if it can't handle the conversion;
-        defaults to None
+        should return a tuple of two members: the first one should be the value
+        (processed or unprocessed) and the second one should be a boolean, that
+        should be True if the value has been handled, and False if it should
+        be processed furthers; defaults to None
     """
     if hint is _th.Any:
         return instance
 
     if handler is not None:
-        try:
-            return handler(instance, hint, exact)
-        except TypeError:
-            pass
+        instance, handled = handler(instance, hint, exact)
+
+        if handled:
+            return instance
 
     origin = _th.get_origin(hint)
     base_hint = hint if origin is None else origin
