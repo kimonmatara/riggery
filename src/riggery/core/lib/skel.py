@@ -2,13 +2,15 @@
 import re
 import math
 from typing import Iterator, Optional, Union, Iterable, Literal
+from itertools import chain as _chain
 
 import riggery.core.lib.mathops as _mo
 from riggery.core.lib import meshutil as _mu
 import riggery.core.lib.mixedmode as _mm
 import riggery.core.lib.triadutil as _tr
 from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists, pad_nones
+from riggery.general.iterables import (expand_tuples_lists, pad_nones,
+                                       issublist, without_duplicates)
 from riggery.general.numbers import floatrange
 from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
@@ -26,17 +28,95 @@ class Chain(list):
     #-------------------------------------------|    Loaders
 
     @classmethod
-    def iterBonesFrom(cls, startJoint:'nodes.Joint') -> Iterator['Chain']:
+    @short(expandLeftovers='exp',
+           skipWishbones='swb')
+    def reduceToBones(cls,
+                      *args,
+                      expandLeftovers:bool=False,
+                      skipWishbones:bool=True,
+                      ) -> tuple[list['Chain'], list['nodes.Joint']]:
+        """
+        :param \*args: any combination of joints or chains
+        :param expandLeftovers/exp: attempt to derive bones from any leftover
+            joints by looking for child joints outside the selection list;
+            defaults to None
+        :param skipWishbones/swb: if a joint has more than one child joint,
+            don't generate a bone for each; skip the junction and continue
+            iterating from each child separately; defaults to True
+        :return: A tuple of two members: the first member will be a list of any
+            bones formed betwen the parsed joints; the second will be a list of
+            any leftover joints.
+        """
+        joints = list(without_duplicates(
+            (map(nodes['Joint'], expand_tuples_lists(*args)))
+        ))
+
+        bones = []
+
+        for parentJoint in joints:
+            children = list(parentJoint.iterChildren(type='joint'))
+
+            if not expandLeftovers:
+                children = [x for x in children if x in joints]
+
+            if skipWishbones and len(children) != 1:
+                continue
+
+            for child in children:
+                bone = Chain((parentJoint, child))
+
+                if bone not in bones:
+                    bones.append(bone)
+
+        bones = tuple(without_duplicates(bones, False))
+        usedUpJoints = set(_chain.from_iterable(bones))
+        leftovers = tuple((x for x in joints if x not in usedUpJoints))
+
+        return bones, tuple(leftovers)
+
+    @classmethod
+    @short(skipWishbones='swb')
+    def iterBonesFrom(cls,
+                      startJoint:'nodes.Joint', *,
+                      skipWishbones:bool=True) -> Iterator['Chain']:
         """
         Iterates across every bone (two-joint chain) that can be detected from
         *startJoint* downwards.
+
+        :param skipWishbones/swb: if a joint has more than one child joint,
+            don't generate a bone for each; skip the junction and continue
+            iterating from each child separately; defaults to True
         """
         def chase(parentJoint):
-            for child in parentJoint.iterChildren(type='joint'):
-                yield Chain((parentJoint, child))
-                yield from chase(child)
+            if skipWishbones:
+                children = list(parentJoint.iterChildren(type='joint'))
+
+                if len(children) == 1:
+                    yield Chain((parentJoint, children[0]))
+
+                for child in children:
+                    yield from chase(child)
+            else:
+                for child in parentJoint.iterChildren(type='joint'):
+                    yield Chain((parentJoint, child))
+                    yield from chase(child)
 
         yield from chase(nodes['Joint'](startJoint))
+
+    @classmethod
+    def boneFrom(cls, startJoint:'nodes.Joint') -> Optional['Chain']:
+        """
+        :return: A :class:`Chain` instance comprising *startJoint* and the first
+            joint child detected underneath it, or None if no immediate child
+            joint could be found.
+        """
+        startJoint = nodes['Joint'](startJoint)
+        child = next(startJoint.iterChildren(type='joint'), None)
+
+        if child is None:
+            return None
+
+        return Chain((startJoint, child))
 
     @classmethod
     def fromStartEnd(cls, startJoint, endJoint):
@@ -1097,6 +1177,19 @@ class Chain(list):
         return curveXform
 
     #-------------------------------------------|    Instance editing
+
+    def isSubchain(self, otherChain) -> bool:
+        """
+        :return: True if this chain occurs within *otherChain* in the same
+            order, otherwise False.
+        """
+        return issublist(self, otherChain)
+
+    def __eq__(self, other:Union[tuple, list]):
+        if isinstance(other, (list, tuple)):
+            return all((x == y for x, y
+                        in zip(self, map(nodes['Joint'], other))))
+        return False
 
     def __add__(self, other):
         return type(self)(super().__add__(other))
