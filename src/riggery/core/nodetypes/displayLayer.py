@@ -37,9 +37,10 @@ class DisplayLayer(DependNode):
         :param *members: the nodes to add to the layer
         :param recurse/r: include descendants; defaults to False
         """
-        m.editDisplayLayerMembers(
-            str(self),
-            *without_duplicates(expand_tuples_lists(map(str, members))),
-            noRecurse=not recurse
-        )
+        members = expand_tuples_lists(*members)
+        members = map(str, members)
+        members = without_duplicates(members)
+
+        m.editDisplayLayerMembers(str(self), *members, noRecurse=not recurse)
+
         return self
