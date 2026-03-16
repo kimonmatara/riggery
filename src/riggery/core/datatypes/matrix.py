@@ -11,6 +11,7 @@ from ..datatypes import __pool__ as data
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from ..lib import mixedmode as _mm
+from ..lib import mathops as _mo
 
 ROTORDERS = ['xyz', 'yzx', 'zxy', 'xzy', 'yxz', 'zyx']
 
@@ -431,7 +432,7 @@ class Matrix(data['Tensor']):
         if isJoint:
             compensatePivots = False
             fast = not any([compensateRotateAxis,
-                compensateJointScale, compensateJointOrient])
+                            compensateJointScale, compensateJointOrient])
         else:
             compensateJointScale = compensateJointOrient = False
             fast = not any([compensateRotateAxis, compensatePivots])
@@ -450,8 +451,8 @@ class Matrix(data['Tensor']):
                 ro=xf.attr('ro').get(asString=True))
 
             for channel, state in zip(
-                ['translate', 'rotate', 'scale', 'shear'],
-                [translate, rotate, scale, shear]
+                    ['translate', 'rotate', 'scale', 'shear'],
+                    [translate, rotate, scale, shear]
             ):
                 dest = xf.attr(channel)
                 if state:
@@ -658,16 +659,22 @@ class Matrix(data['Tensor']):
     def closestAxis(self,
                     refVector,
                     includeNegative:bool=False,
-                    asString:bool=False):
+                    asString:bool=False,
+                    skip:Optional[list[str]]=None):
         """
         :param refVector: the vector to compare to
         :param includeNegative: including negative axes (e.g. '-x') in the
             calculation
         :param asString: return 'x' instead of [1, 0, 0], etc.
+        :param skip: an optional list of axis letters to disregard
         """
         refVector = data['Vector'](refVector).normal()
 
+        if skip:
+            skip = expand_tuples_lists(skip)
+
         testVecs = {'xyz'[i]: self.getRow(i) for i in range(3)}
+
         if includeNegative:
             testVecs.update({'-'+('xyz'[i]): -self.getRow(i) \
                              for i in range(3)})
@@ -676,7 +683,11 @@ class Matrix(data['Tensor']):
         bestAxis = None
 
         for axis, vec in testVecs.items():
+            if skip and axis in skip:
+                continue
+
             dot = vec.normal().dot(refVector)
+
             if bestDot is None or dot > bestDot:
                 bestDot = dot
                 bestVector = vec
@@ -684,6 +695,7 @@ class Matrix(data['Tensor']):
 
         if asString:
             return bestAxis
+
         return bestVector
 
     def snappedToWorld(self) -> 'Matrix':
@@ -692,10 +704,15 @@ class Matrix(data['Tensor']):
             nearest world axes. The snapping will happen orthogonally.
         """
         thisMatrix = self.createOrtho('x', self.x, 'y', self.y).pick(r=1)
-        xAxis = thisMatrix.closestAxis((1, 0, 0), includeNegative=True,
-                                         asString=True)
-        yAxis = thisMatrix.closestAxis((0, 1, 0), includeNegative=True,
-                                         asString=True)
+        xAxis = thisMatrix.closestAxis((1, 0, 0),
+                                       includeNegative=True,
+                                       asString=True)
+
+        yAxis = thisMatrix.closestAxis((0, 1, 0),
+                                       includeNegative=True,
+                                       asString=True,
+                                       skip=[xAxis, _mo.flipAxisLetter(xAxis)])
+
         rotMatrix = self.createOrtho(xAxis, (1, 0, 0),
                                      yAxis,
                                      (0, 1, 0)).pick(r=1)
@@ -704,6 +721,56 @@ class Matrix(data['Tensor']):
                 * self.pick(shear=True)
                 * rotMatrix *
                 self.pick(translate=True))
+
+    @short(translate='t', rotate='r')
+    def snappedTo(self,
+                  otherMatrix:'Matrix',
+                  translate:Optional[bool]=None,
+                  rotate:Optional[bool]=None) -> 'Matrix':
+        """
+        Returns a copy of this matrix snapped to the nearest x and y basis
+        vectors of *otherMatrix*.
+        """
+
+        translate, rotate = resolve_flags(translate, rotate)
+
+        if translate or rotate:
+            otherMatrix = Matrix(otherMatrix)
+
+            matrices = [self.pick(s=True),
+                        self.pick(sh=True),
+                        self.pick(r=True),
+                        self.pick(t=True)]
+
+            if translate:
+                matrices[3] = otherMatrix.pick(t=True)
+
+            if rotate:
+                otherXAxis = otherMatrix.closestAxis(self.x,
+                                                     includeNegative=True,
+                                                     asString=True)
+                xVec = otherMatrix.getAxis(otherXAxis)
+
+                otherYAxis = otherMatrix.closestAxis(self.y,
+                                                     includeNegative=True,
+                                                     asString=True,
+                                                     skip=[otherXAxis,
+                                                           _mo.flipAxisLetter(otherXAxis)])
+                yVec = otherMatrix.getAxis(otherYAxis)
+
+                start = self.createOrtho('x', self.x,
+                                         'y', self.y).pick(r=1)
+
+                end = self.createOrtho('x', xVec,
+                                       'y', yVec).pick(r=1)
+
+                delta = start.inverse() * end
+                matrices[2] = matrices[2] * delta
+
+            out = reduce(lambda x, y: x * y, matrices)
+            return out
+
+        return self.copy()
 
     def averageScale(self) -> float:
         """
