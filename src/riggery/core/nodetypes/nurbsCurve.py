@@ -25,21 +25,35 @@ class NurbsCurve(nodes['CurveShape']):
            degree='d',
            normal='nr',
            sections='s',
-           sweep='sw')
-    def createCircle(cls,
-                     radius:float=1.0,
-                     normal:Union[
-                         'data.Vector', 'plugs.Vector', tuple[float]
-                     ]=(0, 1, 0),
-                     sweep:Union[float, 'plugs.Number' ]=math.radians(360.0),
-                     degree:Union[int, 'plugs.Number']=3,
-                     sections:Union[int, 'plugs.Number']=8,
-                     center:Union[
-                         'data.Vector',
-                         'plugs.Vector',
-                         tuple[float]
-                     ]=(0, 0, 0),
-                     name:Optional[str]=None):
+           sweep='sw',
+           constructionHistory='ch',
+           returnNode='rn')
+    def createCircle(
+            cls,
+            radius:float=1.0,
+            normal:Union[
+                'data.Vector', 'plugs.Vector', tuple[float]
+            ]=(0, 1, 0),
+            sweep:Union[float, 'plugs.Number' ]=math.radians(360.0),
+            degree:Union[int, 'plugs.Number']=3,
+            sections:Union[int, 'plugs.Number']=8,
+            center:Union[
+                'data.Vector',
+                'plugs.Vector',
+                tuple[float]
+            ]=(0, 0, 0),
+            name:Optional[str]=None,
+            constructionHistory:Optional[bool]=None,
+            returnNode:bool=False
+    ) -> Union['NurbsCurve', tuple['NurbsCurve', Optional['MakeNurbCircle']]]:
+        """
+        :param constructionHistory/ch: defaults to True if any of the inputs are
+            plugs, otherwise False
+        :return: If *returnNode* is True, tuple of shape, node; otherwise just
+            the shape. The node will be None if constructionHistory resolves to
+            False.
+        """
+
         radius, _, radiusIsPlug = _mm.info(radius)
         sweep, _, sweepIsPlug = _mm.info(sweep)
         degree, _, degreeIsPlug = _mm.info(degree)
@@ -59,13 +73,17 @@ class NurbsCurve(nodes['CurveShape']):
 
         shape = node.attr('outputCurve').createShape()
 
-        if not any((radiusIsPlug,
-                    sweepIsPlug,
-                    degreeIsPlug,
-                    sectionsIsPlug,
-                    centerIsPlug,
-                    normalIsPlug)):
+        if constructionHistory is None:
+            constructionHistory = any((radiusIsPlug,
+                                       sweepIsPlug,
+                                       degreeIsPlug,
+                                       sectionsIsPlug,
+                                       centerIsPlug,
+                                       normalIsPlug))
+
+        if constructionHistory is False:
             shape.deleteHistory()
+            node = None
 
         xf = shape.parent
 
@@ -77,7 +95,10 @@ class NurbsCurve(nodes['CurveShape']):
             xf.name = name
             xf.conformShapeNames()
 
-        return xf
+        if returnNode:
+            return shape, node
+
+        return shape
 
     @classmethod
     @short(degree='d',
