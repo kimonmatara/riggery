@@ -490,10 +490,9 @@ class SkinCluster(GeometryFilter):
             r.copySkinWeights(**kwargs)
 
         finally:
-            # if autoLabel:
-            #     for joint, state in labelStates.items():
-            #         joint.setLabelState(state)
-            ...
+            if autoLabel:
+                for joint, state in labelStates.items():
+                    joint.setLabelState(state)
 
         return self
 
