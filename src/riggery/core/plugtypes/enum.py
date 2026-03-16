@@ -244,7 +244,7 @@ class Enum(__pool__['Int']):
 
     def setDefaultValue(self, value:Union[int, str]):
         if isinstance(value, str):
-            value = self.enumNames.index(value)
+            value = self.__apimfn__().fieldValue(value)
         return super().setDefaultValue(value)
 
     #-----------------------------------------|    Get
