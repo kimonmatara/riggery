@@ -459,6 +459,7 @@ class SkinCluster(GeometryFilter):
         # Resolve influence association
         if influenceAssociation is None:
             influenceAssociation = ['closestJoint', 'oneToOne']
+
             if autoLabel:
                 influenceAssociation.insert(0, 'label')
 
@@ -487,10 +488,12 @@ class SkinCluster(GeometryFilter):
 
         try:
             r.copySkinWeights(**kwargs)
+
         finally:
-            if autoLabel:
-                for joint, state in labelStates.items():
-                    joint.setLabelState(state)
+            # if autoLabel:
+            #     for joint, state in labelStates.items():
+            #         joint.setLabelState(state)
+            ...
 
         return self
 
