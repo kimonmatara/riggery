@@ -217,30 +217,6 @@ def selectVertsInsideMesh(carrierMesh: str,
 def selectVertsInsideCylinder(carrierMesh:str,
                               cylinderBase:om.MPoint,
                               cylinderVector:om.MVector,
-                              cylinderRadius:float) -> Iterator[int]:
-    fnCarrier = getMeshFn(carrierMesh)
-
-    axisLength = cylinderVector.length()
-    axisDir = cylinderVector.normal()
-    radiusSq = cylinderRadius ** 2
-
-    for vertIdx in range(fnCarrier.numVertices):
-        pt = fnCarrier.getPoint(vertIdx, om.MSpace.kWorld)
-        toVert = om.MVector(pt - cylinderBase)
-
-        projection = toVert * axisDir
-
-        if projection < 0 or projection > axisLength:
-            continue
-
-        radialDistSq = (toVert - axisDir * projection).length() ** 2
-
-        if radialDistSq <= radiusSq:
-            yield vertIdx
-
-def selectVertsInsideCylinder(carrierMesh:str,
-                              cylinderBase:om.MPoint,
-                              cylinderVector:om.MVector,
                               cylinderRadius:float,
                               firstHit:bool=False) -> Iterator[int]:
     """
@@ -295,3 +271,28 @@ def selectVertsInsideCylinder(carrierMesh:str,
                 continue
 
         yield vertIdx
+
+def selectVertsCloseToMeshSurface(carrierMesh:str,
+                                  selectorMesh:str,
+                                  threshold:float) -> Iterator[int]:
+    """
+    :param carrierMesh: the mesh that carries the vertices amongst which to
+        select; shape node, as a string
+    :param selectorMesh: the mesh used as the 'selector'; shape node, as a
+        string
+    :param threshold: the distance threshold from the selector mesh surface
+    """
+    fnCarrier = getMeshFn(carrierMesh)
+    fnSelector = getMeshFn(selectorMesh)
+
+    thresholdSq = threshold ** 2
+    carrierPts = fnCarrier.getPoints(om.MSpace.kWorld)
+
+    for i, pt in enumerate(carrierPts):
+        closest, _ = fnSelector.getClosestPoint(pt, om.MSpace.kWorld)
+        dx = pt.x - closest.x
+        dy = pt.y - closest.y
+        dz = pt.z - closest.z
+
+        if dx*dx + dy*dy + dz*dz <= thresholdSq:
+            yield i
