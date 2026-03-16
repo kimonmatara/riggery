@@ -708,7 +708,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                     defaultValue=None,
                     multi=False,
                     input=None,
-                    lock=False):
+                    lock=False,
+                    hidden=None):
         """
         Creates a quaternion attribute, with default values
         (0.0, 0.0, 0.0, 1.0).
@@ -716,8 +717,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         _self = str(self)
 
         kwargs = {}
+
         if multi:
             kwargs['multi'] = True
+
+        if hidden is not None:
+            kwargs['hidden'] = hidden
 
         m.addAttr(_self, ln=name, at='compound', nc=4, **kwargs)
 
@@ -733,6 +738,9 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         if channelBox is not None:
             kwargs['channelBox'] = channelBox
+
+        if hidden is not None:
+            kwargs['hidden'] = hidden
 
         for ax, defaultValue in zip('XYZW', defaultValues):
             m.addAttr(_self,
