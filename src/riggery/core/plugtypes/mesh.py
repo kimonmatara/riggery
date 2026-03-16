@@ -25,6 +25,12 @@ class Mesh(plugs['Geometry']):
 
     #--------------------------------------|    Edits
 
+    # @cache_plug_method
+    # def fillHole(self) -> 'Mesh':
+    #     node = nodes['PolyCloseBorder'].createNode()
+    #     self >> node.attr('inputPolymesh')
+    #     return node.attr('output')
+
     @cache_plug_method
     def separate(self) -> list['Mesh']:
         """
