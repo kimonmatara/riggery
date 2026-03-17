@@ -311,7 +311,8 @@ class Joint(nodes['Transform']):
                         axis:Literal['x', 'y', 'z', '-x', '-y', '-z'],
                         diskRadius:float,
                         diskThickness:float,
-                        firstHit:bool=False) -> Iterator[str]:
+                        firstHit:bool=False,
+                        centered:bool=True) -> Iterator[str]:
         """
         Yields vertices on *mesh* that fall within a 'coin'-like disk projected
         from this joint.
@@ -328,7 +329,11 @@ class Joint(nodes['Transform']):
         diskCenter = jointMatrix.w
         diskVector = jointMatrix.getAxis(axis).normal() * diskThickness
 
-        cylinderBase = diskCenter - diskVector * 0.5
+        if centered:
+            cylinderBase = diskCenter - diskVector * 0.5
+        else:
+            cylinderBase = diskCenter
+
         _mesh = str(mesh)
 
         for i in _mu.selectVertsInsideCylinder(_mesh,
