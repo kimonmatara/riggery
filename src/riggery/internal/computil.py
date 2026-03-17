@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, Literal
 import maya.api.OpenMaya as om
 
 
@@ -125,3 +125,18 @@ def getCompMObjectFromIndices(shape:Union[om.MObject, om.MDagPath],
         )
 
     return comp
+
+def getPointCompExtFromShapeMObject(shape:om.MObject) -> Literal['vtx', 'cv']:
+    """
+    :raises TypeError: unexpected geometry type
+    """
+    if shape.hasFn(om.MFn.kMesh):
+        return 'vtx'
+
+    if shape.hasFn(om.MFn.kNurbsCurve):
+        return 'cv'
+
+    if shape.hasFn(om.MFn.kNurbsSurface):
+        return 'cv'
+
+    raise TypeError("unexpected geometry type: {}".format(shape.apiTypeStr))
