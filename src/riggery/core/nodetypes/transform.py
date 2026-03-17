@@ -372,6 +372,36 @@ class Transform(nodes['DagNode']):
         m.makeIdentity(str(self), *args, **kwargs)
         return self
 
+    @short(worldSpace='ws',
+           zeroChannels='zc')
+    def forceToOrigin(self,
+                      worldSpace:bool=False,
+                      zeroChannels:bool=False):
+        """
+        Unlocks and releases SRT channels and ``offsetParentMatrix``.
+        """
+        for attr in ('t', 'r', 's', 'shear', 'opm'):
+            self.attr(attr).release(r=True)
+
+        self.attr('t').set(data.Point())
+        self.attr('r').set(data.EulerRotation())
+        self.attr('s').set(data.Vector((1, 1, 1)))
+        self.attr('shear').set(data.Vector((0, 0, 0)))
+        self.attr('opm').set(data.Matrix())
+
+        if worldSpace:
+            pnt = self.parent
+
+            if pnt:
+                matrix = r.data.Matrix() * pnt.getMatrix(ws=True).inverse()
+
+                if zeroChannels:
+                    self.attr('opm').set(matrix)
+                else:
+                    self.setMatrix(matrix)
+
+        return self
+
     @short(translate='t', rotate='r', scale='s', shear='sh')
     def resetSRT(self, translate=None, rotate=None, scale=None, shear=None):
         """
