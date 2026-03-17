@@ -51,3 +51,15 @@ class Morph(WeightGeometryFilter):
                            targetMesh:'nodes.DagNode'):
         targetMesh = nodes['DagNode'](targetMesh).toShape()
         targetMesh.worldOutput >> self.attr('morphTarget')[index]
+
+    #---------------------------------|    Weights
+
+    def getWeights(self, index:int) -> list[float]:
+        plug = self.attr('weightList')
+        return plug[index].attr('weights'
+                                ).readWeightsMulti(self.numPoints(index), 1.0)
+
+    def setWeights(self, index:int, weights:list[float]):
+        plug = self.attr('weightList')
+        plug[index].attr('weights').writeWeightsMulti(weights)
+        return self
