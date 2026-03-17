@@ -94,13 +94,18 @@ class Shape(nodes['DagNode']):
     def removeInstance(self) -> None:
         m.parent(str(self), removeObject=True, shape=True)
 
-    @short(name='n')
-    def duplicate(self, *, name:Optional[str]=None) -> list:
+    @short(name='n',
+           intermediate='i',
+           parent='p')
+    def duplicate(self, *,
+                  name:Optional[str]=None,
+                  parent:Optional['nodes.Transform']=None,
+                  intermediate:Optional[bool]=None) -> list:
         """
         .. warning::
 
             This is not implemented the same as in Maya / PyMEL; the shape
-            is strictly duplicated under its existing parent.
+            is strictly duplicated at the shape level.
 
         :param name/n: an optional name for the copy; if omitted, defaults to
             standard shape naming
@@ -111,13 +116,17 @@ class Shape(nodes['DagNode']):
         px2 = px1.duplicate()[0]
         m.delete(str(px1))
         shape = px2.shape
-        shape.parent = self.parent
+        shape.parent = self.parent if parent is None else parent
         m.delete(str(px2))
 
         if name is None:
             shape.conformShapeName()
         else:
             shape.name = name
+
+        if intermediate is not None:
+            shape.attr('intermediateObject').set(intermediate)
+
         return [shape]
 
     #------------------------------|    Conform shape name
