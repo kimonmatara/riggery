@@ -803,9 +803,9 @@ class SkinCluster(GeometryFilter):
             infls = list(self.influence)
             for x in infls:
                 m.skinCluster(str(self),
-                                  e=True,
-                                  lw=state,
-                                  inf=str(x))
+                              e=True,
+                              lw=state,
+                              inf=str(x))
 
     def lockInfluence(self, *influences, flipOthers:bool=False):
         self._setLockInfls(influences, True, flipOthers=flipOthers)
@@ -1263,23 +1263,42 @@ class SkinCluster(GeometryFilter):
         """
         :return: The index for the given influence object (typically a joint).
         """
+        if isinstance(influence, int):
+            return influence
+
         if isinstance(influence, str):
-            return oma.MFnSkinCluster(
-                self.__apimobject__()
-            ).indexForInfluenceObject(_s2a.getMDagPath(influence))
+            dp = _s2a.getMDagPath(influence)
 
-        if isinstance(influence, nodes['Transform']):
-            return oma.MFnSkinCluster(
-                self.__apimobject__()
-            ).indexForInfluenceObject(influence.__apimdagpath__())
+        elif isinstance(influence, nodes['Transform']):
+            dp = influence.__apimdagpath__()
 
-        raise TypeError("expected str or Transform")
+        else:
+            raise TypeError("expected int, str or Transform")
+
+        fn = oma.MFnSkinCluster(self.__apimobject__())
+
+        try:
+            return fn.indexForInfluenceObject(dp)
+
+        except RuntimeError:
+            pn = dp.partialPathName()
+            raise RuntimeError("couldn't retrieve index for influence "
+                               f"object '{pn}'")
+
+    def getJointAtIndex(self, index:str) -> 'nodes.Transform':
+        out = next(self.attr('matrix')[index].iterInputs(type='transform'),
+                   None)
+        if out is None:
+            raise RuntimeError(
+                f"couldn't retrieve influence object at index {index}"
+            )
+        return out
 
     def iterInfluenceIndices(self) -> Iterator[int]:
         """
         :return: An iterator of influence indices.
         """
-        mfn = om.MFnSkinCluster(self.__apimobject__())
+        mfn = oma.MFnSkinCluster(self.__apimobject__())
 
         for infl in mfn.influenceObjects():
             yield mfn.indexForInfluenceObject(infl)
@@ -1340,21 +1359,44 @@ class SkinCluster(GeometryFilter):
             encountered, they will be interpreted as UV or UVW indices; if
             omitted, all components will be wrangled
         """
-        influence = self._inflToIndex(influence)
         shape = self._getShapeMDagPathAtIndex(0)
         comps = _cu.getCompMObjectFromIndices(shape, components)
+        inflIndex = self._inflToIndex(influence)
 
-        if not isinstance(weights, (int, float)):
-            weights = om.MDoubleArray(weights)
-            influence = om.MIntArray([influence])
+        if m.currentCtx() == 'artAttrSkinContext':
+            compIndices = om.MFnSingleIndexedComponent(comps)
+            compFn = om.MFnSingleIndexedComponent(comps)
+            indices = compFn.getElements()
+            compExtension = _cu.getPointCompExtFromShapeMObject(shape.node())
+            _shape = shape.partialPathName()
+            components = [f"{_shape}.{compExtension}[{i}]" for i in indices]
+            _joint = str(self.getJointAtIndex(inflIndex))
 
-        oma.MFnSkinCluster(self.__apimobject__()).setWeights(
-            shape,
-            comps,
-            influence,
-            weights,
-            normalize=False
-        )
+            if isinstance(weights, (float, int)):
+                m.skinPercent(str(self),
+                              *components,
+                              transformValue=(_joint, weights))
+            else:
+                _self = str(self)
+
+                for comp, weight in zip(components, weights):
+                    m.skinPercent(_self,
+                                  comp,
+                                  transformValue=(_joint, weight))
+        else:
+            if isinstance(weights, (float, int)):
+                infl = inflIndex
+            else:
+                weights = om.MDoubleArray(weights)
+                infl = om.MIntArray([inflIndex])
+
+            oma.MFnSkinCluster(self.__apimobject__()).setWeights(
+                shape,
+                comps,
+                infl,
+                weights,
+                normalize=False
+            )
 
         return self
 
@@ -1381,10 +1423,23 @@ class SkinCluster(GeometryFilter):
         """
         shape = self._getShapeMDagPathAtIndex(0)
         comps = _cu.getCompMObjectFromIndices(shape, components)
+        inflIndex = self._inflToIndex(influence)
 
-        mFn = oma.MFnSkinCluster(self.__apimobject__())
-        influence = self._inflToIndex(influence)
-        mFn.setWeights(shape, comps, influence, weight, normalize=False)
+        if m.currentCtx() == 'artAttrSkinContext':
+            _shape = shape.partialPathName()
+            compFn = om.MFnSingleIndexedComponent(comps)
+            compIndices = compFn.getElements()
+            compExt = _cu.getPointCompExtFromShapeMObject(shape.node())
+            _joint = self.getJointAtIndex(inflIndex)
+
+            comps = (f"{_shape}.{compExt}[{i}]" for i in compIndices)
+
+            m.skinPercent(str(self),
+                          *comps,
+                          transformValue=(_joint, weight))
+        else:
+            mFn = oma.MFnSkinCluster(self.__apimobject__())
+            mFn.setWeights(shape, comps, inflIndex, weight, normalize=False)
 
         return self
 
@@ -1413,22 +1468,37 @@ class SkinCluster(GeometryFilter):
             encountered, they will be interpreted as UV or UVW indices; if
             omitted, all components will be wrangled
         """
-        influences = om.MIntArray([self._inflToIndex(x) for x in influences])
+        inflIndices = om.MIntArray([self._inflToIndex(x) for x in influences])
+        shapeMDagPath = self._getShapeMDagPathAtIndex(0)
+        compMObject = _cu.getCompMObjectFromIndices(shapeMDagPath, components)
 
-        # Right now the weight list is per-joint
-        # We need to convert to per-component, and then flatten
-        weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
+        if m.currentCtx() == 'artAttrSkinContext':
+            compFn = om.MFnSingleIndexedComponent(compMObject)
+            compIndices = compFn.getElements()
+            compExt = _cu.getPointCompExtFromShapeMObject(shapeMDagPath.node())
+            _shape = shapeMDagPath.partialPathName()
+            _self = str(self)
+            _joints = list(map(str, map(self.getJointAtIndex, inflIndices)))
 
-        shape = self._getShapeMDagPathAtIndex(0)
-        comps = _cu.getCompMObjectFromIndices(shape, components)
-
-        mFn = oma.MFnSkinCluster(self.__apimobject__())
-
-        mFn.setWeights(shape,
-                       comps,
-                       influences,
-                       weights,
-                       normalize=False)
+            # zip(*weights) transposes from per-joint to per-component
+            for compIndex, perJointWeights in zip(compIndices, zip(*weights)):
+                m.skinPercent(
+                    _self,
+                    f"{_shape}.{compExt}[{compIndex}]",
+                    transformValue=[
+                        (_joint, w) for _joint, w in zip(_joints,
+                                                         perJointWeights)
+                    ]
+                )
+        else:
+            # Convert to per-component and then flatten
+            weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
+            mFn = oma.MFnSkinCluster(self.__apimobject__())
+            mFn.setWeights(shapeMDagPath,
+                           compMObject,
+                           inflIndices,
+                           weights,
+                           normalize=False)
 
         return self
 
@@ -1451,19 +1521,38 @@ class SkinCluster(GeometryFilter):
             encountered, they will be interpreted as UV or UVW indices; if
             omitted, all components will be wrangled
         """
+        shapeMDagPath = self._getShapeMDagPathAtIndex(0)
+        compMObject = _cu.getCompMObjectFromIndices(shapeMDagPath, components)
         mFn = oma.MFnSkinCluster(self.__apimobject__())
-        influences = om.MIntArray([mFn.indexForInfluenceObject(x)
-                                   for x in mFn.influenceObjects()])
-        weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
-        shape = self._getShapeMDagPathAtIndex(0)
-        comps = _cu.getCompMObjectFromIndices(shape, components)
-        mFn.setWeights(shape,
-                       comps,
-                       influences,
-                       weights,
-                       normalize=False)
 
-        return self
+        if m.currentCtx() == 'artAttrSkinContext':
+            _joints = [x.partialPathName() for x in mFn.influenceObjects()]
+            compFn = om.MFnSingleIndexedComponent(compMObject)
+            compIndices = compFn.getElements()
+            compExt = _cu.getPointCompExtFromShapeMObject(shapeMDagPath.node())
+            _shape = shapeMDagPath.partialPathName()
+            _self = str(self)
+
+            for compIndex, perJointWeights in zip(compIndices, zip(*weights)):
+                m.skinPercent(
+                    _self,
+                    f"{_shape}.{compExt}[{compIndex}]",
+                    transformValue=[
+                        (_joint, w) for _joint, w in zip(_joints,
+                                                         perJointWeights)
+                    ]
+                )
+        else:
+            inflIndices = om.MIntArray([mFn.indexForInfluenceObject(x)
+                                        for x in mFn.influenceObjects()])
+            weights = om.MDoubleArray(list(chain.from_iterable(zip(*weights))))
+            mFn.setWeights(shapeMDagPath,
+                           compMObject,
+                           inflIndices,
+                           weights,
+                           normalize=False)
+
+            return self
 
     def getWeightsForInfluences(
             self,
@@ -1494,11 +1583,7 @@ class SkinCluster(GeometryFilter):
         comps = _cu.getCompMObjectFromIndices(shape, components)
 
         mFn = oma.MFnSkinCluster(self.__apimobject__())
-        weights = mFn.getWeights(
-            shape,
-            comps,
-            influences
-        )
+        weights = mFn.getWeights(shape, comps, influences)
 
         # Right now weights are per-component, and flat. Must group and
         # transpose
