@@ -1,3 +1,4 @@
+from typing import Union, Optional, Literal
 from riggery.general.functions import short
 
 from ..nodetypes import __pool__ as nodes
@@ -43,6 +44,7 @@ class Morph(WeightGeometryFilter):
 
         origShape.localOutput >> self.attr('originalGeometry')[index]
         origShape.worldOutput >> self.attr('input')[index].attr('inputGeometry')
+        self.attr('outputGeometry')[index] >> baseMesh.input
 
     def _connectTargetMesh(self,
                            index:int,
