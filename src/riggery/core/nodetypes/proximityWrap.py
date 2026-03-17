@@ -14,6 +14,7 @@ import maya.cmds as m
 from ..lib.selection import keepsel
 from ..lib import names as _nm
 
+from riggery.core.lib import mixedmode as _mm
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.strings import join_camel, cap
@@ -930,6 +931,48 @@ class ProximityWrap(WeightGeometryFilter):
             attrName = join_camel(('driver', detailName))
             plug = slot.attr(attrName)
             detailContent >> plug
+
+    #------------------|    Global scale management
+
+    def putGlobalScale(self,
+                       source:Union[
+                           int,
+                           float,
+                           str,
+                           'plugs.Number',
+                           'plugs.Vector',
+                           'plugs.Matrix'
+                       ]):
+        """
+        Parses an input or value for 'scaleCompensation' from a variety of
+        sources. For the cleanest connection, pass a scalar.
+        """
+        source, dim, isPlug = _mm.info(source)
+
+        if dim is None:
+            self.attr('scaleCompensation').put(source, isPlug)
+
+        elif dim == 3:
+            if isPlug:
+                children = list(source.children)
+                scale = children[0].average(*children[1:])
+                self.attr('scaleCompensation').connectInput(scale)
+            else:
+                scale = sum(source) / len(source)
+                self.attr('scaleCompensation').set(scale)
+
+        elif dim == 16:
+            if isPlug:
+                children = list(source.decompose()['scale'].children)
+                scale = children[0].average(*children[1:])
+                self.attr('scaleCompensation').connectInput(scale)
+            else:
+                self.attr('scaleCompensation').set(source.averageScale())
+
+        else:
+            raise TypeError("expected a number, vector or matrix")
+
+        return self
 
     #------------------|    Granular weight management
 
