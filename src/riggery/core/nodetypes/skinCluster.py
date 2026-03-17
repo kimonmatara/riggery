@@ -1363,8 +1363,7 @@ class SkinCluster(GeometryFilter):
         comps = _cu.getCompMObjectFromIndices(shape, components)
         inflIndex = self._inflToIndex(influence)
 
-        if m.currentCtx() == 'artAttrSkinContext':
-            compIndices = om.MFnSingleIndexedComponent(comps)
+        if self._useSkinPercent():
             compFn = om.MFnSingleIndexedComponent(comps)
             indices = compFn.getElements()
             compExtension = _cu.getPointCompExtFromShapeMObject(shape.node())
@@ -1425,7 +1424,7 @@ class SkinCluster(GeometryFilter):
         comps = _cu.getCompMObjectFromIndices(shape, components)
         inflIndex = self._inflToIndex(influence)
 
-        if m.currentCtx() == 'artAttrSkinContext':
+        if self._useSkinPercent():
             _shape = shape.partialPathName()
             compFn = om.MFnSingleIndexedComponent(comps)
             compIndices = compFn.getElements()
@@ -1472,7 +1471,7 @@ class SkinCluster(GeometryFilter):
         shapeMDagPath = self._getShapeMDagPathAtIndex(0)
         compMObject = _cu.getCompMObjectFromIndices(shapeMDagPath, components)
 
-        if m.currentCtx() == 'artAttrSkinContext':
+        if self._useSkinPercent():
             compFn = om.MFnSingleIndexedComponent(compMObject)
             compIndices = compFn.getElements()
             compExt = _cu.getPointCompExtFromShapeMObject(shapeMDagPath.node())
@@ -1525,7 +1524,7 @@ class SkinCluster(GeometryFilter):
         compMObject = _cu.getCompMObjectFromIndices(shapeMDagPath, components)
         mFn = oma.MFnSkinCluster(self.__apimobject__())
 
-        if m.currentCtx() == 'artAttrSkinContext':
+        if self._useSkinPercent():
             _joints = [x.partialPathName() for x in mFn.influenceObjects()]
             compFn = om.MFnSingleIndexedComponent(compMObject)
             compIndices = compFn.getElements()
@@ -1671,3 +1670,12 @@ class SkinCluster(GeometryFilter):
         mfn.setBlendWeights(shape, comps, om.MDoubleArray(weights))
 
         return self
+
+    def hasLockedWeights(self) -> bool:
+        for slot in self.attr('lockWeights'):
+            if slot():
+                return True
+        return False
+
+    def _useSkinPercent(self) -> bool:
+        return 'artAttrSkinContext' in m.currentCtx() or self.hasLockedWeights()
