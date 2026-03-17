@@ -22,7 +22,12 @@ def _fuzzySelect(items):
         allMatches = list(without_duplicates(allMatches))
 
         def deferredSelect():
-            m.select(allMatches, replace=True)
+            m.select(cl=True)
+            for x in allMatches:
+                try:
+                    m.select(x, add=True)
+                except:
+                    continue
 
         m.evalDeferred(deferredSelect)
 
