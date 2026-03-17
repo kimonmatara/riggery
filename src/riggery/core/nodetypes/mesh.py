@@ -259,16 +259,20 @@ class Mesh(SurfaceShape):
                     'plugs.Matrix'
                 ]
             ]=None
-    ):
+    ) -> dict:
         """
+        The rest of the \*\*kwargs concern the final proximity wrap stage.
+
         :param startMesh: the 'base' mesh for the delta
         :param endMesh: the 'target' mesh for the delta
         :param uvSpace: use this if *startMesh* and *endMesh* have a different
             topology but different UVs; defaults to True if either *startUVSet*
             or *endUVSet* are provided, otherwise False
-
-        The rest of the \*\*kwargs concern the final proximity wrap stage.
+        :return: A dictionary with these keys: 'transferAttributes' (may be
+            omitted), 'proximityWrap'.
         """
+        out = {}
+
         # ingest start mesh / end mesh as shapes
         startShape = nodes['DagNode'](startMesh).toShape()
         startShapeHistoryInput = startShape.getHistoryInput()
@@ -310,6 +314,9 @@ class Mesh(SurfaceShape):
                 sourceUVSpace=endUVSet,
                 targetUVSpace=startUVSet
             )
+
+            out['transferAttributes'] = transferNode
+
             startShape.localOutput \
                 >> transferNode.attr('input')[0].attr('inputGeometry')
 
@@ -322,7 +329,7 @@ class Mesh(SurfaceShape):
             morphed = endShape.localOutput
 
         # Wrap
-        wrapNode = nodes['ProximityWrap'].createNode()
+        out['proximityWrap'] = wrapNode = nodes['ProximityWrap'].createNode()
 
         if smoothNormals is not None:
             wrapNode.attr('smoothNormals').put(smoothNormals)
@@ -348,4 +355,4 @@ class Mesh(SurfaceShape):
         # complete the loop
         wrapNode.attr('outputGeometry')[0] >> self.input
 
-        return self
+        return out
