@@ -2,6 +2,7 @@ import re
 from typing import Union, Optional, Iterable, Literal
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
+from ..plugtypes import __pool__ as plugs
 from ..elem import Elem
 
 from riggery.general.iterables import expand_tuples_lists
@@ -26,7 +27,7 @@ class Mesh(SurfaceShape):
 
     def getUVSet(self) -> str:
         """Returns the name of the current UV set."""
-        return m.polyUVSet(str(self), q=True, currentUVSet=True)
+        return m.polyUVSet(str(self), q=True, currentUVSet=True)[0]
 
     getCurrentUVSetName = getUVSet # for parity with PyMEL
 
@@ -111,7 +112,7 @@ class Mesh(SurfaceShape):
     POLYINFO_INDICES_RETURN_PAT = re.compile(r"(?<=\:|[0-9])\s+([0-9]+)")
 
     def vertsToEdges(self, *vertIndices) -> list[list[int]]:
-        """q
+        """
         :return: A list of lists, where each sub-list comprises the indices for
             the edges connected to the specified vertex.
         """
@@ -233,3 +234,118 @@ class Mesh(SurfaceShape):
             kw['userNormals'] = True
 
         return m.polyCompare(str(self), str(otherMesh) **kw)
+
+    #-------------------------------------|    Deformation effects
+
+    def copyDeformDelta(
+            self,
+            startMesh:'nodes.DagNode',
+            endMesh:'nodes.DagNode',
+
+            # UV mode
+            uvSpace:Optional[bool]=None,
+            startUVSet:Optional[str]=None,
+            endUVSet:Optional[str]=None,
+
+            # Wrap settings
+            smoothNormals:Optional[Union[int, 'plugs.Number']]=None,
+            smoothInfluences:Optional[Union[int, 'plugs.Number']]=None,
+            globalScale:Optional[
+                Union[
+                    int,
+                    float,
+                    'plugs.Number',
+                    'data.Matrix',
+                    'plugs.Matrix'
+                ]
+            ]=None
+    ):
+        """
+        :param startMesh: the 'base' mesh for the delta
+        :param endMesh: the 'target' mesh for the delta
+        :param uvSpace: use this if *startMesh* and *endMesh* have a different
+            topology but different UVs; defaults to True if either *startUVSet*
+            or *endUVSet* are provided, otherwise False
+
+        The rest of the \*\*kwargs concern the final proximity wrap stage.
+        """
+        # ingest start mesh / end mesh as shapes
+        startShape = nodes['DagNode'](startMesh).toShape()
+        startShapeHistoryInput = startShape.getHistoryInput()
+        endShape = nodes['DagNode'](endMesh).toShape()
+
+        # resolve space and uv sets
+        if uvSpace is None:
+            uvSpace = bool(startUVSet or endUVSet)
+
+        if uvSpace:
+            if not startUVSet:
+                startUVSet = startShape.uvSet
+
+            if not endUVSet:
+                endUVSet = endShape.uvSet
+
+        # get our history input and orig shape
+        historyInput = self.getHistoryInput(create=True)
+        origShape = self.getOrigShape(create=True)
+
+        # resolve start / end orig shapes
+        startOrigShape = startShape.getOrigShape()
+
+        if not startOrigShape:
+            startOrigShape = startShape
+            
+        endOrigShape = endShape.getOrigShape()
+
+        if not endOrigShape:
+            endOrigShape = endShape
+
+        if uvSpace:
+            transferNode = nodes['TransferAttributes'].createNode(
+                transferPositions=True,
+                transferNormals=False,
+                transferUVs=False,
+                transferColors=False,
+                sampleSpace=3,
+                sourceUVSpace=endUVSet,
+                targetUVSpace=startUVSet
+            )
+            startShape.localOutput \
+                >> transferNode.attr('input')[0].attr('inputGeometry')
+
+            startOrigShape.localOutput \
+                >> transferNode.attr('originalGeometry')[0]
+
+            endShape.localOutput >> transferNode.attr('source')[0]
+            morphed = transferNode.attr('outputGeometry')[0]
+        else:
+            morphed = endShape.localOutput
+
+        # Wrap
+        wrapNode = nodes['ProximityWrap'].createNode()
+
+        if smoothNormals is not None:
+            wrapNode.attr('smoothNormals').put(smoothNormals)
+
+        if smoothInfluences is not None:
+            wrapNode.attr('smoothInfluences').put(smoothInfluences)
+
+        if globalScale is not None:
+            wrapNode.putGlobalScale(globalScale) # generalized, implement it
+
+        historyInput >> wrapNode.attr('input')[0].attr('inputGeometry')
+
+        origShape.localOutput >> wrapNode.attr('originalGeometry')[0]
+        morphed >> wrapNode.attr('drivers')[0].attr('driverGeometry')
+
+        startOrigShape.localOutput \
+            >> wrapNode.attr('drivers')[0].attr('driverBindGeometry')
+
+        if startShapeHistoryInput:
+            startShapeHistoryInput \
+                >> wrapNode.attr('drivers')[0].attr('driverReferenceGeometry')
+
+        # complete the loop
+        wrapNode.attr('outputGeometry')[0] >> self.input
+
+        return self
