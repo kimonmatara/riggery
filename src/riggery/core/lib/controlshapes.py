@@ -639,8 +639,11 @@ def captureSceneArchive(controls:Optional[Iterable[str]]=None, /,
         matches = m.ls(key, type='transform')
 
         if matches:
-            out[key] = ControlShape.capture(matches[0],
-                                            captureVisInput=False).macro()
+            try:
+                out[key] = ControlShape.capture(matches[0],
+                                                captureVisInput=False).macro()
+            except NoShapesError:
+                continue
 
     return out
 
