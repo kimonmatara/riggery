@@ -403,6 +403,19 @@ class Chain(list):
 
     ratios = property(fget=getRatios)
 
+    @short(byLength='bl')
+    def getMiddleJoint(self, byLength:bool=False) -> 'nodes.Joint':
+        if byLength:
+            ratios = list(self.ratios)
+            deltas = list((abs(0.5 - x) for x in ratios))
+            ranked = zip(deltas, self)
+            ranked = sorted(ranked,
+                            key=lambda pair: pair[0],
+                            reverse=0)
+            deltas, joints = zip(*ranked)
+            return joints[0]
+        return self[len(self) // 2]
+
     def pointAtRatio(self, atRatio:float):
         """
         :param atRatio: the ratio along the chain at which to retrieve a point
@@ -783,6 +796,8 @@ class Chain(list):
         return self
 
     #-------------------------------------------|    Proximity tests
+
+
 
     def getClosestJointsOn(self,
                            otherChain:'Chain',
