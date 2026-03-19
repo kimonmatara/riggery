@@ -842,12 +842,29 @@ class Chain(list):
 
         if maxNumber is not None and len(out) > maxNumber:
             joints, weights = zip(*out[:maxNumber])
-            weights = _mo.calcDistanceWeights(refPoint,
-                                              [j.worldPosition()
-                                               for j in joints])
+            weights = _mo.calcDistanceWeights(refPoint, [j.worldPosition()
+                                                         for j in joints])
             return list(zip(joints, weights))
 
         return out
+
+    # Stub
+    # def constrainToClosestJoints(self,
+    #                              slaveTransform:'nodes.Transform',
+    #                              maxNumber:int=2):
+    #     slave = nodes['Transform'](slaveTransform)
+    #
+    #     joints, weights = zip(
+    #         *self.getClosestJointsWithWeights(slaveTransform, maxNumber)
+    #     )
+    #
+    #     points = []
+    #     quats = []
+    #
+    #     # Translate matrix
+    #     refPoint = slave.worldPosition()
+    #     refQuat = slave.getMatrix(ws=True).quaternion()
+
 
     def getClosestJoints(self, refPoint:'data.Point') -> list['nodes.Joint']:
         """
