@@ -7,6 +7,7 @@ from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
 from . import mixedmode as _mm
 from . import names as _nm
+from riggery.general.numbers import floatrange
 
 TOLERANCE = 1e-10
 
@@ -844,3 +845,89 @@ def calcDistanceWeights(refPoint:'data.Point',
 
     return normalizeWeights([longestDistance / distance
                              for distance in distances])
+
+def parallelTransport(
+        startNormal:Union['data.Vector', 'plugs.Vector'],
+        tangents:Iterable[Union['data.Vector', 'plugs.Vector']],
+        endNormal:Optional[Union['data.Vector', 'plugs.Vector']]=None
+) -> list[Union['data.Vector'], 'plugs.Vector']:
+    """
+    Robust parallel transport solver with optional twist functionality.
+
+    :param startNormalHint: the normal to transport; this NOT expected to be
+        perpendicular to the first tangent
+    :param tangents: the tangents along which to transport the normal
+    :param endNormalHint: if this is provided, it will be used to distribute the
+        angle delta backwards; dfaults to None
+    :return: One normal vector per tangent.
+    """
+    #----------------|    Conform input arguments
+
+    startNormal, _, startNormalIsPlug = _mm.info(startNormal,
+                                                 (data['Vector'],
+                                                  plugs['Vector']),
+                                                 force=True)
+
+    tangentInfos = [_mm.info(tangent,
+                             (data['Vector'], plugs['Vector']),
+                             force=True)
+                    for tangent in tangents]
+
+    tangents = [tangentInfo[0] for tangentInfo in tangentInfos]
+
+    numTangents = len(tangentInfos)
+
+    if numTangents == 0:
+        raise ValueError("no tangents provided")
+
+    if endNormal is not None:
+        endNormal, _, endNormalIsPlug = _mm.info(endNormal,
+                                                 (data['Vector'],
+                                                  plugs['Vector']),
+                                                 force=True)
+
+    #----------------|    Resolve start normal hint
+
+    startTangent, _, startTangentIsPlug = tangentInfos[0]
+
+    if startTangentIsPlug:
+        _startTangent = startTangent()
+        startNormal *= _startTangent.quatTo(startTangent)
+
+    startNormal = startNormal.rejectFrom(startTangent)
+
+    #----------------|    Resolve end normal hint
+
+    if endNormal is not None:
+        endTangent, _, endTangentIsPlug = tangentInfos[-1]
+
+        if endTangentIsPlug:
+            _endTangent = endTangent()
+            endNormal *= _endTangent.quatTo(endTangent)
+
+        endNormal = endNormal.rejectFrom(endTangent)
+
+    #----------------|    Transport
+
+    if numTangents > 1:
+        normals = [startNormal]
+
+        for thisTangent, nextTangent in zip(tangents[:-1], tangents[1:]):
+            thisQuat = thisTangent.quatTo(nextTangent)
+            thisNormal = normals[-1] * thisQuat
+            normals.append(thisNormal)
+
+        if endNormal is not None:
+            angle = normals[-1].angleTo(endNormal, tangents[-1], shortest=True)
+            tweenRatios = list(floatrange(0, 1, numTangents+2))[1:-1]
+
+            normals = ([startNormal]
+                       + [normal.rotateByAxisAngle(tangent, angle * x)
+                          for normal, tangent, x in zip(normals[1:-1],
+                                                        tangents[1:-1],
+                                                        tweenRatios)]
+                       + [endNormal])
+
+        return normals
+
+    return [startNormal]
