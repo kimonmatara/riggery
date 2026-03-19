@@ -784,6 +784,36 @@ class Chain(list):
 
     #-------------------------------------------|    Proximity tests
 
+    def getClosestJointsOn(self,
+                           otherChain:'Chain',
+                           indices:bool=False) -> list:
+        """
+        For each joint on this chain, returns the closest joint on *otherChain*.
+        """
+        out = []
+
+        otherPoints = list(zip(otherChain,
+                               [x.worldPosition() for x in otherChain]))
+
+        for i, thisJoint in enumerate(self):
+            thisPoint = thisJoint.worldPosition()
+            bestMatch = None
+            bestDistance = None
+
+            for ii, (otherJoint, otherPoint) in enumerate(otherPoints):
+                vector = otherPoint - thisPoint
+                distance = vector.length()
+                if ii == 0 or distance < bestDistance:
+                    bestMatch = ii
+                    bestDistance = distance
+
+            out.append(bestMatch)
+
+        if indices:
+            return out
+
+        return [otherChain[i] for i in indices]
+
     @short(byBone='bb')
     def getClosestJoint(self,
                         refPoint:'data.Point',
