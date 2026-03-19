@@ -25,6 +25,11 @@ def conform(*args) -> list:
 
 class Chain(list):
 
+    #-------------------------------------------|    Errors
+
+    class EmptyChainError(Exception):
+        ...
+
     #-------------------------------------------|    Loaders
 
     @classmethod
@@ -777,102 +782,118 @@ class Chain(list):
         self[:] = self + lowerChain
         return self
 
-    def getClosestJointsOn(self, otherChain, indices:bool=False) -> list:
+    #-------------------------------------------|    Proximity tests
+
+    @short(byBone='bb')
+    def getClosestJoint(self,
+                        refPoint:'data.Point',
+                        byBone:bool=False) -> 'nodes.Joint':
         """
-        For each joint on this chain, returns the closest joint on *otherChain*.
+        :param refPoint: the world-space point to test against
+        :param byBone/bb: test against the closest point along each bone rather
+            than by proximity to joints; defaults to False
+        :return: The closest joint on this chain to *refPoint*.
         """
-        out = []
+        if byBone:
+            return self.getClosestBone(refPoint, returnRoot=True)
 
-        otherPoints = list(zip(otherChain,
-                               [x.worldPosition() for x in otherChain]))
+        pairs = sorted(self.iterDistancesJoints(refPoint),
+                       key=lambda pair: pair[0])
+        _, joints = zip(*pairs)
 
-        for i, thisJoint in enumerate(self):
-            thisPoint = thisJoint.worldPosition()
-            bestMatch = None
-            bestDistance = None
+        return joints[0]
 
-            for ii, (otherJoint, otherPoint) in enumerate(otherPoints):
-                vector = otherPoint - thisPoint
-                distance = vector.length()
-                if ii == 0 or distance < bestDistance:
-                    bestMatch = ii
-                    bestDistance = distance
+    @short(returnRoot='rr')
+    def getClosestBone(self,
+                       refPoint:'data.Point',
+                       returnRoot:bool=False) -> Union['nodes.Joint', 'Chain']:
+        """
+        Test against the closest point along each bone.
 
-            out.append(bestMatch)
+        :param refPoint: the world-space point to test against
+        :param returnRoot/rr: return the bone root joint rather than a
+            :class:`Chain` instance; defaults to False
+        :return: The closest bone or bone root.
+        """
+        pairs = sorted(self.iterDistancesBones(refPoint,
+                                               returnRoot=returnRoot),
+                       key=lambda pair: pair[0])
+        _, out = zip(*pairs)
+        return out[0]
 
-        if indices:
-            return out
+    @short(returnRoot='rr')
+    def iterDistancesBones(self,
+                           refPoint:'data.Point',
+                           returnRoot:bool=False
+                           ) -> Iterator[tuple[float, 'Chain']]:
+        """
+        If *returnRoot* is on, yields tuples of <distance to closest point on
+        bone>, <joint>. Otherwise, yields <distance to closest joint>,
+        :class:`Chain`.
 
-        return [otherChain[i] for i in indices]
+        :param refPoint: the world point to test agiainst
+        :param returnRoot/rr: if True, return bone root joints rather than
+            :class:`Chain` instances; defaults to False.
+        """
+        points = list(self.points)
 
-    def getClosestBone(self, refPoint) -> 'Chain':
-        """Returns the closest bone to *refPoint*."""
         refPoint = data['Point'](refPoint)
-        candidates = []
 
-        for boneRootIndex, (thisPoint, nextPoint) in enumerate(
-                zip(self.points, list(self.points)[1:])
+        for (startJoint, endJoint), (thisPoint, nextPoint) in zip(
+                zip(self[:-1], self[1:]),
+                zip(points[:-1], points[1:])
         ):
-            closestPoint = _mo.closestPointOnLine(
-                refPoint,
-                thisPoint,
-                (nextPoint - thisPoint),
-                clamp=True
-            )
-            distance = (refPoint-closestPoint).length()
-            thisBone = Chain([self[boneRootIndex], self[boneRootIndex+1]])
-            candidates.append((distance, thisBone))
+            point = _mo.closestPointOnLine(refPoint,
+                                           thisPoint,
+                                           (nextPoint - thisPoint),
+                                           clamp=True)
 
-        candidates.sort(key=lambda x: x[0])
-        return candidates[0][1]
+            distance = (refPoint-point).length()
 
-    def getClosestJointsWithWeights(self,
-                                    refPoint:'data.Point',
-                                    maxNumber:Optional[int]=None, /
-                                    ) -> list[tuple['nodes.Transform', float]]:
+            yield distance, (startJoint if returnRoot
+                             else Chain((startJoint, endJoint)))
+
+    def iterDistancesJoints(self, refPoint:'data.Point'
+                            ) -> Iterator[tuple[float, 'nodes.Joint']]:
         """
-        Returns joints, and associated weights, ranked by proximity to
-        *refPoint*. Useful for quickly calculating multi-joint constraint
-        weights.
-
-        :return: list of tuple(joint, weight)
-        """
-        weights = _mo.calcDistanceWeights(refPoint, list(self.points))
-        out = list(sorted(zip(self, weights), key=lambda x: x[1], reverse=True))
-
-        if maxNumber is not None and len(out) > maxNumber:
-            joints, weights = zip(*out[:maxNumber])
-            weights = _mo.calcDistanceWeights(refPoint, [j.worldPosition()
-                                                         for j in joints])
-            return list(zip(joints, weights))
-
-        return out
-
-    # Stub
-    # def constrainToClosestJoints(self,
-    #                              slaveTransform:'nodes.Transform',
-    #                              maxNumber:int=2):
-    #     slave = nodes['Transform'](slaveTransform)
-    #
-    #     joints, weights = zip(
-    #         *self.getClosestJointsWithWeights(slaveTransform, maxNumber)
-    #     )
-    #
-    #     points = []
-    #     quats = []
-    #
-    #     # Translate matrix
-    #     refPoint = slave.worldPosition()
-    #     refQuat = slave.getMatrix(ws=True).quaternion()
-
-
-    def getClosestJoints(self, refPoint:'data.Point') -> list['nodes.Joint']:
-        """
-        :return: A list of this chain's member, ranked by proximity to
-        *refPoint*.
+        Yields tuples of <distance to ref point>, <joint>.
         """
         refPoint = data['Point'](refPoint)
-        ranked = ((joint.worldposition()))
+
+        yield from (((refPoint-point).length(), joint)
+                    for point, joint in zip(self.points, self))
+
+    def getConstraintTargets(self,
+                             refPoint:'data.Point',
+                             maxNumber:Optional[int]=None, *,
+                             byBone:bool=False
+                             ) -> list[tuple[float, 'nodes.Chain']]:
+        """
+        :param refPoint: the world point to test against
+        :param maxNumber: the maximum number of constraint targets to include;
+            defaults to None (all joints)
+        :param byBone/bb: test against the closest point on each bone, rather
+            than by proximity to joints; defaults to False
+        :return: A list of tuples, where each tuple comprises the constraint
+            weight and a target joint on this chain.
+        """
+        if byBone:
+            pairs = self.iterDistancesBones(refPoint, returnRoot=True)
+        else:
+            pairs = self.iterDistancesJoints(refPoint)
+
+        ranked = list(sorted(pairs, key=lambda pair: pair[0]))
+
+        if maxNumber:
+            ranked = ranked[:maxNumber]
+
+        distances, joints = zip(*ranked)
+        longestDistance = max(distances)
+
+        weights = _mo.normalizeWeights((longestDistance / distance
+                                        for distance in distances))
+
+        return list(zip(weights, joints))
 
     #-------------------------------------------|    Transformations
 
