@@ -899,12 +899,11 @@ def parallelTransport(
     #----------------|    Resolve end normal hint
 
     if endNormal is not None:
-        endTangent, _, endTangentIsPlug = tangentInfos[-1]
-
-        if endTangentIsPlug:
-            _endTangent = endTangent()
-            endNormal *= _endTangent.quatTo(endTangent)
-
+        # The end normal should not be 'transported' in the same way as the
+        # start normal for initialization; the semantics are different at the
+        # end of the curve; transporting the end hint would twist it in
+        # unhelpful ways
+        endTangent, _, _ = tangentInfos[-1]
         endNormal = endNormal.rejectFrom(endTangent)
 
     #----------------|    Transport
