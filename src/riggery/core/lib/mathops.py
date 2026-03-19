@@ -807,9 +807,8 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
     If there are any plugs in *weights*, the output will be a list of plugs.
     Otherwise, the output will be a list of floats.
     """
-
     weightInfo = [_mm.info(weight) for weight in weights]
-    num = len(weights)
+    num = len(weightInfo)
     weights = [x[0] for x in weightInfo]
     hasPlugs = any((x[2] for x in weightInfo))
 
@@ -831,20 +830,6 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
         return [1 / num] * num
 
     return [x / total for x in weights]
-
-def calcDistanceWeights(refPoint:'data.Point',
-                        targetPoints:list['data.Point']) -> list[float]:
-    """
-    Soft-only for now. Returns a weight for each *targetPoint* based on its
-    proximity to *refPoint*.
-    """
-    refPoint = data['Point'](refPoint)
-    targetPoints = list(map(data['Point'], targetPoints))
-    distances = [(x - refPoint).length() for x in targetPoints]
-    longestDistance = max(distances)
-
-    return normalizeWeights([longestDistance / distance
-                             for distance in distances])
 
 def parallelTransport(
         startNormal:Union['data.Vector', 'plugs.Vector'],
