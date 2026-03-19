@@ -48,10 +48,10 @@ class Mesh(SurfaceShape):
         return []
 
     @short(name='n', axis='a', uvSet='uv')
-    def createMeshFromUVSet(self, *,
-                            uvSet:Optional[str]=None,
-                            axis:Literal['x', 'y', 'z', '-x', '-y', '-z']='y',
-                            name:Optional[str]=None) -> 'nodes.Mesh':
+    def createMeshFromUVs(self, *,
+                          uvSet:Optional[str]=None,
+                          axis:Literal['x', 'y', 'z', '-x', '-y', '-z']='y',
+                          name:Optional[str]=None) -> 'nodes.Mesh':
         """
         Generates a flat mesh from the specified UV set.
 
@@ -103,6 +103,12 @@ class Mesh(SurfaceShape):
             xform.name = name
 
         shape = xform.shape
+
+        newMeshFn = om.MFnMesh(shape.__apimdagpath__())
+        uCoords, vCoords = shapeMFn.getUVs(*args)
+        newMeshFn.setUVs(uCoords, vCoords)
+        newMeshFn.assignUVs(uvCounts, uvIds)
+
         shape.assignDefaultShader()
 
         return shape
@@ -298,7 +304,7 @@ class Mesh(SurfaceShape):
 
         if not startOrigShape:
             startOrigShape = startShape
-            
+
         endOrigShape = endShape.getOrigShape()
 
         if not endOrigShape:
@@ -318,10 +324,10 @@ class Mesh(SurfaceShape):
             out['transferAttributes'] = transferNode
 
             startShape.localOutput \
-                >> transferNode.attr('input')[0].attr('inputGeometry')
+            >> transferNode.attr('input')[0].attr('inputGeometry')
 
             startOrigShape.localOutput \
-                >> transferNode.attr('originalGeometry')[0]
+            >> transferNode.attr('originalGeometry')[0]
 
             endShape.localOutput >> transferNode.attr('source')[0]
             morphed = transferNode.attr('outputGeometry')[0]
@@ -346,11 +352,11 @@ class Mesh(SurfaceShape):
         morphed >> wrapNode.attr('drivers')[0].attr('driverGeometry')
 
         startOrigShape.localOutput \
-            >> wrapNode.attr('drivers')[0].attr('driverBindGeometry')
+        >> wrapNode.attr('drivers')[0].attr('driverBindGeometry')
 
         if startShapeHistoryInput:
             startShapeHistoryInput \
-                >> wrapNode.attr('drivers')[0].attr('driverReferenceGeometry')
+            >> wrapNode.attr('drivers')[0].attr('driverReferenceGeometry')
 
         # complete the loop
         wrapNode.attr('outputGeometry')[0] >> self.input
