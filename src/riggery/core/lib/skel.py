@@ -27,7 +27,7 @@ class Chain(list):
 
     #-------------------------------------------|    Errors
 
-    class EmptyChainError(Exception):
+    class InsufficientJointsError(Exception):
         ...
 
     #-------------------------------------------|    Loaders
@@ -357,7 +357,7 @@ class Chain(list):
         num = len(self)
 
         if num < 2:
-            raise RuntimeError("not enough joints")
+            raise self.InsufficientJointsError("not enough joints")
 
         Matrix = data['Matrix']
         baseVectors, _ = _mo.calcMatrixChainBaseVectors(self.points, curlVector)
@@ -427,6 +427,7 @@ class Chain(list):
 
         for ratio, point in zip(ratios, points):
             interp[ratio] = point
+
         return data['Point'](interp[atRatio])
 
     @short(plug='p')
@@ -455,7 +456,7 @@ class Chain(list):
         :raises ValueError: Need at least two joints.
         """
         if len(self) < 2:
-            raise ValueError("need at least two joints")
+            raise self.InsufficientJointsError("need at least two joints")
 
         vectors = self.vectors
         _axes = [
@@ -797,8 +798,6 @@ class Chain(list):
 
     #-------------------------------------------|    Proximity tests
 
-
-
     def getClosestJointsOn(self,
                            otherChain:'Chain',
                            indices:bool=False) -> list:
@@ -908,6 +907,42 @@ class Chain(list):
         yield from (((refPoint-point).length(), joint)
                     for point, joint in zip(self.points, self))
 
+    def getBoneAtRatio(self, ratio:float) -> 'Chain':
+        """
+        If *ratio* is below 0 or above 1, the nearest bone in range will be
+        returned.
+
+        :param ratio: the length fraction along the chain
+        :raises InsufficientJointsError: the chain has fewer than two joints
+        :return: The bone on which the specified ratio falls.
+        """
+        numJoints = len(self)
+
+        if numJoints < 2:
+            raise self.InsufficientJointsError()
+
+        if numJoints == 2:
+            return self.copy()
+
+        if ratio < 0:
+            return next(self.bones)
+
+        if ratio > 1:
+            return list(self.bones)[-1]
+
+        ratios = list(self.ratios)
+
+        for i, ((thisRatio, nextRatio), bone) in enumerate(zip(
+                zip(ratios[:-1], ratios[1:]),
+                self.bones
+        )):
+            if i == numJoints - 1:
+                if ratio >= thisRatio and ratio <= 1:
+                    return bone
+            else:
+                if ratio >= thisRatio and ratio < nextRatio:
+                    return bone
+
     def getConstraintTargets(self,
                              refPoint:'data.Point',
                              maxNumber:Optional[int]=None, *,
@@ -919,8 +954,8 @@ class Chain(list):
             defaults to None (all joints)
         :param byBone/bb: test against the closest point on each bone, rather
             than by proximity to joints; defaults to False
-        :return: A list of tuples, where each tuple comprises the constraint
-            weight and a target joint on this chain.
+        :return: A list of tuples, where each tuple comprises the target weight
+            and a target joint on this chain.
         """
         if byBone:
             pairs = self.iterDistancesBones(refPoint, returnRoot=True)
@@ -970,7 +1005,7 @@ class Chain(list):
         num = len(self)
 
         if num < 3:
-            raise ValueError("need at least 3 joints")
+            raise self.InsufficientJointsError("need at least 3 joints")
 
         vectors = [v.normal() for v in self.vectors]
 
@@ -1044,7 +1079,7 @@ class Chain(list):
                                             curve=curve,
                                             parent=parent)
 
-        raise ValueError("need two or more joints")
+        raise self.InsufficientJointsError("need two or more joints")
 
     def createIkHandles(self, parent=None) -> list:
         """Creates one IK handle per bone."""
