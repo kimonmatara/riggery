@@ -5,6 +5,7 @@ from typing import Iterator, Optional, Union, Iterable
 import maya.api.OpenMaya as om
 import maya.cmds as m
 
+from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 from ..elem import Elem, ElemInstError
 from riggery.general.functions import short
@@ -449,6 +450,19 @@ class DagNode(DependNode):
     pickWalkChildren = property(iterPickWalkChildren,
                                 setPickWalkChildren,
                                 clearPickWalkChildren)
+
+    #-----------------------------------------|    Bounding box
+
+    @short(worldSpace='ws')
+    def getBoundingBox(self, worldSpace:bool=False) -> 'data.BoundingBox':
+        dp = self.__apimdagpath__()
+        fn = om.MFnDagNode(dp)
+        bbox = fn.boundingBox
+
+        if worldSpace:
+            bbox.transformUsing(dp.inclusiveMatrix())
+
+        return data['BoundingBox'].fromApi(bbox)
 
     #-----------------------------------------|    Repr
 
