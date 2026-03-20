@@ -114,14 +114,23 @@ class BoundingBox(data['Tensor']):
         self._setToApi(obj)
         return self
 
+    def expandToBoundingBox(self, bbox):
+        bbox = type(self)(bbox)
+        obj = self.api
+        obj.expand(bbox.api)
+        self._setToApi(obj)
+        return self
+
     def expandToPoints(self, points):
         """
         Expands the BBox to contain the specified points.
         :param points: the points to expand to
         """
         obj = self.api
+
         for point in points:
             obj.expand(om.MPoint(point))
+
         self._setToApi(obj)
         return self
 
