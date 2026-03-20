@@ -24,7 +24,8 @@ class DeltaMush(WeightGeometryFilter):
                geo,
                iterations=20, *,
                scale=None,
-               name:Optional[str]=None):
+               name:Optional[str]=None,
+               **nodeConfig):
 
         kw = {}
 
@@ -41,6 +42,9 @@ class DeltaMush(WeightGeometryFilter):
 
         if scale is not None:
             node.attr('scale').put(scale)
+
+        for k, v in nodeConfig.items():
+            node.attr(k).put(v)
 
         return node
 
