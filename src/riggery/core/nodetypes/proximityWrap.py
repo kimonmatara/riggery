@@ -1018,13 +1018,11 @@ class ProximityWrap(WeightGeometryFilter):
 
     #------------------|    Mirror effects
 
-    def flipDriver(
-            self,
-            driverIndex:int,
-            axis:Literal[
-                'x', 'y', 'z', '-x', '-y', '-z'
-            ]='x'
-    ):
+    def flipDriver(self,
+                   driverIndex:int,
+                   axis:Literal[
+                       'x', 'y', 'z', '-x', '-y', '-z'
+                   ]='x'):
         """
         Flips the specified driver input for a 'mirrored' effect. Useful for
         deriving mirrored blend shape targets etc.
