@@ -750,20 +750,30 @@ class ProximityWrap(WeightGeometryFilter):
 
     #------------------|    Add drivers
 
-    def addDriver(self, driverGeo:'nodes.DagNode') -> None:
+    def addDriver(self, driverGeo:'nodes.DagNode') -> int:
         """
         This is a quiet operation. Nothing will happen if the geometry is
-        already a driver.
-
-        Note that, until I implement an 'autoFalloffScale' method, this may not
-        have any effect unless you crank up 'falloffScale' on the deformer.
+        already a driver. The falloff is automatically configured for new
+        drivers.
 
         :param driverGeo: the driver geometry to add
+        :return: The driver index.
         """
         driverShape = self._toDeformableShape(driverGeo)
 
-        if not self.hasDriver(driverShape):
-            m.proximityWrap(str(self), e=True, addDrivers=[str(driverShape)])
+        existingIndex = self.findDriverIndex(driverShape)
+
+        if existingIndex is None:
+            nextDriverIndex = next(iter(self.attr('drivers').indices()), 0)
+            slot = self.attr('drivers')[nextDriverIndex]
+            driverShape.worldOutput >> slot.attr('driverGeometry')
+            origShape = driverShape.getOrigShape(True)
+            origShape.localOutput >> slot.attr('driverBindGeometry')
+            self.autoConfigDriverFalloffs(nextDriverIndex)
+
+            return nextDriverIndex
+
+        return existingIndex
 
     #------------------|    Remove drivers
 
@@ -820,13 +830,29 @@ class ProximityWrap(WeightGeometryFilter):
 
     #------------------|    Edit drivers
 
-    def getDriverSlot(self, driverIndex:int) -> 'plugs.Attribute':
+    def findDriverIndex(self, driverGeo:'nodes.DagNode') -> Optional[int]:
         """
-        :param driverIndex: the driver index
-        :return: The matching element on the ``drivers`` array.
+        :param driverGeo: the driver geometry (shape or transform)
+        :return: The index of the driver, or None if no match was found.
         """
-        self.checkDriverIndex(driverIndex)
-        return self.attr('drivers')[driverIndex]
+        driverGeo = nodes['DagNode'](driverGeo).toShape()
+
+        outputs = (driverGeo.localOutput, driverGeo.worldOutput)
+
+        for slot in self.attr('drivers'):
+            for historyOutput in slot.iterPlugChain(outputsOnly=True):
+                for output in outputs:
+                    if output == historyOutput:
+                        return slot.index()
+
+    # Redundant
+    # def getDriverSlot(self, driverIndex:int) -> 'plugs.Attribute':
+    #     """
+    #     :param driverIndex: the driver index
+    #     :return: The matching element on the ``drivers`` array.
+    #     """
+    #     self.checkDriverIndex(driverIndex)
+    #     return self.attr('drivers')[driverIndex]
 
     @short(indirect='i')
     def findDriverBaseShapeAtIndex(self,
@@ -1021,5 +1047,54 @@ class ProximityWrap(WeightGeometryFilter):
                 continue
             inp *= matrix
             inp >> attr
+
+        return self
+
+    #------------------|    Driver falloffs
+
+    def getDrivenBoundingBox(self, drivenIndex:int) -> 'data.BoundingBox':
+        return next(
+            self.attr('originalGeometry'
+                      )[drivenIndex].iterInputs(type='deformableShape')
+        ).getBoundingBox()
+
+    def autoConfigDriverFalloffs(self, *driverIndices):
+
+        #-----|    Resolve driver indices
+
+        driverIndices = list(set(expand_tuples_lists(*driverIndices)))
+
+        if not driverIndices:
+            driverIndices = self.attr('drivers').indices()
+
+        #-----|    Resolve union driven bbox
+
+        drivenUnionBBox = data['BoundingBox']()
+
+        for slot in self.attr('originalGeometry'):
+            shape = next(slot.iterInputs(type='deformableShape'), None)
+
+            if shape is not None:
+                drivenUnionBBox.expandToBoundingBox(shape.getBoundingBox())
+
+        #-----|    Iterate
+
+        for i in driverIndices:
+            slot = self.attr('drivers')[i]
+
+            driverShape = next(
+                slot.attr('driverBindGeometry').iterInputs(
+                    type='deformableShape'
+                ),
+                None
+            )
+            if driverShape is not None:
+                thisBBox = driverShape.getBoundingBox().expandToBoundingBox(
+                    drivenUnionBBox
+                )
+                falloffStart = thisBBox.diagonal.length()
+                falloffEnd = falloffStart * 1.125 # safe margin
+                slot.attr('driverFalloffStart').set(falloffStart)
+                slot.attr('driverFalloffEnd').set(falloffEnd)
 
         return self
