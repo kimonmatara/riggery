@@ -243,6 +243,63 @@ class Mesh(SurfaceShape):
 
     #-------------------------------------|    Deformation effects
 
+    def flipDelta(self,
+                  baseGeo:'nodes.DagNode',
+                  axis:Literal['x', 'y', 'z', '-x', '-y', '-z']='x',
+
+                  smoothNormals:Optional[int]=None,
+                  smoothInfluences:Optional[int]=None,
+                  wrapMode:Optional[Union[int, str]]=None,
+
+                  keepHistory:Optional[bool]=None):
+        """
+        :param baseGeo: the 'base' (undeformed) version of this shape
+        :param axis: the axis along which to flip this shape; defaults to 'x'
+        :param keepHistory/kh: ignored if this shape already had history (in
+            which case history will always be preserved); defaults to True if
+            this shape had history, and False if it didn't
+        """
+        baseGeo = nodes['DagNode'](baseGeo).toShape()
+
+        hadHistory = self.hasHistory()
+
+        if keepHistory is None:
+            keepHistory = hadHistory
+        else:
+            keepHistory = hadHistory or keepHistory
+
+        thisOrigShape = self.getOrigShape(True)
+        baseGeo = baseGeo.duplicate(parent=self.parent,
+                                    intermediate=True)[0]
+        baseGeo.conformShapeName()
+
+        flipper = data['Matrix']()
+        flipper.flipAxis(axis.strip('-'))
+
+        wrap = nodes['ProximityWrap'].createNode().setAttrs(
+            **{k: v for k, v in zip(
+                ('smoothNormals', 'smoothInfluences', 'wrapMode'),
+                (smoothNormals, smoothInfluences, wrapMode)
+            ) if v is not None}
+        )
+        baseGeo.localOutput >> wrap.attr('originalGeometry')[0]
+
+        baseGeo.localOutput >> wrap.attr(
+            'input')[0].attr('inputGeometry')
+
+        (baseGeo.localOutput * flipper) >> wrap.attr(
+            'drivers')[0].attr('driverBindGeometry')
+
+        (thisOrigShape.localOutput * flipper) >> wrap.attr(
+            'drivers')[0].attr('driverGeometry')
+
+        wrap.attr('outputGeometry')[0] >> self.input
+
+        if not keepHistory:
+            self.deleteHistory()
+
+        return self
+
     def copyDeformDelta(
             self,
             startMesh:'nodes.DagNode',
