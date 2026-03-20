@@ -157,9 +157,22 @@ class Matrix(data['Tensor']):
             can also be requested).
         """
         out = self.getRow('xyzw'.index(axis.strip('-')))
+
         if '-' in axis:
             out *= -1.0
+
         return out
+
+    def setAxis(self,
+                axis:Literal['x', 'y', 'z', '-x', '-y', '-z', 'w'],
+                vector:Union['data.Vector', 'data.Point']):
+        rowIndex = 'xyzw'.index(axis.strip('-'))
+
+        if '-' in axis:
+            vector = vector * -1
+
+        self.setRow(rowIndex, vector)
+        return self
 
     def _getRowStartEnd(self, rowIndex) -> tuple:
         start = rowIndex * 4
