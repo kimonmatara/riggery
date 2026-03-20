@@ -1,8 +1,6 @@
 import re
 from typing import Optional, Union, Iterator, Any, Literal
 
-import maya.internal.nodes.proximitywrap.cmd_create as cmd_create
-
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
@@ -374,48 +372,36 @@ class ProximityWrap(WeightGeometryFilter):
     #-------------------------------------|
 
     @classmethod
-    @keepsel
-    def create(cls,
-               driven,
-               wrapMode='Surface',
-               falloffScale=1.0,
-               dropoffRateScale=0.0,
-               smoothInfluences=0,
-               smoothNormals=0,
-               spanSamples:int=2,
-               softNormalization=False,
-               name:Optional[str]=None,
-               useBindTags:bool=False,
-               scaleCompensation=None, # use this for global scale
-               maxDrivers:int=10):
+    @short(globalScale='gs')
+    def create(cls, *drivens, globalScale=None, **nodeConfig):
         """
         Similar to :class:`~riggery.core.nodetypes.BlendShape`, this merely
-        initializes the deformer on a single deformed object; use the
-        ``drivers`` and ``drivens`` interfaces`` for further editing.
+        initializes the deformer on one or more driven objects; use the
+        ``.drivers`` interface to actually assign drivers.
 
-        :param driven: the initial driven geometry
+        :param globalScale/gs: convenience argument; parses global scale from a
+            variety of sources (scalars, vectors, matrices etc) and configures
+            the node accordingly; defaults to None
         """
-        m.select(driven)
+        drivens = filter(bool, expand_tuples_lists(*drivens))
+        drivens = (nodes['DagNode'](x).toShape() for x in drivens)
+        drivens = list(without_duplicates(drivens))
 
-        node = Elem(cmd_create.Command().command()[0])
+        if not drivens:
+            raise RuntimeError("no drivens specified")
 
-        if name is None:
-            if _nm.Name.__elems__:
-                node.rename(_nm.Name.evaluate(typeSuffix=cls.__typesuffix__))
-        else:
-            node.rename(name)
+        node = cls.createNode(**nodeConfig)
 
-        for k, v in zip(
-                ('wrapMode', 'falloffScale', 'dropoffRateScale',
-                 'smoothInfluences', 'smoothNormals', 'softNormalization',
-                 'maxDrivers', 'spanSamples', 'useBindTags',
-                 'scaleCompensation'),
-                (wrapMode, falloffScale, dropoffRateScale, smoothInfluences,
-                 smoothNormals, softNormalization, maxDrivers, spanSamples,
-                 useBindTags, scaleCompensation)
-        ):
-            if v is not None:
-                v >> node.attr(k)
+        if globalScale is not None:
+            node.putGlobalScale(globalScale)
+
+        for i, driven in enumerate(drivens):
+            historyInput = driven.getHistoryInput(True)
+            origShape = driven.getOrigShape(True)
+
+            origShape.localOutput >> node.attr('originalGeometry')[i]
+            historyInput >> node.attr('input')[i].attr('inputGeometry')
+            node.attr('outputGeometry')[i] >> driven.input
 
         return node
 
@@ -768,6 +754,9 @@ class ProximityWrap(WeightGeometryFilter):
         """
         This is a quiet operation. Nothing will happen if the geometry is
         already a driver.
+
+        Note that, until I implement an 'autoFalloffScale' method, this may not
+        have any effect unless you crank up 'falloffScale' on the deformer.
 
         :param driverGeo: the driver geometry to add
         """
