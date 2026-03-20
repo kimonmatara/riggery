@@ -1,8 +1,9 @@
 import re
-from typing import Optional, Union, Iterator, Any
+from typing import Optional, Union, Iterator, Any, Literal
 
 import maya.internal.nodes.proximitywrap.cmd_create as cmd_create
 
+from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem
@@ -998,4 +999,38 @@ class ProximityWrap(WeightGeometryFilter):
         """
         self.attr('weightList')[shapeIndex].attr(
             'weights').writeWeightsMulti(weights)
+        return self
+
+    #------------------|    Mirror effects
+
+    def flipDriver(
+            self,
+            driverIndex:int,
+            axis:Literal[
+                'x', 'y', 'z', '-x', '-y', '-z'
+            ]='x'
+    ):
+        """
+        Flips the specified driver input for a 'mirrored' effect. Useful for
+        deriving mirrored blend shape targets etc.
+
+        :param driverIndex: the index of the driver to flip
+        :param axis: one of 'x', 'y', 'z', '-x', '-y', '-z'; sign is ignored;
+            defaults to 'x'
+        :return: ``self``
+        """
+        matrix = data['Matrix']()
+        matrix.flipAxis(axis)
+
+        slot = self.attr('drivers')[driverIndex]
+        for n in ('driverBindGeometry',
+                  'driverGeometry',
+                  'driverReferenceGeometry'):
+            attr = slot.attr(n)
+            inp = next(attr.iterInputs(plugs=True), None)
+            if inp is None:
+                continue
+            inp *= matrix
+            inp >> attr
+
         return self
