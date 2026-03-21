@@ -390,6 +390,7 @@ def _createOrthoMatrixFromTwoVectors(aimVector, upVector, *, w=None):
 
     if w is not None:
         w, _, wIsPlug = info(w, _data['Point'])
+
     else:
         wIsPlug = False
 
@@ -398,16 +399,21 @@ def _createOrthoMatrixFromTwoVectors(aimVector, upVector, *, w=None):
         aimVector >> ff.x
         upVector >> ff.y
         thirdVector >> ff.z
+
         if w is not None:
             w >> ff.w
+
         return ff.attr('output')
+
     else:
         matrix = _data['Matrix']()
         matrix.x = aimVector
         matrix.y = upVector
         matrix.z = thirdVector
+
         if w is not None:
             matrix.w = w
+
         return matrix
 
 def _createOrthoMatrixFromFreeAxes(aimAxis, aimVector,
@@ -415,8 +421,10 @@ def _createOrthoMatrixFromFreeAxes(aimAxis, aimVector,
     axisMatrix = _createOrthoMatrixFromTwoVectors(aimAxis, upAxis)
     vectorsMatrix = _createOrthoMatrixFromTwoVectors(aimVector, upVector)
     matrix = axisMatrix.inverse() * vectorsMatrix
+
     if w is not None:
         matrix *= w.asMatrix()
+
     return matrix
 
 def _createOrthoMatrixFromLetterAxes(aimAxis, aimVector,
@@ -527,10 +535,12 @@ def createOrthoMatrix(*args, w=None):
 
     if num == 4:
         arg1, arg2, arg3, arg4 = args
+
         if isinstance(arg1, str) and isinstance(arg3, str):
             return _createOrthoMatrixFromLetterAxes(arg1, arg2, arg3, arg4, w)
-        else:
-            if all((_info[1] == 3 \
-                    for _info in map(info, (arg1, arg2, arg3, arg4)))):
-                return _createOrthoMatrixFromFreeAxes(arg1, arg2, arg3, arg4, w)
+
+        if all((_info[1] == 3 \
+                for _info in map(info, (arg1, arg2, arg3, arg4)))):
+            return _createOrthoMatrixFromFreeAxes(arg1, arg2, arg3, arg4, w)
+
     raise TypeError("unsupported signature")
