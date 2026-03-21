@@ -834,16 +834,27 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
 def parallelTransport(
         startNormal:Union['data.Vector', 'plugs.Vector'],
         tangents:Iterable[Union['data.Vector', 'plugs.Vector']],
-        endNormal:Optional[Union['data.Vector', 'plugs.Vector']]=None
+        endNormal:Optional[Union['data.Vector', 'plugs.Vector']]=None, *,
+        useRawStartNormal:bool=False,
+        useRawEndNormal:bool=False
 ) -> list[Union['data.Vector'], 'plugs.Vector']:
     """
-    Robust parallel transport solver with optional twist functionality.
+    Robust parallel transport solver with optional twist functionality. Do not
+    pass ``True`` for *useRawStartNormal* or *useRawEndNormal* unless you know
+    what you're doing.
 
     :param startNormalHint: the normal to transport; this NOT expected to be
         perpendicular to the first tangent
     :param tangents: the tangents along which to transport the normal
     :param endNormalHint: if this is provided, it will be used to distribute the
         angle delta backwards; dfaults to None
+    :param useRawStartNormal: when this is True, the provided *startNormal* will
+        be used as-is for parallel transport, and will not be transported to the
+        first tangent (if the first tangent is a plug) or perpendicularized
+        against it; defaults to False
+    :param useRawEndNormal: when this is True, the provided *endNormal* will be
+        used as-is for parallel transport, and will not be perpendicularized
+        against the last tangent; defaults to False
     :return: One normal vector per tangent.
     """
     #----------------|    Conform input arguments
@@ -875,11 +886,12 @@ def parallelTransport(
 
     startTangent, _, startTangentIsPlug = tangentInfos[0]
 
-    if startTangentIsPlug:
-        _startTangent = startTangent()
-        startNormal *= _startTangent.quatTo(startTangent)
+    if not useRawStartNormal:
+        if startTangentIsPlug:
+            _startTangent = startTangent()
+            startNormal *= _startTangent.quatTo(startTangent)
 
-    startNormal = startNormal.rejectFrom(startTangent)
+        startNormal = startNormal.rejectFrom(startTangent)
 
     #----------------|    Resolve end normal hint
 
@@ -889,7 +901,9 @@ def parallelTransport(
         # end of the curve; transporting the end hint would twist it in
         # unhelpful ways
         endTangent, _, _ = tangentInfos[-1]
-        endNormal = endNormal.rejectFrom(endTangent)
+
+        if not useRawEndNormal:
+            endNormal = endNormal.rejectFrom(endTangent)
 
     #----------------|    Transport
 
