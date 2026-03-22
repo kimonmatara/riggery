@@ -593,3 +593,6 @@ class Vector(__pool__['Tensor3']):
         out.z *= self[2]
 
         return out
+
+    def asPoint(self):
+        return __pool__['Vector'](self)

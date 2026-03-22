@@ -91,6 +91,9 @@ class Point(Vector):
         """
         return self.asTranslateMatrix()
 
+    def asVector(self) -> '__pool__.Vector':
+        return __pool__['Vector'](self)
+
     #-----------------------------------------|    Comparisons
 
     @short(tolerance='tol')
