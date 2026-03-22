@@ -42,23 +42,6 @@ def quad_interp(start:Union[int, float],
         ratio = remap(rm, 1.0, 0.0, 0.5, 1.0)
     return start + ((end-start) * ratio)
 
-def floatrange(minValue:Union[int, float],
-               maxValue:Union[int, float],
-               number:int):
-    grain = 1.0 / (number-1)
-    minValue = float(minValue)
-    maxValue = float(maxValue)
-    span = maxValue - minValue
-    out = minValue
-    ratio = 0.0
-
-    for i in range(number):
-        if i == number-1:
-            out = min(out, maxValue)
-        yield out
-        ratio += grain
-        out = minValue + (span * ratio)
-
 def subdivide_int(num_anchors:int, iterations:int, inclusive:bool=True) -> int:
     """
     Given a number of 'anchors' (e.g. along a poly edge or curve), tells you how
@@ -147,3 +130,33 @@ def distribute_samples(totalNumSamples:int,
         allocations = [max(minPerSegment, x) for x in allocations]
 
     return allocations
+
+def floatrange(minValue:Union[int, float],
+               maxValue:Union[int, float],
+               number:int,
+               inner:bool=False) -> Iterator[float]:
+    """
+    :param minValue: the minimum value in the range
+    :param maxValue: the maximum value in the range
+    :param number: the number of values to yield
+    :param inner: if this is is True then the interval will be adjusted so that
+        the same number of values are yielded, but *minValue* and *maxValue*
+        are not themselves included; defaults to False
+    """
+    delta = maxValue - minValue
+
+    if inner:
+        interval = delta / (number + 1)
+
+        for i in range(1, number+1):
+            yield minValue + (interval * i)
+
+    else:
+        interval = delta / (number - 1)
+
+        yield minValue
+
+        for i in range(1, number-1):
+            yield minValue + interval * i
+
+        yield maxValue
