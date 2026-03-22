@@ -30,6 +30,9 @@ MixedPoint:TypeAlias = Union[
     '_data.Point',
     '_plugs.Point'
 ]
+
+MixedQuaternion:TypeAlias = Union['_data.Quaternion', '_plugs.Quaternion']
+
 #-----------------------------------------|
 #-----------------------------------------|    BASELINE TOOLS
 #-----------------------------------------|
