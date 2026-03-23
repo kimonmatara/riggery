@@ -216,6 +216,16 @@ def conform(item,
     """
     return info(item, preferredTypes=preferredTypes, force=force)[0]
 
+def vectorInfo(item) -> tuple[MixedVector, bool]:
+    """
+    Convenience wrapper of :func:`info` when vectors are expected. Returns just
+    conformed vector, isPlug. The conform is forced (i.e. points will be
+    conformed to vectors).
+    """
+    vector, _, isPlug = info(item, (_plugs['Vector'],
+                                    _data['Vector']), force=True)
+    return vector, isPlug
+
 #-----------------------------------------|
 #-----------------------------------------|    MISC OPERATIONS
 #-----------------------------------------|
