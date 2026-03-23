@@ -99,6 +99,10 @@ class Matrix(data['Tensor']):
 
     def __mul__(self, other):
         other, shape, isPlug = _mm.info(other)
+
+        if shape == 4: # assume quat
+            return self * other.asMatrix()
+
         if shape == 16:
             if isPlug:
                 node = nodes.MultMatrix.createNode()
