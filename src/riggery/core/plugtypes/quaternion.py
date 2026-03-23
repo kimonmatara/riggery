@@ -41,8 +41,13 @@ class Quaternion(__pool__['Tensor4']):
         :return: The locator (transform).
         """
         loc = nodes.Locator.createNode().getParent()
+
+        if name is not None:
+            loc.name = name
+
         self.asMatrix() >> loc.attr('opm')
         inheritsTransform >> loc.attr('inheritsTransform')
+
         return loc
 
     #-----------------------------------------|    Set
@@ -268,6 +273,24 @@ class Quaternion(__pool__['Tensor4']):
                                         angleInterpolation=angleInterpolation)
 
     #-----------------------------------------|    Conversions
+
+    @short(normalize='n')
+    def asAxis(self, normalize:bool=False) -> 'plugs.Vector':
+        pb = nodes['Network'].createNode()
+        attr = pb.addVectorAttr('outVector')
+
+        sources = list(self.children)[:-3]
+        dests = list(attr.children)
+
+        for src, dest in zip(sources, dests):
+            src >> dest
+
+        out = attr
+
+        if normalize:
+            out = out.normal()
+
+        return out
 
     def asOffset(self):
         """
