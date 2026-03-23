@@ -160,11 +160,15 @@ class Vector(__pool__['Tensor3']):
         """
         if preserveLength:
             mag = self.length()
+
         other, _, _ = _mm.info(other, Vector)
+
         cosTheta = self.dot(other, normalize=True)
         rejection = self - (self.length() * cosTheta) * other.normal()
+
         if preserveLength:
             rejection = rejection.normal() * mag
+
         return rejection
 
     def quatTo(self, otherVector):
