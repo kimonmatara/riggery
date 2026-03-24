@@ -213,24 +213,31 @@ class Chain(list):
                                  parent=None):
         startPoint = data['Point'](startPoint)
         endPoint = data['Point'](endPoint)
+
         tweenRatios = list(floatrange(0, 1, numJoints))[1:-1]
         tweenPoints = [startPoint.blend(endPoint, weight=weight)
                        for weight in tweenRatios]
+
         allPoints = [startPoint] + tweenPoints + [endPoint]
         chordVector = endPoint - startPoint
         upVector = data['Vector'](upVector)
+
         rmtx = _mm.createOrthoMatrix(boneAxis, chordVector,
                                      curlAxis, upVector).asRotateMatrix()
         matrices = [rmtx * point.asTranslateMatrix() for point in allPoints]
+
         return cls.createFromMatrices(matrices,
                                       rotateOrder=rotateOrder,
                                       parent=parent)
 
     @classmethod
-    @short(rotateOrder='ro', parent='p')
+    @short(rotateOrder='ro',
+           parent='p',
+           worldSpace='ws')
     def createFromMatrices(cls,
                            matrices, *,
                            rotateOrder='xyz',
+                           worldSpace:bool=True,
                            parent=None) -> 'Chain':
         """
         .. warning::
@@ -238,8 +245,10 @@ class Chain(list):
             The input matrices are not sanitized at all; ensure that they are
             free of scale / shear information.
 
-        :param matrices: the matrices to use
+        :param matrices: one world-space draw matrix per joint
         :param rotateOrder / ro: the rotate order to use; defaults to 'xyz'
+        :param worldSpace / ws: if this False, each matrix will be interpeted as
+            local to the preceding one; defaults to True
         :return: The :class:`Chain` instance.
         """
         joints = []
@@ -247,17 +256,18 @@ class Chain(list):
 
         for i, matrix in enumerate(list(matrices)):
             with _nm.Name(i+1):
-                joints.append(
-                    Joint.create(
-                        matrix=matrix,
-                        worldSpace=True,
-                        parent=joints[-1] if joints else None,
-                        rotateOrder=rotateOrder
-                    )
-                )
+                joint = Joint.create(matrix=matrix,
+                                     worldSpace=worldSpace,
+                                     parent=joints[-1] if joints else None,
+                                     rotateOrder=rotateOrder)
+
+                joints.append(joint)
+
         if parent is not None:
             joints[0].parent = parent
+
         return Chain(joints)
+
 
     @classmethod
     @short(rotateOrder='ro',
@@ -300,7 +310,8 @@ class Chain(list):
         ]
 
         if tipMatrix is not None:
-            tipMatrix = Matrix(tipMatrix).pick(rotate=True, default=matrices[-1])
+            tipMatrix = Matrix(tipMatrix).pick(rotate=True,
+                                               default=matrices[-1])
             matrices[-1] = tipMatrix
 
         return cls.createFromMatrices(matrices,
