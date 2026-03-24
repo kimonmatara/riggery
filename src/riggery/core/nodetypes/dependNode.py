@@ -589,6 +589,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
                     defaultAxis:Literal['x', 'y', 'z',
                     '-x', '-y', '-z'],
                     channelBox:bool=True,
+                    hidden:bool=False,
                     section:Optional[str]=None):
         """
         Adds an axis-selector attribute. The attribute will be settable
@@ -601,8 +602,12 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         :return: The attribute.
         """
         kwargs = {}
+
         if channelBox:
             kwargs['channelBox'] = channelBox
+
+        if hidden:
+            kwargs['hidden'] = True
 
         return self.addAttr(
             name,
