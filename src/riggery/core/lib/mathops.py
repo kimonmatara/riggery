@@ -1,13 +1,21 @@
 """Miscellaneous math operations."""
 
-from typing import Optional, Iterator, Union, Literal, Iterable
+from itertools import pairwise, chain, accumulate
+import operator
+from typing import Optional, Iterator, Union, Literal, Iterable, TypeAlias
 import math
+
+from . import mixedmode as _mm
+from .mixedmode import Axis, MixedMatrix
+
+from . import names as _nm
+
 from ..plugtypes import __pool__ as plugs
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
-from . import mixedmode as _mm
-from . import names as _nm
+
 from riggery.general.numbers import floatrange
+from riggery.general.functions import short
 
 TOLERANCE = 1e-10
 
@@ -490,6 +498,41 @@ def calcChainMatrices(
                                                    upVectors,
                                                    points)]
 
+@short(maintainOffset='mo')
+def stackMatrices(matrices:Iterable[MixedMatrix],
+                  maintainOffset=False) -> Iterator[MixedMatrix]:
+    """
+    Yields matrices multiplied by every preceding matrix, recursively.
+    """
+
+    matrices = (_mm.conform(matrix, (data.Matrix, plugs.Matrix))
+                for matrix in matrices)
+
+    parent = next(matrices)
+    yield parent
+
+    for matrix in matrices:
+        parent = matrix * (parent.asOffset() if maintainOffset else parent)
+        yield parent
+
+@short(maintainOffset='mo')
+def unstackMatrices(matrices:Iterable[MixedMatrix],
+                    maintainOffset=False) -> Iterator[MixedMatrix]:
+    """
+    Reverse of :func:`stackMatrices`.
+    """
+
+    matrices = list(matrices)
+    parents = matrices[:-1]
+
+    yield matrices.pop(0)
+
+    for matrix, parent in zip(matrices, parents):
+        if maintainOffset:
+            parent = parent.asOffset()
+
+        yield matrix * parent.inverse()
+
 # Bezier tangent length to get a quadrant of a unit circle
 BEZIER_CIRCLE_CONSTANT = (4/3) * ((2 ** 0.5)-1)
 # Bezier tangent length for a given arc radius
@@ -831,101 +874,28 @@ def normalizeWeights(weights:Iterable[_mm.MixedScalar],
 
     return [x / total for x in weights]
 
-def parallelTransport(
-        startNormal:Union['data.Vector', 'plugs.Vector'],
-        tangents:Iterable[Union['data.Vector', 'plugs.Vector']],
-        endNormal:Optional[Union['data.Vector', 'plugs.Vector']]=None, *,
-        useRawStartNormal:bool=False,
-        useRawEndNormal:bool=False
-) -> list[Union['data.Vector'], 'plugs.Vector']:
-    """
-    Robust parallel transport solver with optional twist functionality. Do not
-    pass ``True`` for *useRawStartNormal* or *useRawEndNormal* unless you know
-    what you're doing.
-
-    :param startNormalHint: the normal to transport; this NOT expected to be
-        perpendicular to the first tangent
-    :param tangents: the tangents along which to transport the normal
-    :param endNormalHint: if this is provided, it will be used to distribute the
-        angle delta backwards; dfaults to None
-    :param useRawStartNormal: when this is True, the provided *startNormal* will
-        be used as-is for parallel transport, and will not be transported to the
-        first tangent (if the first tangent is a plug) or perpendicularized
-        against it; defaults to False
-    :param useRawEndNormal: when this is True, the provided *endNormal* will be
-        used as-is for parallel transport, and will not be perpendicularized
-        against the last tangent; defaults to False
-    :return: One normal vector per tangent.
-    """
-    #----------------|    Conform input arguments
-
-    startNormal, _, startNormalIsPlug = _mm.info(startNormal,
-                                                 (data['Vector'],
-                                                  plugs['Vector']),
-                                                 force=True)
-
-    tangentInfos = [_mm.info(tangent,
-                             (data['Vector'], plugs['Vector']),
-                             force=True)
-                    for tangent in tangents]
-
-    tangents = [tangentInfo[0] for tangentInfo in tangentInfos]
-
-    numTangents = len(tangentInfos)
-
-    if numTangents == 0:
-        raise ValueError("no tangents provided")
-
-    if endNormal is not None:
-        endNormal, _, endNormalIsPlug = _mm.info(endNormal,
-                                                 (data['Vector'],
-                                                  plugs['Vector']),
-                                                 force=True)
-
-    #----------------|    Resolve start normal hint
-
-    startTangent, _, startTangentIsPlug = tangentInfos[0]
-
-    if not useRawStartNormal:
-        if startTangentIsPlug:
-            _startTangent = startTangent()
-            startNormal *= _startTangent.quatTo(startTangent)
-
-        startNormal = startNormal.rejectFrom(startTangent)
-
-    #----------------|    Resolve end normal hint
-
-    if endNormal is not None:
-        # The end normal should not be 'transported' in the same way as the
-        # start normal for initialization; the semantics are different at the
-        # end of the curve; transporting the end hint would twist it in
-        # unhelpful ways
-        endTangent, _, _ = tangentInfos[-1]
-
-        if not useRawEndNormal:
-            endNormal = endNormal.rejectFrom(endTangent)
-
-    #----------------|    Transport
-
-    if numTangents > 1:
-        normals = [startNormal]
-
-        for thisTangent, nextTangent in zip(tangents[:-1], tangents[1:]):
-            thisQuat = thisTangent.quatTo(nextTangent)
-            thisNormal = normals[-1] * thisQuat
-            normals.append(thisNormal)
-
-        if endNormal is not None:
-            angle = normals[-1].angleTo(endNormal, tangents[-1], shortest=True)
-            tweenRatios = list(floatrange(0, 1, numTangents+2))[1:-1]
-
-            normals = ([startNormal]
-                       + [normal.rotateByAxisAngle(tangent, angle * x)
-                          for normal, tangent, x in zip(normals[1:-1],
-                                                        tangents[1:-1],
-                                                        tweenRatios)]
-                       + [endNormal])
-
-        return normals
-
-    return [startNormal]
+# def carriers(tangents:Iterable[_mm.MixedVector]
+#              ) -> Iterator[_mm.MixedQuaternion]:
+#
+#     tangents = iter(tangents)
+#     firstTangent = next(tangents, None)
+#
+#     if firstTangent is not None:
+#         firstTangent, _, firstTangentIsPlug = _mm.info(firstTangent,
+#                                              (plugs['Vector'], data['Vector']),
+#                                              force=True)
+#         if firstTangentIsPlug:
+#             yield firstTangent().rotateTo(firstTangent)
+#
+#         else:
+#             yield data['Quaternion']()
+#
+#         remainingTangents = (_mm.info(x, (plugs['Vector'],
+#                                           data['Vector']), force=True)[0]
+#                              for x in tangents)
+#
+#         allTangents = chain([firstTangent], remainingTangents)
+#
+#         for a, b in pairwise(allTangents):
+#             yield a.rotateTo(b)
+#
