@@ -1,7 +1,7 @@
 """Miscellaneous tools for maths operations that mix values and attributes."""
 
 from pprint import pprint
-from typing import Union, Any, Optional, TypeAlias, Iterable
+from typing import Union, Any, Optional, TypeAlias, Iterable, Literal
 
 from .nurbsutil import cvIndexToAnchorIndex
 from ..datatypes import __pool__ as _data
@@ -31,7 +31,14 @@ MixedPoint:TypeAlias = Union[
     '_plugs.Point'
 ]
 
+MixedMatrix:TypeAlias = Union[
+    tuple[tuple([float] * 16)],
+    '_data.Matrix',
+    '_plugs.Matrix'
+]
+
 MixedQuaternion:TypeAlias = Union['_data.Quaternion', '_plugs.Quaternion']
+Axis:TypeAlias = Literal['x', 'y', 'z', '-x', '-y', '-z']
 
 #-----------------------------------------|
 #-----------------------------------------|    BASELINE TOOLS
