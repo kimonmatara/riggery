@@ -503,17 +503,20 @@ def stackMatrices(matrices:Iterable[MixedMatrix],
                   maintainOffset=False) -> Iterator[MixedMatrix]:
     """
     Yields matrices multiplied by every preceding matrix, recursively.
+    Essentially the same as taking a bunch of local joint matrices and building
+    a chain out of them.
     """
 
     matrices = (_mm.conform(matrix, (data.Matrix, plugs.Matrix))
                 for matrix in matrices)
 
-    parent = next(matrices)
-    yield parent
+    parentMatrix = next(matrices)
+    yield parentMatrix
 
     for matrix in matrices:
-        parent = matrix * (parent.asOffset() if maintainOffset else parent)
-        yield parent
+        parentMatrix = matrix * (parentMatrix.asOffset()
+                                 if maintainOffset else parentMatrix)
+        yield parentMatrix
 
 @short(maintainOffset='mo')
 def unstackMatrices(matrices:Iterable[MixedMatrix],
