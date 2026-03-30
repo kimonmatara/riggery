@@ -252,22 +252,20 @@ class Chain(list):
         :return: The :class:`Chain` instance.
         """
         joints = []
-        Joint = nodes['Joint']
+        T = nodes['Joint']
 
-        for i, matrix in enumerate(list(matrices)):
+        for i, matrix in enumerate(map(data.Matrix, matrices)):
             with _nm.Name(i+1):
-                joint = Joint.create(matrix=matrix,
-                                     worldSpace=worldSpace,
-                                     parent=joints[-1] if joints else None,
-                                     rotateOrder=rotateOrder)
-
+                joint = T.create(matrix=matrix,
+                                 worldSpace=worldSpace,
+                                 parent=joints[-1] if joints else None,
+                                 rotateOrder=rotateOrder)
                 joints.append(joint)
 
         if parent is not None:
             joints[0].parent = parent
 
         return Chain(joints)
-
 
     @classmethod
     @short(rotateOrder='ro',
