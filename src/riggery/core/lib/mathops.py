@@ -498,15 +498,43 @@ def calcChainMatrices(
                                                    upVectors,
                                                    points)]
 
+# @short(maintainOffset='mo')
+# def chainMatrices(matrices:Iterable[MixedMatrix],
+#                   maintainOffset=False,
+#                   segmentScaleCompensate=False) -> Iterator[MixedMatrix]:
+#     """
+#     Yields matrices multiplied by every preceding matrix, recursively.
+#     Essentially the same as taking a bunch of local joint matrices and building
+#     a chain out of them.
+#     """
+#     matrices = (_mm.conform(matrix, (data.Matrix, plugs.Matrix))
+#                 for matrix in matrices)
+#
+#     parentMatrix = next(matrices)
+#     yield parentMatrix
+#
+#     for matrix in matrices:
+#         matrix = matrix * (parentMatrix.asOffset()
+#                            if maintainOffset else parentMatrix)
+#
+#         if segmentScaleCompensate:
+#             srmtx = matrix.pick(t=False)
+#             tmtx = matrix.pick(t=True)
+#             yield srmtx * parentMatrix.pick(s=True).inverse() * tmtx
+#
+#         else:
+#             yield matrix
+#
+#         parentMatrix = matrix
+
 @short(maintainOffset='mo')
-def stackMatrices(matrices:Iterable[MixedMatrix],
+def chainMatrices(matrices:Iterable[MixedMatrix],
                   maintainOffset=False) -> Iterator[MixedMatrix]:
     """
     Yields matrices multiplied by every preceding matrix, recursively.
     Essentially the same as taking a bunch of local joint matrices and building
     a chain out of them.
     """
-
     matrices = (_mm.conform(matrix, (data.Matrix, plugs.Matrix))
                 for matrix in matrices)
 
@@ -514,16 +542,17 @@ def stackMatrices(matrices:Iterable[MixedMatrix],
     yield parentMatrix
 
     for matrix in matrices:
-        parentMatrix = matrix * (parentMatrix.asOffset()
-                                 if maintainOffset else parentMatrix)
-        yield parentMatrix
+        matrix = matrix * (parentMatrix.asOffset()
+                           if maintainOffset else parentMatrix)
+
+        yield matrix
+
+        parentMatrix = matrix
 
 @short(maintainOffset='mo')
-def unstackMatrices(matrices:Iterable[MixedMatrix],
+def unchainMatrices(matrices:Iterable[MixedMatrix],
                     maintainOffset=False) -> Iterator[MixedMatrix]:
-    """
-    Reverse of :func:`stackMatrices`.
-    """
+    """Reverse of :func:`chainMatrices`."""
 
     matrices = list(matrices)
     parents = matrices[:-1]
