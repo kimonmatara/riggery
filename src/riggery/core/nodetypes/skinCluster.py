@@ -438,49 +438,68 @@ class SkinCluster(GeometryFilter):
         """
         _sw.SkinClusterWeightsWrangler(str(self)).setWeights(weights)
 
-    def mirrorWeights(
-            self,
-            influenceAssociation:Optional[Union[str, list[str]]]=None,
-            surfaceAssociation:Literal[
-                'closestPoint', 'rayCast', 'closestComponent'
-            ]='closestComponent',
-            alongPositiveX:bool=False,
-            destinationSkin:Optional['SkinCluster']=None,
-            autoLabel:bool=False
-    ):
+    @short(influenceAssociation='ia',
+           surfaceAssociation='sa',
+           alongPositiveX='apx',
+           destinationSkin='ds',
+           autoLabel='al',
+           matchInfluence='mti',
+           mirrorCompleteInfluence='mci')
+    def mirrorWeights(self,
+                      influenceAssociation:Optional[Union[str, list[str]]]=None,
+                      surfaceAssociation:Literal[
+                          'closestPoint', 'rayCast', 'closestComponent'
+                      ]='closestComponent',
+                      alongPositiveX:bool=False,
+                      destinationSkin:Optional['SkinCluster']=None,
+                      autoLabel:bool=False,
+                      matchInfluence:bool=False,
+                      mirrorCompleteInfluence:bool=False):
         """
-        :param influenceAssociation/ia: one, or several (as fallbacks) of:
-            'closestJoint', 'closestBone', 'label', 'name', 'oneToOne'; defaults
-            to ['label', 'closestJoint', 'oneToOne'] if *autoLabel* is True,
-            otherwise ['closestJoint', 'oneToOne']
-        :param surfaceAssociation/sa: one of 'closestPoint', 'rayCast',
-            'closestComponent'; defaults to 'closestComponent'
+        Resolve source / dest skinClusters
+        Resolve influences
+        Resolve labelling
         """
-        # Resolve influence association
+
+        # Defaults
         if influenceAssociation is None:
             influenceAssociation = ['closestJoint', 'oneToOne']
+        else:
+            if isinstance(influenceAssociation, str):
+                influenceAssociation = [influenceAssociation]
+            else:
+                influenceAssociation = list(influenceAssociation)
 
-            if autoLabel:
-                influenceAssociation.insert(0, 'label')
-
-        # Resolve destination skin
-        if destinationSkin is not None:
-            destinationSkin = SkinCluster(destinationSkin)
-
-        if autoLabel:
-            allJoints = self.getInfluence()
-
-            if destinationSkin is not None:
-                allJoints += destinationSkin.getInfluence()
-                allJoints = without_duplicates(allJoints)
-
-            labelStates = {joint:joint.autoLabel() for joint in allJoints}
-
-        # Run the command
+        # Resolve source / dest and influences
         if destinationSkin is None:
-            destinationSkin = self
+            dest = self
+        else:
+            dest = nodes['DependNode'](destinationSkin)
 
-        kwargs = {'ss': self, 'ds': destinationSkin,
+            if matchInfluence:
+                src.copyInfluencesTo(dest)
+
+        if mirrorCompleteInfluence:
+            dest.mirrorCompleteInfluence()
+
+        # Wrangle auto label
+        if autoLabel:
+            try:
+                influenceAssociation.remove('label')
+            except ValueError:
+                pass
+
+            influenceAssociation.insert(0, 'label')
+
+            allInfls = set(self.influence)
+
+            if dest != self:
+                allInfls = allInfls.union(set(dest.influence))
+
+            labelStates = {joint:joint.autoLabel() for joint in allInfls}
+
+        # Formulate kwargs
+        kwargs = {'ss': self, 'ds': dest,
                   'ia': influenceAssociation,
                   'sa': surfaceAssociation,
                   'mi': alongPositiveX,
@@ -493,6 +512,27 @@ class SkinCluster(GeometryFilter):
             if autoLabel:
                 for joint, state in labelStates.items():
                     joint.setLabelState(state)
+
+        return self
+
+
+    def mirrorCompleteInfluence(self):
+        """
+        Performs mirrored name-matching for prefixes that follow the ``L_`` /
+        ``R_`` convention and adds-in any missing influences, without editing
+        weights.
+        """
+        existing = set(self.influence)
+
+        new = set()
+
+        for influence in existing:
+            opp = influence.findOppositeNodeByName()
+            if opp is not None and opp not in existing:
+                new.add(opp)
+
+        if new:
+            self.addInfluence(list(new), preserveWeights=True)
 
         return self
 
