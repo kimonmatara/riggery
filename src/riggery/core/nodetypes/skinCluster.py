@@ -601,6 +601,10 @@ class SkinCluster(GeometryFilter):
 
         return self
 
+    def normalizeWeights(self):
+        m.skinCluster(str(self), e=True, fnw=True)
+        return self
+
     #-------------------------------------|    Blend shapes
 
     @short(editEnvelopes='ee')
