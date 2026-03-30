@@ -468,7 +468,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             if lock:
                 flags['lock'] = lock
 
-            out.setFlags(**flags)
+            if flags:
+                out.setFlags(**flags)
 
             if section:
                 section = self.sections.add(section)
@@ -486,22 +487,24 @@ class DependNode(Elem, metaclass=DependNodeMeta):
            asAngle='aa',
            asDistance='ad',
            lock='l',
-           section='s')
-    def addTripleAttr(
-            self,
-            basename:str, *,
-            suffixes:Union[str, Iterable[str]]='XYZ',
-            keyable:bool=False,
-            channelBox:bool=False,
-            input=None,
-            defaultValue=None,
-            asAngle:bool=False,
-            asDistance:bool=False,
-            section:Optional[str]=None,
-            lock:bool=False,
-            multi=False,
-            hidden=False
-    ):
+           section='s',
+           parent='p')
+    def addTripleAttr(self,
+                      basename:str,
+                      suffixes:Union[str, Iterable[str]]='XYZ',
+
+                      keyable:bool=False,
+                      channelBox:bool=False,
+                      input:Optional[Union[str, 'plugs.Attribute']]=None,
+                      defaultValue:Optional[Iterable[float]]=None,
+                      lock:Optional[bool]=False,
+                      multi:bool=False,
+                      hidden:bool=False,
+
+                      asAngle:bool=False,
+                      asDistance:bool=False,
+
+                      parent:Optional[str]=None) -> Optional['plugs.Attribute']:
         """
         Creates a triple compound that mimics the standard ``translate`` /
         ``rotate`` / ``scale`` attributes on transform nodes.
@@ -518,60 +521,94 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             attribute; if the section doesn't exist, it will be created
         :param asDistance: use ``doubleLinear`` for the child types; defaults
             to ``False``
-        :return: The compound attribute.
+        :return: If the compound attribute finished building, the attribute
+            instance, otherwise None. An attribute may not have finished
+            building if, for example, it is itself part of a complex compound.
         """
-        _self = str(self)
 
-        kwargs = {}
-
-        if multi:
-            kwargs['multi'] = True
-
-        if hidden:
-            kwargs['hidden'] = True
-
-        m.addAttr(_self, ln=basename, at='double3', nc=3, **kwargs)
-
-        childType = 'doubleLinear' if asDistance \
-            else 'doubleAngle' if asAngle \
-            else 'double'
-
-        for suffix in suffixes:
-            m.addAttr(_self,
-                      ln=f"{basename}{suffix}",
-                      at=childType,
-                      parent=basename)
-
-        root = self.attr(basename)
-
-        if multi:
-            attr = root[0]
-        else:
-            attr = root
-
-        children = attr.getChildren()
+        # Resolve compound kwargs
+        compoundKwargs = {'ln': basename, 'at': 'double3'}
 
         if keyable:
-            attr.setFlags(keyable=True, recurse=True)
+            compoundKwargs['keyable'] = True
 
-        elif channelBox:
-            attr.setFlags(channelBox=True, recurse=True)
+        if multi:
+            compoundKwargs['multi'] = True
 
-        if defaultValue is not None:
-            for value, child in zip(defaultValue, children):
-                m.addAttr(str(child), e=True, dv=value)
-                child.set(value)
+        if hidden:
+            compoundKwargs['hidden'] = True
 
-        if section:
-            attr = self.sections.add(section).collect(basename)[0]
+        if parent:
+            compoundKwargs['parent'] = parent
 
-        if input is not None:
-            input >> attr
+        # Init the compound
+        _self = str(self)
+
+        m.addAttr(_self, **compoundKwargs)
+
+        childKwargs = {k: v for k, v in compoundKwargs.items()
+                       if k not in ('parent', 'multi')}
+
+        if asAngle:
+            childKwargs['at'] = 'doubleAngle'
+
+        elif asDistance:
+            childKwargs['at'] = 'doubleLinear'
+
+        else:
+            childKwargs['at'] = 'double'
+
+        childKwargs['parent'] = basename
+
+        perChildKwargs = [childKwargs.copy() for i in range(3)]
+
+        if defaultValue:
+            for src, dest in zip(defaultValue, perChildKwargs):
+                dest['dv'] = src
+
+        for suffix, d in zip(suffixes, perChildKwargs):
+            d['ln'] = f"{basename}{suffix}"
+
+        for d in perChildKwargs:
+            m.addAttr(_self, **d)
+
+        try:
+            attr = self.attr(basename)
+        except AttributeError:
+            if input is not None:
+                raise RuntimeError(
+                    f"Can't connect input {input} because attribute "
+                    f"'{basename}' hasn't finished building"
+                )
+
+            if channelBox:
+                m.warning(
+                    "Couldn't set the 'channelBox' flag on attribute "
+                    f"'{basename}' because it hasn't finished building"
+
+                )
+
+            if lock:
+                m.warning(
+                    f"Can't lock attribute '{basename}' because it hasn't "
+                    "finished building"
+                )
+
+            return
+
+        if channelBox:
+            attr.setFlag('cb', True)
+
+            for child in attr.children:
+                attr.setFlag('cb', True)
+
+        if input:
+            attr.put(input)
 
         if lock:
-            attr.lock(recurse=True)
+            attr.lock(r=True)
 
-        return root
+        return attr
 
     @short(asAngle='aa', asDistance='ad')
     def addPointAttr(self, *args, **kwargs):
