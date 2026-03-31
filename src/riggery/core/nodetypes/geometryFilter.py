@@ -725,3 +725,33 @@ class GeometryFilter(DependNode):
             self.rename(self._deriveNameFromGeo(shape))
 
         return self
+
+    #-------------------------------------|    Tags / membership
+
+    def getComponentTag(self, shapeIndex:int) -> str:
+        """
+        :return: the component tag for the specified shape.
+        """
+        return self.attr('input')[shapeIndex].attr('componentTagExpression')()
+
+    def setComponentTag(self, shapeIndex:int, expression:str):
+        """
+        Sets the component tag for the specified shape.
+        """
+        self.attr('input')[shapeIndex].attr(
+            'componentTagExpression').set(expression)
+        return self
+
+    # @classmethod
+    # def _parseNewGeoMembers(cls,
+    #                         *args) -> list[tuple['nodes.DeformableShape', str]]:
+    #     """
+    #     :return: A list of (geo shape: component tag)...
+    #     """
+    #     geoCompsMap = {}
+    #
+    #     for arg in expand_tuples_lists(*args):
+    #         try:
+    #             shape = nodes['DagNode'](arg).toShape()
+    #         except:
+    #             shape = None
