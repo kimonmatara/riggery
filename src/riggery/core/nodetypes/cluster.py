@@ -1,75 +1,133 @@
 import re
-from typing import Optional, Union
+from typing import Optional, Union, Iterable
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
 
 from ..lib import names as _nm
 from riggery.general.functions import short
-from riggery.general.iterables import expand_tuples_lists
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from ..elem import Elem
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
+from ..datatypes import __pool__ as data
 
 
 class Cluster(nodes['WeightGeometryFilter']):
 
-    #--------------------------------------|    Constructor(s)
+    #--------------------------------------|    Constructor
 
     @classmethod
-    @short(name='n', handle='h')
-    def create(cls, *items, name=None, handle=None):
-        """
-        :param \*items: components or geometries for the cluster to deform
-        :param name\n: an optional name override for the cluster node; defaults
-            to block naming
-        :param handle/h: an existing transform to use as the cluster handle;
-            this can also be a matrix output, in which case no DAG handle will
-            be used at all; if omitted, a new handle is created
-        """
-        kwargs = {}
-        if handle:
-            if isinstance(Elem(handle), plugs['Matrix']):
-                return cls._createFromMatrixOutput(handle, *items, name=name)
-            handle = str(handle)
-            kwargs['weightedNode'] = (handle, handle)
-            kwargs['bindState'] = True
+    def create(
+            cls,
+            *geos,
+            handle:Optional[Union[str, 'plugs.Matrix', 'nodes.Transform']]=None,
+            createHandle:bool=True
+    ):
+        #-------------------|    Create node
 
-        items = map(str, expand_tuples_lists(*items))
-        node, outHandle = map(nodes['DependNode'], m.cluster(*items, **kwargs))
+        node = cls.createNode()
 
-        if name:
-            node.name = name
-            if not handle:
-                outHandle.name = f"{name}Handle"
-        else:
-            name = _nm.Name.evaluate()
-            if name:
-                node.name = "{}_{}".format(name, _nm.TYPESUFFIXES['cluster'])
-            if not handle:
-                outHandle.name = "{}_{}".format(
-                    name,
-                    _nm.TYPESUFFIXES['clusterHandle']
+        #-------------------|    Connect geos
+
+        connectionsMap = node._parseRequestedGeoConnections(*geos)
+
+        if connectionsMap:
+            for index, geo, components in connectionsMap:
+                node.connectGeometry(index, geo)
+                node.attr('geomMatrix')[index].set(
+                    geo.toTransform().getMatrix(worldSpace=True)
                 )
-        return node
+                if components:
+                    tag = geo.createComponentTag(str(node),
+                                                 components,
+                                                 uniqueTagName=True)
+                    node.setComponentTag(index, tag)
 
-    @classmethod
-    @short(name='n', handle='h')
-    def _createFromMatrixOutput(cls, matrixOutput, *items, name=None):
-        matrixOutput = plugs['Attribute'](matrixOutput)
+        #-------------------|    Resolve handle
 
-        node, outHandle = map(nodes['DependNode'], m.cluster(*items))
-        node.lock()
-        m.delete(str(outHandle))
-        node.unlock()
+        if handle is None:
+            if createHandle:
+                if connectionsMap:
+                    points = []
 
-        matrixOutput >> node.attr('matrix')
-        node.attr('bindPreMatrix').set(matrixOutput().inverse())
+                    for _, geo, components in connectionsMap:
+                        if components:
+                            for component in components:
+                                compType = re.match(
+                                    r"^.*?\.(vtx|e|f|cv|pt).*$",
+                                    component
+                                ).group(1)
 
-        if name:
-            node.name = name
+                                if compType == 'e':
+                                    flat = m.ls(m.polyListComponentConversion(
+                                        component,
+                                        fromEdge=True,
+                                        toVertex=True
+                                    ), flatten=True)
+
+                                elif compType == 'f':
+                                    flat = m.ls(m.polyListComponentConversion(
+                                        component,
+                                        fromFace=True,
+                                        toVertex=True
+                                    ), flatten=True)
+
+                                else:
+                                    flat = m.ls(component, flatten=True)
+                                points += [
+                                    data['Point'](m.pointPosition(x, w=True))
+                                    for x in flat
+                                ]
+                        else:
+                            points.append(geo.toTransform().attr('center')())
+
+                    point = points[0].center(*points[1:])
+                else:
+                    point = data['Point']()
+
+                matrix = point.asTranslateMatrix()
+                handle = nodes['Transform'].create(
+                    name=node._getDefaultHandleTransformName(),
+                    matrix=matrix
+                )
+                handleShape = nodes['ClusterHandle'].createNode(parent=handle)
+
+                handleShape.attr('clusterTransforms'
+                                 )[0] >> node.attr('clusterXforms')
+
+                handle.attr('wm') >> node.attr('matrix')
+                node.updateOffset()
         else:
-            name = _nm.Name.evaluate()
-            if name:
-                node.name = "{}_{}".format(name, _nm.TYPESUFFIXES['cluster'])
+            handle = Elem(handle)
+
+            if isinstance(handle, plugs['Matrix']):
+                handle >> node.attr('matrix')
+
+            elif isinstance(handle, nodes['Transform']):
+                handle.attr('wm') >> node.attr('matrix')
+
+            else:
+                raise TypeError("expected transform or matrix")
+
+            node.updateOffset()
+
         return node
+
+    #--------------------------------------|    Partial builds
+
+    def _getDefaultHandleTransformName(self) -> tuple[str, str]:
+        _self = str(self)
+        mt = re.match(r"^(.*?)_"+self.__typesuffix__+r"$", _self)
+
+        if mt:
+            basename = mt.group(1)
+            return "{}_{}".format(basename,
+                                  nodes['ClusterHandle'].__typesuffix__)
+
+        return "{}Handle".format(_self)
+
+    #--------------------------------------|    Offset management
+
+    def updateOffset(self):
+        self.attr('bindPreMatrix').set(self.attr('matrix')().inverse())
