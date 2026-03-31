@@ -12,6 +12,8 @@ from riggery.general.numbers import floatrange
 
 class NurbsSurface(SurfaceShape):
 
+    __point_comp_ext__ = 'cv'
+
     #-------------------------------------|    Geometry queries
 
     @short(worldSpace='ws')

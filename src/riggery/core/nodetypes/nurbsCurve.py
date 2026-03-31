@@ -18,6 +18,8 @@ from ..plugtypes import __pool__ as plugs
 
 class NurbsCurve(nodes['CurveShape']):
 
+    __point_comp_ext__ = 'cv'
+
     #-------------------------------------|    Constructor
 
     @classmethod

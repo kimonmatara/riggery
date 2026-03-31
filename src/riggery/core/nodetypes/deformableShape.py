@@ -1,5 +1,5 @@
 import re
-from typing import Iterator, Optional, Union, Iterable
+from typing import Iterator, Optional, Union, Iterable, Literal
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
@@ -10,7 +10,59 @@ from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 
 
+# class ComponentTags:
+#
+#     #-----------------------------------|    Init
+#
+#     def __init__(self, shape):
+#         self._node = shape
+#
+#     #-----------------------------------|    Props
+#
+#     def node(self) -> 'DeformableShape':
+#         return self._node
+#
+#     #-----------------------------------|    Get
+#
+#     def keys(self) -> Iterator[str]:
+#         yield from iter(self._node.localOutput.getComponentTagNames())
+#
+#     def values(self) -> Iterator[list[str]]:
+#         plug = self._node.localOutput
+#
+#         for name in plug.getComponentTagNames():
+#             yield plug.evalComponentTagExpression(name)
+#
+#     def items(self) -> Iterator[tuple[str, list[str]]]:
+#         plug = self._node.localOutput
+#
+#         for key in plug.getComponentTagNames():
+#             yield key, plug.evalComponentTagExpression(key)
+#
+#     def __getitem__(self, tagName:str):
+#         return self._node.localOutput.evalComponentTagExpression(tagName)
+#
+#     def __len__(self) -> int:
+#         return len(self._node.localOutput.getComponentTagNames())
+#
+#     #-----------------------------------|    Remove
+#
+#     def __delitem__(self, tagName:str):
+#         self._node.deleteComponentTag(tagName)
+#
+#     #-----------------------------------|    Repr
+#
+#     def __repr__(self):
+#         return "{}({})".format(self.__class__.__name__, repr(self._node))
+
+
 class DeformableShape(nodes['GeometryShape']):
+
+    __point_comp_ext__ = None # e.g. 'vtx'
+
+    # @property
+    # def componentTags(self):
+    #     return ComponentTags(self)
 
     def __apipointiterator__(self) -> om.MItGeometry:
         return om.MItGeometry(self.__apimdagpath__())
@@ -104,71 +156,207 @@ class DeformableShape(nodes['GeometryShape']):
             return None
         return plugs['Attribute'](result).node()
 
-    #-------------------------------------|    Component tag management
+    #-------------------------------------|
+    #-------------------------------------|    COMPONENT TAGS
+    #-------------------------------------|
 
-    COMP_TAIL_PAT = re.compile(r"^.*?\.?((?:vtx|e|f|cv)\[.*?\])$")
+    COMPTAGPAT = re.compile(r"^(.*?)\.?(e|f|vtx|cv)\[(.*?)\]$")
 
-    def _parseComponents(self, *components):
-        out = []
+    def _parseTagComponentArgs(self, *args, short:bool=False
+                               ) -> tuple[str, list[str]]:
+        """
+        :param \*args: user-provided component references, e.g. 'pCube1.vtx[0]',
+            or short-form, e.g. 'vtx[0]', or lists thereof
+        :param short: don't include the node name in the returned component
+            strings; defaults to False
+        :return: Tuple of <component extension (e.g. 'vtx')>, list of components
+        """
         _self = str(self)
 
-        for component in filter(
-                bool,
-                without_duplicates(
-                    expand_tuples_lists(*components)
-                )
-        ):
-            mt = re.match(self.COMP_TAIL_PAT, component)
+        items = without_duplicates(map(str, expand_tuples_lists(*args)))
+        history = m.geometryAttrInfo(str(self.localOutput),
+                                     componentTagHistory=True)
+        historyNodes = [entry['node'] for entry in history]
+
+        components = []
+        compExtension = None
+
+        for item in items:
+            mt = re.match(self.COMPTAGPAT, item)
 
             if mt:
-                out.append('.'.join((_self, mt.group(1))))
+                thisNode, thisCompExtension, thisCompIndex = mt.groups()
+
+                if compExtension is None:
+                    compExtension = thisCompExtension
+                else:
+                    if compExtension != thisCompExtension:
+                        raise ValueError(
+                            "only one component type may be specified"
+                        )
+
+                if thisNode:
+                    if thisNode not in historyNodes:
+                        raise ValueError(
+                            "node not in shape history: {}".format(thisNode)
+                        )
+                    if short:
+                        components.append(
+                            f"{thisCompExtension}[{thisCompIndex}]"
+                        )
+                    else:
+                        components.append(
+                            f"{thisNode}.{thisCompExtension}[{thisCompIndex}]"
+                        )
+                else:
+                    if short:
+                        components.append(
+                            f"{thisCompExtension}[{thisCompIndex}]"
+                        )
+                    else:
+                        components.append(
+                            f"{_self}.{thisCompExtension}[{thisCompIndex}]"
+                        )
             else:
-                raise ValueError(f"can't parse component: {component}")
+                raise ValueError("invalid component reference: {}".format(item))
+
+        return compExtension, components
+
+    #---------------------------|    Query tags
+
+    def getComponentTagNames(self) -> list[str]:
+        """:return: The names of component tags on this node."""
+        return m.geometryAttrInfo(str(self.localOutput), componentTagNames=True)
+
+    def hasComponentTag(self, tagName:str) -> bool:
+        """
+        :return: True if the specified tag exists on this shape, otherwise
+            False.
+        """
+        return tagName in self.getComponentTagNames()
+
+    def _iterComponentTagHistory(self) -> Iterator[tuple[str, dict]]:
+        for entry in m.geometryAttrInfo(str(self.localOutput),
+                                        componentTagHistory=True):
+            key = entry.pop('key')
+            yield key, entry
+
+    def _getComponentTagSlot(self, tagName:str) -> str:
+        for k, v in self._iterComponentTagHistory():
+            if k == tagName:
+                node = v['node']
+                _arr = f"{node}.componentTags"
+                indices = m.getAttr(_arr, mi=True)
+
+                if indices:
+                    for index in indices:
+                        _slot = f"{_arr}[{index}]"
+                        name = m.getAttr(f"{_slot}.componentTagName")
+
+                        if name == tagName:
+                            return _slot
+
+        raise KeyError(f"no match for tag name '{tagName}'")
+
+    def getComponentTagSlot(self, tagName:str) -> 'plugs.Attribute':
+        return plugs['Attribute'](self._getComponentTagSlot(tagName))
+
+    #---------------------------|    Rename tags
+
+    def renameComponentTag(self, tagName:str, newTagName:str):
+        """
+        :param tagName: the name of the tag to rename
+        :param newTagName: the new name for the tag
+        """
+        if tagName != newTagName:
+            if not m.componentTag(str(self),
+                                  tagName=tagName,
+                                  newTagName=newTagName,
+                                  rename=True):
+                names = self.getComponentTagNames()
+
+                if tagName not in names:
+                    raise KeyError(f"no match for tag name '{tagName}'")
+
+                if newTagName in names:
+                    raise KeyError(f"tag name '{newTagName}' is in use")
+
+        return self
+
+    #---------------------------|    Remove tags
+
+    def deleteComponentTag(self, tagName:str):
+        """
+        Banishes the specified component tag, whether it's 'final' (existing) or
+        pending.
+
+        :raises KeyError: couldn't find the specified tag
+        """
+        if not m.componentTag(str(self), tagName=True, delete=True):
+            m.removeMultiInstance(self._getComponentTagSlot(tagName), b=True)
+
+        return self
+
+    #---------------------------|   Query tag contents
+
+    # Not implementing setComponentTagContents() yet, as wrangling component
+    # list mObjects is a massive pain in the proverbial, and I have no need for
+    # it right now
+
+    def getComponentTagCompType(self, tagName:str) -> str:
+        """
+        :return: The type of component stored in the tag, e.g. 'vtx'.
+        """
+        slot = self._getComponentTagSlot(tagName)
+        contents = m.getAttr(f"{slot}.componentTagContents")
+
+        for x in contents:
+            return re.match(self.COMPTAGPAT, x).groups()[1]
+
+    def getComponentTagContents(self,
+                                tagName:str,
+                                long:bool=False) -> list[str]:
+        slot = plugs['Attribute'](self._getComponentTagSlot(tagName))
+        out = slot.attr('componentTagContents')()
+
+        if long:
+            _, out = self._parseTagComponentArgs(out, short=not long)
 
         return out
 
-    # # use geometryAttrInfo() for more
-    # @short(uniqueTagName='utn')
-    # def createComponentTag(self,
-    #                        newTagName:str,
-    #                        *components,
-    #                        uniqueTagName:bool=False,
-    #                        replace:bool=False) -> str:
-    #     """
-    #     :param newTagName: the new tag name
-    #     :param compType: the type of component indices being passed in; one of
-    #         'vtx', 'e', 'f', 'cv'
-    #     :param compIndices: the component indices
-    #     :param uniqueTagName/utn: make the tag name unique; defaults to False
-    #     :param replace: if the component tag already exists, and *uniqueTagName*
-    #         if False, replace it instead of throwing RuntimeError; defaults to
-    #         False
-    #     :return: The resolved component tag name.
-    #     """
-    #     components = self._parseComponents(*components)
-    #
-    #     if components:
-    #         args = (components,)
-    #     else:
-    #         args = (str(self),)
-    #
-    #     kwargs = {'newTagName': newTagName, 'create': True}
-    #
-    #     if uniqueTagName:
-    #         kw['uniqueTagName'] = True
-    #
-    #     return m.componentTag(*args, **kwargs)
-    #
-    # def getComponentTagNames(self) -> list[str]:
-    #     """
-    #     Note that, on shapes with no history, tags are regarded as 'pending' and
-    #     not 'final'.
-    #
-    #     :return: The names of component tags on this node.
-    #     """
-    #     out = m.geometryAttrInfo(str(self.localOutput), componentTagNames=True)
-    #
-    #     if out:
-    #         return out
-    #
-    #     return []
+    #---------------------------|    Create tags
+
+    @short(uniqueTagName='utn',
+           replace='r')
+    def createComponentTag(self,
+                           tagName:str,
+                           *components,
+                           uniqueTagName:bool=False,
+                           replace:bool=False) -> str:
+        """
+        :param uniqueTagName/utn: force a unique tag name; defaults to False
+        :param replace/r: remove any tag with the same name; defaults to False
+        :raises KeyError: the specified tag name is in use
+        :return: The resolved tag name.
+        """
+        if not uniqueTagName:
+            if tagName in self.getComponentTagNames():
+                if replace:
+                    self.deleteComponentTag(tagName)
+                else:
+                    raise KeyError("tag name '{}' is in use".format(tagName))
+
+        _, components = self._parseTagComponentArgs(*components)
+
+        if not components:
+            components = ['{}.{}[:]'.format(self, self.__point_comp_ext__)]
+
+        kwargs = {}
+
+        if uniqueTagName:
+            kwargs['uniqueTagName'] = True
+
+        return m.componentTag(components,
+                              create=True,
+                              newTagName=tagName,
+                              **kwargs)

@@ -17,6 +17,8 @@ import maya.cmds as m
 
 class Mesh(SurfaceShape):
 
+    __point_comp_ext__ = 'vtx'
+
     #-------------------------------------|    Queries
 
     def numVertices(self) -> int:
