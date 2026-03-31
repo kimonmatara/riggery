@@ -162,24 +162,23 @@ class DeformableShape(nodes['GeometryShape']):
 
     COMPTAGPAT = re.compile(r"^(.*?)\.?(e|f|vtx|cv)\[(.*?)\]$")
 
-    def _parseTagComponentArgs(self, *args, short:bool=False
-                               ) -> tuple[str, list[str]]:
+    def _parseTagComponentArgs(self,
+                               *args,
+                               short:bool=False) -> list[str]:
         """
-        :param \*args: user-provided component references, e.g. 'pCube1.vtx[0]',
-            or short-form, e.g. 'vtx[0]', or lists thereof
-        :param short: don't include the node name in the returned component
-            strings; defaults to False
-        :return: Tuple of <component extension (e.g. 'vtx')>, list of components
+        Takes a mixed 'components' argument passed by the user and cleans it up.
+        Where mixed mesh components are encountered, they are conformed to
+        vertices.
         """
         _self = str(self)
 
         items = without_duplicates(map(str, expand_tuples_lists(*args)))
         history = m.geometryAttrInfo(str(self.localOutput),
                                      componentTagHistory=True)
-        historyNodes = [entry['node'] for entry in history]
+        historyNodes = [entry['node'] for entry in history] + [_self]
 
-        components = []
-        compExtension = None
+        outComponents = []
+        compExtensions = set()
 
         for item in items:
             mt = re.match(self.COMPTAGPAT, item)
@@ -187,40 +186,48 @@ class DeformableShape(nodes['GeometryShape']):
             if mt:
                 thisNode, thisCompExtension, thisCompIndex = mt.groups()
 
-                if compExtension is None:
-                    compExtension = thisCompExtension
-                else:
-                    if compExtension != thisCompExtension:
-                        raise ValueError(
-                            "only one component type may be specified"
-                        )
-
                 if thisNode:
+                    if m.objectType(thisNode, isAType='transform'):
+                        thisNode = str(nodes['DagNode'](thisNode).shape)
+
                     if thisNode not in historyNodes:
                         raise ValueError(
                             "node not in shape history: {}".format(thisNode)
                         )
-                    if short:
-                        components.append(
-                            f"{thisCompExtension}[{thisCompIndex}]"
-                        )
-                    else:
-                        components.append(
-                            f"{thisNode}.{thisCompExtension}[{thisCompIndex}]"
-                        )
                 else:
-                    if short:
-                        components.append(
-                            f"{thisCompExtension}[{thisCompIndex}]"
-                        )
-                    else:
-                        components.append(
-                            f"{_self}.{thisCompExtension}[{thisCompIndex}]"
-                        )
+                    thisNode = _self
+
+                compExtensions.add(thisCompExtension)
+                outComponents.append(
+                    f"{thisNode}.{thisCompExtension}[{thisCompIndex}]"
+                )
             else:
                 raise ValueError("invalid component reference: {}".format(item))
 
-        return compExtension, components
+        if len(compExtensions) != 1:
+            if compExtensions.issubset({'vtx', 'f', 'e'}):
+                _outComponents = []
+
+                for x in outComponents:
+                    _, compType, _ = re.match(self.COMPTAGPAT, x).groups()
+
+                    if compType == 'vtx':
+                        _outComponents.append(x)
+                    else:
+                        kwargs = {'toVertex': True}
+                        kwargs[{'f': 'fromFace',
+                                'e': 'fromEdge'}[compType]] = True
+
+                        _outComponents += m.polyListComponentConversion(
+                            x,
+                            **kwargs
+                        )
+                outComponents = _outComponents
+
+        if short:
+            outComponents = [x.split('.', 1)[1] for x in outComponents]
+
+        return outComponents
 
     #---------------------------|    Query tags
 
@@ -297,6 +304,11 @@ class DeformableShape(nodes['GeometryShape']):
 
         return self
 
+    def clearComponentTags(self):
+        for name in self.getComponentTagNames():
+            self.deleteComponentTag(name)
+        return self
+
     #---------------------------|   Query tag contents
 
     # Not implementing setComponentTagContents() yet, as wrangling component
@@ -304,9 +316,8 @@ class DeformableShape(nodes['GeometryShape']):
     # it right now
 
     def getComponentTagCompType(self, tagName:str) -> str:
-        """
-        :return: The type of component stored in the tag, e.g. 'vtx'.
-        """
+        """:return: The type of component stored in the tag, e.g. 'vtx'."""
+
         slot = self._getComponentTagSlot(tagName)
         contents = m.getAttr(f"{slot}.componentTagContents")
 
@@ -320,7 +331,7 @@ class DeformableShape(nodes['GeometryShape']):
         out = slot.attr('componentTagContents')()
 
         if long:
-            _, out = self._parseTagComponentArgs(out, short=not long)
+            out = self._parseTagComponentArgs(out, short=not long)
 
         return out
 
@@ -346,7 +357,7 @@ class DeformableShape(nodes['GeometryShape']):
                 else:
                     raise KeyError("tag name '{}' is in use".format(tagName))
 
-        _, components = self._parseTagComponentArgs(*components)
+        components = self._parseTagComponentArgs(*components)
 
         if not components:
             components = ['{}.{}[:]'.format(self, self.__point_comp_ext__)]

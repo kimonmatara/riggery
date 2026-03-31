@@ -728,6 +728,48 @@ class GeometryFilter(DependNode):
 
     #-------------------------------------|    Tags / membership
 
+    def _parseRequestedGeoConnections(self, *geos) -> list[tuple]:
+        """
+        :return: A list of tuples, where each tuple is <geometry index>,
+            <geometry DAG node>, <component list> (empty if no specific request)
+        """
+        startIndex = self.attr('input').nextIndex()
+
+        premap = {}
+
+        for geo in expand_tuples_lists(*geos):
+            if isinstance(geo, str):
+                if '.' in geo:
+                    premap.setdefault(
+                        nodes['DagNode'](geo.split('.', 1)[0]).toShape(),
+                        [geo]
+                    )
+                else:
+                    premap.setdefault(nodes['DagNode'](geo).toShape(), [])
+            else:
+                premap.setdefault(geo.toShape(), [])
+
+        return [(i, geo, components)
+                for i, (geo, components)
+                in enumerate(premap.items(), start=startIndex)]
+
+    def connectGeometry(self, index:int, geometry:'nodes.DagNode'):
+        """
+        Only works on deformers that follow the 'modern' I/O protocol. Performs
+        clean history and output connections.
+        """
+        geometry = nodes['DagNode'](geometry).toShape()
+        historyInput = geometry.getHistoryInput()
+        origShape = geometry.getOrigShape(create=True)
+        origShape.localOutput >> self.attr('originalGeometry')[index]
+
+        if historyInput is None:
+            historyInput = origShape.worldOutput
+
+        historyInput >> self.attr('input')[index].attr('inputGeometry')
+        self.attr('outputGeometry')[index] >> geometry.input
+        return self
+
     def getComponentTag(self, shapeIndex:int) -> str:
         """
         :return: the component tag for the specified shape.
