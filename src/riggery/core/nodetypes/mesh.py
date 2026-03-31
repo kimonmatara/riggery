@@ -47,71 +47,48 @@ class Mesh(SurfaceShape):
             return out
         return []
 
-    @short(name='n', axis='a', uvSet='uv')
-    def createMeshFromUVs(self, *,
-                          uvSet:Optional[str]=None,
-                          axis:Literal['x', 'y', 'z', '-x', '-y', '-z']='y',
-                          name:Optional[str]=None) -> 'nodes.Mesh':
-        """
-        Generates a flat mesh from the specified UV set.
+    def createMeshFromUVs(self, scale:float=1.0):
+        """Creates a flat mesh from the current UV set."""
+        newXf = nodes['Transform'].create()
+        newShape = self.duplicate(parent=newXf)[0]
+        newXf.rename()
 
-        :param uvSet/uv: the UV set to use; omit to use the current UV set
-        :param name/n: falls back to block naming if omitted
-        :param axis/a: the 'normal' axis for the UVs; defaults to 'y'
-        :return: The new mesh shape.
-        """
-        args = []
+        dag = newShape.__apimdagpath__()
 
-        if uvSet:
-            args.append(uvSet)
+        meshFn  = om.MFnMesh(dag)
+        numVerts = meshFn.numVertices
 
-        # Get the UV data
-        shapeMDagPath = self.__apimdagpath__()
-        shapeMObject = shapeMDagPath.node()
-        shapeMFn = om.MFnMesh(shapeMObject)
-        uvs = zip(*shapeMFn.getUVs(*args))
-        uvCounts, uvIds = shapeMFn.getAssignedUVs(*args)
+        uvPerVert = [None] * numVerts
 
-        # Build up points
-        if axis == 'x':
-            points = [om.MPoint(0.0, v, -u) for u, v in uvs]
-        elif axis == '-x':
-            points = [om.MPoint(0.0, v, u) for u, v in uvs]
-        elif axis == 'y':
-            points = [om.MPoint(u, 0, -v) for u, v in uvs]
-        elif axis == '-y':
-            points = [om.MPoint(u, 0, v) for u, v in uvs]
-        elif axis == 'z':
-            points = [om.MPoint(u, v, 0) for u, v in uvs]
-        elif axis == '-z':
-            points = [om.MPoint(-u, v, 0) for u, v in uvs]
-        else:
-            raise ValueError("expected 'x', 'y', 'z', '-x', '-y' or 'z'")
+        it = om.MItMeshPolygon(dag)
 
-        # Create mesh
-        uvCounts, uvIds = shapeMFn.getAssignedUVs(*args)
-        xform = nodes['Transform'].fromMObject(om.MFnMesh().create(points,
-                                                                   uvCounts,
-                                                                   uvIds))
+        while not it.isDone():
+            verts = it.getVertices()
+            uArr, vArr = it.getUVs()
 
-        # Clean up
-        if not name:
-            if _nm.Name.__elems__:
-                name = _nm.Name.evaluate(typeSuffix=self.__typesuffix__)
+            for localIdx, vertIdx in enumerate(verts):
+                if uvPerVert[vertIdx] is None:
+                    uvPerVert[vertIdx] = (uArr[localIdx] * scale,
+                                          vArr[localIdx] * scale)
+            it.next()
 
-        if name:
-            xform.name = name
+        # Build flat point array
+        newPts = om.MPointArray()
 
-        shape = xform.shape
+        for i, uv in enumerate(uvPerVert):
+            if uv is None:
+                raise RuntimeError(
+                    f"Vertex {i} has no UV assignment; check for UV seams"
+                )
+            u, v = uv
 
-        newMeshFn = om.MFnMesh(shape.__apimdagpath__())
-        uCoords, vCoords = shapeMFn.getUVs(*args)
-        newMeshFn.setUVs(uCoords, vCoords)
-        newMeshFn.assignUVs(uvCounts, uvIds)
+            newPts.append(om.MPoint(u, 0.0, v))
 
-        shape.assignDefaultShader()
+        meshFn.setPoints(newPts, om.MSpace.kObject)
+        meshFn.updateSurface()
 
-        return shape
+        m.dgdirty(str(newShape))
+        return newShape
 
     #-------------------------------------|    Component conversions
 
