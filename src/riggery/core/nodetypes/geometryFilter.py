@@ -768,6 +768,7 @@ class GeometryFilter(DependNode):
 
         historyInput >> self.attr('input')[index].attr('inputGeometry')
         self.attr('outputGeometry')[index] >> geometry.input
+
         return self
 
     def getComponentTag(self, shapeIndex:int) -> str:

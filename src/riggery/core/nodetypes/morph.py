@@ -19,10 +19,10 @@ class Morph(WeightGeometryFilter):
                name:Optional[str]=None,
                **nodeAttrs):
         node = cls.createNode(name=name)
-        node._connectBaseMesh(0, baseMesh)
+        node.connectGeometry(0, baseMesh)
 
         if targetMesh:
-            node._connectTargetMesh(0, targetMesh)
+            node.connectTargetMesh(0, targetMesh)
 
         for k, v in nodeAttrs.items():
             node.attr(k).put(v)
@@ -31,26 +31,12 @@ class Morph(WeightGeometryFilter):
 
     #---------------------------------|    DG util
 
-    def _connectBaseMesh(self,
-                         index:int,
-                         baseMesh:'nodes.DagNode',
-                         origShape:Optional['nodes.Mesh']=None):
-        baseMesh = nodes['DagNode'](baseMesh).toShape()
-
-        if origShape:
-            origShape = nodes['DagNode'](origShape).toShape()
-        else:
-            origShape = baseMesh.getOrigShape(create=True)
-
-        origShape.localOutput >> self.attr('originalGeometry')[index]
-        origShape.worldOutput >> self.attr('input')[index].attr('inputGeometry')
-        self.attr('outputGeometry')[index] >> baseMesh.input
-
-    def _connectTargetMesh(self,
-                           index:int,
-                           targetMesh:'nodes.DagNode'):
+    def connectTargetMesh(self,
+                          index:int,
+                          targetMesh:'nodes.DagNode'):
         targetMesh = nodes['DagNode'](targetMesh).toShape()
         targetMesh.worldOutput >> self.attr('morphTarget')[index]
+        return self
 
     #---------------------------------|    Weights
 

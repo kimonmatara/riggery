@@ -131,3 +131,4 @@ class Cluster(nodes['WeightGeometryFilter']):
 
     def updateOffset(self):
         self.attr('bindPreMatrix').set(self.attr('matrix')().inverse())
+        return self
