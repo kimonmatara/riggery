@@ -750,7 +750,9 @@ class ProximityWrap(WeightGeometryFilter):
 
     #------------------|    Add drivers
 
-    def addDriver(self, driverGeo:'nodes.DagNode') -> int:
+    def addDriver(self,
+                  driverGeo:'nodes.DagNode',
+                  driverBase:Optional['nodes.DagNode']=None) -> int:
         """
         This is a quiet operation. Nothing will happen if the geometry is
         already a driver. The falloff is automatically configured for new
@@ -767,11 +769,22 @@ class ProximityWrap(WeightGeometryFilter):
             nextDriverIndex = next(iter(self.attr('drivers').indices()), 0)
             slot = self.attr('drivers')[nextDriverIndex]
             driverShape.worldOutput >> slot.attr('driverGeometry')
-            origShape = driverShape.getOrigShape(True)
-            origShape.localOutput >> slot.attr('driverBindGeometry')
+
+            if driverBase is None:
+                origShape = driverShape.getOrigShape(True)
+                origShape.localOutput >> slot.attr('driverBindGeometry')
+            else:
+                driverBase = nodes['DagNode'](driverBase)
+                driverBase.localOutput >> slot.attr('driverBindGeometry')
+
             self.autoConfigDriverFalloffs(nextDriverIndex)
 
             return nextDriverIndex
+
+        if driverBase is not None:
+            driverBase = nodes['DagNode'](driverBase)
+            slot = self.attr('drivers')[existingIndex]
+            driverBase.localOutput >> slot.attr('driverBindGeometry')
 
         return existingIndex
 
