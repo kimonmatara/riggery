@@ -198,7 +198,7 @@ class Matrix(data['Tensor']):
         :param vector: the vector (or point) to assign to the specified row
         """
         start, end = self._getRowStartEnd(rowIndex)
-        self[start: end] = list(vector)
+        self[start: end] = list(vector)[:3]
 
     def getX(self):
         """
