@@ -308,11 +308,13 @@ class Geometry(Attribute, metaclass=GeometryMeta):
 
     @short(name='n',
            parent='p',
-           intermediate='i')
+           intermediate='i',
+           connect='c')
     def createShape(self,
                     name:Optional[str]=None,
                     intermediate:Optional[bool]=False,
-                    parent=None):
+                    parent=None,
+                    connect:bool=True):
         """
         Creates a shape of the matching geometry type and sets this plug as its
         input.
@@ -325,10 +327,16 @@ class Geometry(Attribute, metaclass=GeometryMeta):
         """
         shape = self.getShapeClass().createNode(name=name, parent=parent)
         self >> shape.input
+
         if intermediate:
             shape.attr('intermediateObject').set(True)
         else:
             shape.assignDefaultShader()
+
+        if not connect:
+            shape.localOutput.evaluate()
+            self // shape.input
+
         return shape
 
     #--------------------------------------|    Deformations
