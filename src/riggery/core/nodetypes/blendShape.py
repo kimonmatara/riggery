@@ -838,6 +838,39 @@ class BlendShape(WeightGeometryFilter):
 
     #---------------------------|    Constructors
 
+    # @classmethod
+    # def createAsParallelBlender(cls, geometry, deformers):
+    #     """
+    #     This assumes that the deformers are already correctly piped out from the
+    #     same origShape.
+    #     """
+    #     geometry = nodes['DagNode'](geometry).toShape()
+    #
+    #     node = cls.createNode()
+    #     origShape = geometry.getOrigShape()
+    #     origShape.localOutput >> node.attr('originalGeometry')[0]
+    #     origShape.worldOutput >> node.attr('input')[0].attr('inputGeometry')
+    #
+    #     for i, deformer in enumerate(deformers):
+    #         try:
+    #             deformerOutput = plugs['Attribute'](deformer)
+    #         except:
+    #             deformerOutput = nodes[
+    #                 'DependNode'](deformer).attr('outputGeometry')[0]
+    #
+    #         deformerOutput >> node.attr('inputTarget'
+    #                                     )[0].attr('inputTargetGroup'
+    #                                               )[i].attr('inputTargetItem'
+    #                                                         )[6000].attr(
+    #             'inputGeomTarget')
+    #
+    #         node.attr('weight')[i].alias = str(deformer)
+    #         node.attr('weight')[i].set(1.0)
+    #
+    #
+    #     node.attr('outputGeometry')[0] >> geometry.input
+    #     return node
+
     @classmethod
     @short(name='n')
     def create(cls,
