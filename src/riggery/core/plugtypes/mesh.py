@@ -109,3 +109,14 @@ class Mesh(plugs['Geometry']):
         otherPlug >> node.attr('otherPoly')
 
         return node.attr('output')
+
+    #--------------------------------------|    Sampling
+
+    def closestPointOnMesh(self, refPoint):
+        """
+        Initializes and connects a ``closestPointOnMesh`` node.
+        """
+        node = nodes['ClosestPointOnMesh'].createNode()
+        self >> node.attr('inMesh')
+        refPoint >> node.attr('inPosition')
+        return node
