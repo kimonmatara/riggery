@@ -69,25 +69,23 @@ class DeltaMush(WeightGeometryFilter):
         return out
 
     def macro(self) -> dict:
-        attrNames = [
-            'caching',
-            'envelope',
-            'smoothingIterations',
-            'smoothingAlgorithm',
-            'smoothingStep',
-            'inwardConstraint',
-            'outwardConstraint',
-            'distanceWeight',
-            'pinBorderVertices',
-            'displacement',
-            'scale',
-            'scaleX',
-            'scaleY',
-            'scaleZ'
-        ]
+        attrNames = ['caching',
+                     'envelope',
+                     'smoothingIterations',
+                     'smoothingAlgorithm',
+                     'smoothingStep',
+                     'inwardConstraint',
+                     'outwardConstraint',
+                     'distanceWeight',
+                     'pinBorderVertices',
+                     'displacement',
+                     'scale',
+                     'scaleX',
+                     'scaleY',
+                     'scaleZ']
 
         return {
-            'geo': list(map(str, (shape.parent for shape in self.shapes))),
+            'geo': str(next(self.shapes)),
             'attrs': {
                 attrName:self.attr(attrName).getState(input=True, value=True)
                 for attrName in attrNames
