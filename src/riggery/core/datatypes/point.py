@@ -23,9 +23,10 @@ class Point(Vector):
             if shape is None:
                 node = nodes.MultiplyDivide.createNode()
                 node.attr('input1').set(self)
+
                 for dest in node.attr('input2').children:
-                    other >> dest
                     dest.put(other, True)
+
                 return node.attr('output')
 
             if shape == 3:
