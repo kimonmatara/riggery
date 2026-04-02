@@ -402,6 +402,11 @@ class Transform(nodes['DagNode']):
 
         return self
 
+    def releaseSRT(self):
+        for chan in ('t', 'r', 's', 'shear'):
+            self.attr(chan).release(r=True)
+        return self
+
     @short(translate='t', rotate='r', scale='s', shear='sh')
     def resetSRT(self, translate=None, rotate=None, scale=None, shear=None):
         """
