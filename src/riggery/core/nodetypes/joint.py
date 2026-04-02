@@ -35,7 +35,8 @@ class Joint(nodes['Transform']):
                parent=None,
                worldSpace:bool=False,
                freezeRotate:bool=True,
-               displayLocalAxis:bool=True):
+               displayLocalAxis:bool=True,
+               radius:float=1.0):
         """
         :param name/n: if omitted, defaults to Name blocks
         :param matrix/m: the initial node matrix; defaults to identity
@@ -55,6 +56,8 @@ class Joint(nodes['Transform']):
                               parent=parent,
                               worldSpace=worldSpace,
                               displayLocalAxis=displayLocalAxis)
+
+        node.attr('radius').set(radius)
 
         if freezeRotate:
             node.makeIdentity(rotate=True, apply=True, jointOrient=False)
