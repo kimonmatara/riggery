@@ -5,8 +5,9 @@ from ..datatypes import __pool__ as data
 from ..plugtypes import __pool__ as plugs
 from ..elem import Elem
 
-from riggery.general.iterables import expand_tuples_lists
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
 import riggery.core.lib.names as _nm
+import riggery.core.lib.mixedmode as _mm
 SurfaceShape = nodes['SurfaceShape']
 
 from riggery.general.functions import short
@@ -25,7 +26,78 @@ class Mesh(SurfaceShape):
         """:return: The number of vertices on this mesh."""
         return self.__apimfn__().numVertices
 
-    #-------------------------------------|    UV set get / set
+    def numFaces(self) -> int:
+        """:return: The number of faces on this mesh."""
+        return self.__apimfn__().numPolygons
+
+    @short(worldSpace='ws')
+    def getClosestPoint(self,
+                        point:'data.Point',
+                        worldSpace:bool=False) -> tuple['data.Point', int]:
+        """
+        :return: Tuple of closest point, face ID.
+        """
+        point, faceId = self.__apimfn__(dag=True).getClosestPoint(
+            om.MPoint(point),
+            om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        )
+        return data['Point'](point), faceId
+
+    # On standby; solution does not have parity with uvPin
+    # @short(worldSpace='ws')
+    # def getClosestMatrix(self,
+    #                      point:'data.Point',
+    #                      axis1:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+    #                      ref1:Literal['u', 'v', 'n'],
+    #                      axis2:Literal['x', 'y', 'z', '-x', '-y', '-z'],
+    #                      ref2:Literal['u', 'v', 'n'],
+    #                      worldSpace:bool=False,
+    #                      uvSet:Optional[str]=None):
+    #
+    #     meshFn = self.__apimfn__(dag=True)
+    #     space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+    #
+    #     if uvSet is None:
+    #         uvSet = self.uvSet
+    #
+    #     point, faceId = meshFn.getClosestPoint(om.MPoint(point), space)
+    #     faceVtxIds = meshFn.getPolygonVertices(faceId)
+    #
+    #     vtxId = min(faceVtxIds,
+    #                 key=lambda x: meshFn.getPoint(x, space).distanceTo(point))
+    #
+    #     refs = {}
+    #
+    #     if 'u' in (ref1, ref2):
+    #         refs['u'] = meshFn.getFaceVertexTangent(faceId, vtxId, space, uvSet)
+    #
+    #     if 'v' in (ref1, ref2):
+    #         refs['v'] = meshFn.getFaceVertexBinormal(faceId, vtxId, space,
+    #                                                  uvSet)
+    #
+    #     if 'n' in (ref1, ref2):
+    #         refs['n'] = meshFn.getFaceVertexNormal(faceId, vtxId, space)
+    #
+    #     return _mm.createOrthoMatrix(axis1, refs[ref1],
+    #                                  axis2, refs[ref2],
+    #                                  w=point).pick(t=True, r=True)
+
+    #-------------------------------------|    UVs
+
+    def getClosestUV(self,
+                     point:'data.Point',
+                     worldSpace:bool=False,
+                     uvSet:Optional[str]=None) -> tuple[float, float, int]:
+        """:return: Tuple of U, V, face ID."""
+        point = om.MPoint(point)
+        meshFn = self.__apimfn__(dag=True)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        closestPoint = meshFn.getClosestPoint(point, space)[0]
+
+        if uvSet is None:
+            uvSet = self.uvSet
+
+        return meshFn.getUVAtPoint(closestPoint, space, uvSet)
 
     def getUVSet(self) -> str:
         """Returns the name of the current UV set."""
@@ -91,6 +163,70 @@ class Mesh(SurfaceShape):
 
         m.dgdirty(str(newShape))
         return newShape
+
+
+    @short(constructionHistory='ch')
+    def carpetUVs(self, *components, constructionHistory:Optional[bool]=None):
+        """
+        Creates grid UVs. Works in the current set.
+        """
+        if constructionHistory is not None:
+            hadHistory = self.hasHistory()
+
+            if hadHistory:
+                constructionHistory = True
+
+        if components:
+            components = list(
+                without_duplicates(expand_tuples_lists(*components))
+            )
+
+            if components:
+                _components = []
+
+                for x in components:
+                    mt = re.match(r"^.*?\.(vtx|f|e|map)\[.*$", x)
+                    if mt:
+                        typ = mt.group(1)
+                    else:
+                        raise TypeError("not a mesh component: ", x)
+                    if typ != 'f':
+                        kw = {'toFace': True}
+                        kw[
+                            {'vtx': 'fromVertex',
+                             'e': 'fromEdge',
+                             'map': 'fromUV'}[typ]
+                        ] = True
+                        _components += m.polyListComponentConversion(x)
+                    else:
+                        _components.append(x)
+                components = _components
+        else:
+            components = ["{}.f[0:{}]".format(self, self.numFaces()-1)]
+
+        # Auto project
+        m.polyAutoProjection(*components,
+                             ch=True, lm=0, pb=0, ibd=0, cm=0, l=2,
+                             sc=1, o=0, p=12, ps=0.2, ws=True)[0]
+
+        # Unitize
+        m.polyForceUV(*components, unitize=True)
+
+        # Move and sew
+        m.polyMapSewMove(*components, nf=10, lps=0)
+
+        # Normalize
+        m.polyNormalizeUV(*components,
+                          normalizeType=1,
+                          preserveAspectRatio=False,
+                          centerOnTile=False,
+                          normalizeDirection=0)
+
+        if constructionHistory is not None:
+            if not constructionHistory:
+                self.deleteHistory()
+
+        return self
 
     #-------------------------------------|    Component conversions
 
