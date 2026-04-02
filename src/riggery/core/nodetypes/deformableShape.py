@@ -107,7 +107,7 @@ class DeformableShape(nodes['GeometryShape']):
         """
         :return: ``True`` if there's an input on this shape node.
         """
-        return self.input.hasInput()
+        return next(self.input.iterInputs(), None) is not None
 
     @short(create='c')
     def getHistoryInput(self, create=False):
