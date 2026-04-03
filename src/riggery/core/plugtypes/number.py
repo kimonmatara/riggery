@@ -377,6 +377,24 @@ class Number(__pool__['Math']):
 
     #-----------------------------------------|    Ranges
 
+    def wrap(self,
+             minVal:Union[int, float, 'Number'],
+             maxVal:Union[int, float, 'Number']):
+        """
+        Wraps this value so that it stays within the specified range.
+        """
+        span = maxVal - minVal
+        aboveSolve = minVal + ((self - maxVal) % span)
+        belowSolve = maxVal - ((minValue - v) % span)
+
+        return (self > maxVal).ifElse(aboveSolve,
+                                      (self < minVal).ifElse(
+                                          belowSolve,
+                                          self,
+                                          Number
+                                      ),
+                                      Number)
+
     def __mod__(self, other):
         """
         Implements the % operator (modulo).
@@ -429,9 +447,8 @@ class Number(__pool__['Math']):
 
     @cache_dg_output
     def trunc(self):
-        """
-        :return: The integer truncation of this number.
-        """
+        """:return: The integer truncation of this number."""
+
         node = nodes['Truncate'].createNode()
         self >> node.attr('input')
         return node.attr('output')
