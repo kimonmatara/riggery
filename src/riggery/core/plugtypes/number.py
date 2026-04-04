@@ -798,13 +798,16 @@ class Number(__pool__['Math']):
                      weights:list[float],
                      srcGeo:Optional[Union[str, 'nodes.DagNode']]=None,
                      destGeo:Optional[Union[str, 'nodes.DagNode']]=None, *,
-                     method:Optional[Literal['barycentric', 'uv']]=None,
+                     method:Optional[
+                         Literal['closest', 'barycentric', 'uv']
+                     ]=None,
                      srcUVSet:Optional[str]=None,
                      destUVSet:Optional[str]=None,
                      worldSpace:bool=False,
                      smoothIterations:int=0,
                      smoothStrength:float=0.5,
-                     chunkSize:int=10000):
+                     chunkSize:int=10000,
+                     k:int=6):
         """
         Writes into a deformer 'multi' weights plug. Remapping will not occur
         unless both *srcGeo* and *destGeo* are provided. Smoothing will not
@@ -827,6 +830,8 @@ class Number(__pool__['Math']):
             *destGeo* is None; defaults to 0.5
         :param chunkSize: the write chunk, to optimize array dumping; defaults
             to 10000
+        :param k: for the 'closest' method, the number of source vertices that
+            contribute to each destination vertex's weights; defaults to 6
         :return: self
         """
         weights = list(weights)
@@ -846,11 +851,11 @@ class Number(__pool__['Math']):
                 if srcUVSet or destUVSet:
                     method = 'uv'
                 else:
-                    method = 'barycentric'
+                    method = 'closest'
             else:
-                if method not in ('uv', 'barycentric'):
+                if method not in ('uv', 'barycentric', 'closest'):
                     raise ValueError(
-                        "method must be one of 'uv' or 'barycentric'"
+                        "method must be one of 'uv', 'closest' or 'barycentric'"
                     )
 
             if method == 'barycentric':
@@ -859,12 +864,14 @@ class Number(__pool__['Math']):
                                                destGeo,
                                                worldSpace=worldSpace)
 
-            else:
+            elif method == 'uv':
                 weights = _wt.remapWeightsUV(weights,
                                              srcGeo,
                                              destGeo,
                                              srcUVSet=srcUVSet,
                                              destUVSet=destUVSet)
+            else:
+                weights = _wt.remapWeightsClosest(weights, srcGeo, destGeo, k=k)
 
         if doSmooth:
             weights = _wt.smoothWeights(weights,
