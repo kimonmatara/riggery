@@ -8,10 +8,12 @@ from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
 from ..plugtypes import __pool__
 from ..lib.evaluation import cache_plug_method, cache_dg_output
+from ...apilib import weights as _wt
 from ..lib import mixedmode as _mm
 from ..lib import names as _nm
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
+from ...internal import str2api as _s2a
 
 
 class Number(__pool__['Math']):
@@ -778,7 +780,7 @@ class Number(__pool__['Math']):
 
     #-----------------------------------------|    Multi read / write
 
-    def readWeightsMulti(self, length:int, default:float) -> list[float]:
+    def readWeights(self, length:int, default:float) -> list[float]:
         """
         Reads a deformer weights plug.
 
@@ -787,45 +789,89 @@ class Number(__pool__['Math']):
             array.
         :return: The weights.
         """
-        values = [default] * length
+        return _wt.readWeights(self.__apimplug__(), length, default)
 
-        mplug = self.__apimplug__()
-        arrayHandle = mplug.asMDataHandle()
-        arrayDataHandle = om.MArrayDataHandle(arrayHandle)
-
-        while not arrayDataHandle.isDone():
-            logicalIndex = arrayDataHandle.elementLogicalIndex()
-
-            if logicalIndex < length:
-                values[logicalIndex] = arrayDataHandle.outputValue().asFloat()
-
-            arrayDataHandle.next()
-
-        mplug.destructHandle(arrayHandle)
-        return values
-
-    def writeWeightsMulti(self, values:list[float], *, chunkSize:int=10000):
+    @short(worldSpace='ws',
+           smoothIterations='si',
+           smoothStrength='ss')
+    def writeWeights(self,
+                     weights:list[float],
+                     srcGeo:Optional[Union[str, 'nodes.DagNode']]=None,
+                     destGeo:Optional[Union[str, 'nodes.DagNode']]=None, *,
+                     method:Optional[Literal['barycentric', 'uv']]=None,
+                     srcUVSet:Optional[str]=None,
+                     destUVSet:Optional[str]=None,
+                     worldSpace:bool=False,
+                     smoothIterations:int=0,
+                     smoothStrength:float=0.5,
+                     chunkSize:int=10000):
         """
-        Writes into deformer weights plug. All values are written in index
-        sequence, but the array is not resized if it has legacy overflow.
+        Writes into a deformer 'multi' weights plug. Remapping will not occur
+        unless both *srcGeo* and *destGeo* are provided. Smoothing will not
+        occur unless *destGeo* is provided.
 
-        :param values: the weight values (floats)
-        :param chunkSize: the size of the ``setAttr`` chunks (to prevent Python
-            memory issues); defaults to 10000
+        :param weights: the weights to write
+        :param srcGeo: the source geo for remapping
+        :param destGeo: the destination geo for remapping
+        :param method: one of 'barycentric', 'uv'; ignored if not remapping;
+            defaults to 'uv' if a UV set is provided, otherwise 'barycentric'
+        :param srcUVSet: if omitted, and *method* is explicitly set to 'uv',
+            the current UV set will be used; defaults to None
+        :param destUVSet: if omitted, and *method* is explicitly set to 'uv',
+            the current UV set will be used; defaults to None
+        :param worldSpace/ws: ignored if not performing barycentric remapping;
+            defaults to False
+        :param smoothIterations/si: the number of smoothing iterations; ignored
+            if *destGeo* is None; defaults to 0
+        :param smoothStrength/ss: the smoothing strength (0 to 1);  ignored if
+            *destGeo* is None; defaults to 0.5
+        :param chunkSize: the write chunk, to optimize array dumping; defaults
+            to 10000
+        :return: self
         """
-        totalLength = len(values)
-    
-        if totalLength == 0:
-            return
+        weights = list(weights)
 
-        _self = str(self)
-    
-        for startIndex in range(0, totalLength, chunkSize):
-            endIndex = min(startIndex + chunkSize, totalLength)
-            mayaEndIndex = endIndex - 1
-            chunkPath = f"{_self}[{startIndex}:{mayaEndIndex}]"
-            chunkData = values[startIndex:endIndex]
+        doRemap = doSmooth = False
 
-            m.setAttr(chunkPath, *chunkData)
+        if srcGeo is not None:
+            srcGeo = _s2a.getMDagPath(str(srcGeo))
+
+        if destGeo is not None:
+            destGeo = _s2a.getMDagPath(str(destGeo))
+            doSmooth = smoothIterations and smoothStrength
+            doRemap = srcGeo is not None
+
+        if doRemap:
+            if method is None:
+                if srcUVSet or destUVSet:
+                    method = 'uv'
+                else:
+                    method = 'barycentric'
+            else:
+                if method not in ('uv', 'barycentric'):
+                    raise ValueError(
+                        "method must be one of 'uv' or 'barycentric'"
+                    )
+
+            if method == 'barycentric':
+                weights = _wt.remapWeightsBary(weights,
+                                               srcGeo,
+                                               destGeo,
+                                               worldSpace=worldSpace)
+
+            else:
+                weights = _wt.remapWeightsUV(weights,
+                                             srcGeo,
+                                             destGeo,
+                                             srcUVSet=srcUVSet,
+                                             destUVSet=destUVSet)
+
+        if doSmooth:
+            weights = _wt.smoothWeights(weights,
+                                        destGeo,
+                                        smoothIterations,
+                                        smoothStrength)
+
+        _wt.writeWeights(self.__apimplug__(), weights, chunkSize=chunkSize)
 
         return self
