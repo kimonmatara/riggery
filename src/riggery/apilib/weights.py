@@ -1,3 +1,4 @@
+from typing import Optional
 import maya.api.OpenMaya as om
 import maya.cmds as m
 import numpy as np
@@ -64,45 +65,55 @@ def writeWeights(plug:om.MPlug, weights:list[float], chunkSize:int=10000):
 #-----------------------------------------|
 
 def smoothWeights(weights:list[float],
-                  mesh:om.MDagPath,
+                  geo:om.MDagPath,
                   iterations:int=3,
                   strength:float=0.5) -> list[float]:
     """
     Performs weighted Laplacian smoothing on the given weights.
 
     :param weights: the weights
-    :param mesh: the mesh that carries the weights
+    :param geo: the NURBS surface or mesh against which to perform the smoothing
     :param iteration: the number of times to run a smooth; defaults to 3
     :param strength: controls the blend between the original value and the
         neighbourhood average (where 0 = no smoothing and 1 = full replacement);
         defaults to 0.5
     :return: The smoothed weights, in a list.
     """
-    meshShapeDagPath = toShape(mesh)
-    meshFn = om.MFnMesh(meshShapeDagPath)
+    if not (iterations or strength):
+        return list(weights)
 
-    numVerts = meshFn.numVertices
-    numInfluences = len(weights) // numVerts
-    w = np.array(weights, dtype=np.float64).reshape(numVerts, numInfluences)
+    meshShapeDagPath, deleteMesh = _asMesh(geo)
 
-    it = om.MItMeshVertex(meshFn.object())
-    neighbours = [list(x.getConnectedVertices()) for x in it]
+    try:
+        meshFn = om.MFnMesh(meshShapeDagPath)
 
-    for _ in range(iterations):
-        smoothed = w.copy()
+        numVerts = meshFn.numVertices
+        numInfluences = len(weights) // numVerts
+        w = np.array(weights, dtype=np.float64).reshape(numVerts, numInfluences)
 
-        for i, nbrs in enumerate(neighbours):
-            if not nbrs:
-                continue
-            neighbourAvg = w[nbrs].mean(axis=0)
-            smoothed[i] = (1.0 - strength) * w[i] + strength * neighbourAvg
+        it = om.MItMeshVertex(meshFn.object())
+        neighbours = [list(x.getConnectedVertices()) for x in it]
 
-        w = smoothed
+        for _ in range(iterations):
+            smoothed = w.copy()
 
-    return w.ravel().tolist()
+            for i, nbrs in enumerate(neighbours):
+                if not nbrs:
+                    continue
+                neighbourAvg = w[nbrs].mean(axis=0)
+                smoothed[i] = (1.0 - strength) * w[i] + strength * neighbourAvg
+
+            w = smoothed
+        out = w.ravel().tolist()
+
+    finally:
+        if deleteMesh:
+            om.MGlobal.deleteNode(getParent(meshShapeDagPath).node())
+
+    return out
 
 #-----------------------------------------|
-#-----------------------------------------|    UTIL
+#-----------------------------------------|    BARYCENTRIC WEIGHT REMAPPING
 #-----------------------------------------|
 
 def barycentricCoords(p: om.MPoint,
@@ -138,17 +149,14 @@ def _asMesh(geo:om.MDagPath) -> tuple[om.MDagPath, bool]:
 
     raise TypeError("expected mesh or NURBS surface")
 
-#-----------------------------------------|
-#-----------------------------------------|    WEIGHT REMAPPING
-#-----------------------------------------|
-
-def remapWeights(weights:list[float],
-                 srcGeo:om.MDagPath,
-                 destGeo:om.MDagPath,
-                 worldSpace:bool=False,
-                 smoothIterations:int=0,
-                 smoothStrength:float=0.5) -> list[float]:
-
+def remapWeightsBary(weights:list[float],
+                     srcGeo:om.MDagPath,
+                     destGeo:om.MDagPath,
+                     worldSpace:bool=False) -> list[float]:
+    """
+    Performs barycentric remapping of a weight list. This can sometimes get
+    noisy, so consider following it up with :func:`smoothWeights`.
+    """
     #---------------------------|    Prep
 
     srcShapeDagPath, deleteSrc = _asMesh(srcGeo)
@@ -178,14 +186,6 @@ def remapWeights(weights:list[float],
             w = sum(b * srcWeights[i] for b, i in zip(bary, vtxIds[:3]))
             result.extend(w.tolist())
 
-        #-----------------------|    Smooth
-
-        if smoothIterations and smoothStrength:
-            result = smoothWeights(result,
-                                   destShapeDagPath,
-                                   smoothIterations,
-                                   smoothStrength)
-
     finally:
         if deleteSrc:
             om.MGlobal.deleteNode(getParent(srcShapeDagPath).node())
@@ -194,3 +194,141 @@ def remapWeights(weights:list[float],
             om.MGlobal.deleteNode(getParent(destShapeDagPath).node())
 
     return result
+
+#-----------------------------------------|
+#-----------------------------------------|    WEIGHT REMAPPING BY-UV
+#-----------------------------------------|
+
+def _buildUVTriangleArrays(meshFn:om.MFnMesh, uvSet:Optional[str]=None):
+    uArray = om.MFloatArray()
+    vArray = om.MFloatArray()
+
+    if uvSet is None:
+        uvSet = tuple()
+    else:
+        uvSet = (uvSet,)
+
+    uArray, vArray = meshFn.getUVs(*uvSet)
+    uv = np.array([(uArray[i], vArray[i])
+                   for i in range(len(uArray))], dtype=np.float64)
+
+    triA, triB, triC = [], [], []
+    vtxA, vtxB, vtxC = [], [], []
+
+    for faceIdx in range(meshFn.numPolygons):
+        vtxIds = meshFn.getPolygonVertices(faceIdx)
+        uvIds = [meshFn.getPolygonUVid(faceIdx, k, *uvSet)
+                 for k in range(len(vtxIds))]
+
+        for k in range(1, len(vtxIds) - 1):
+            triA.append(uv[uvIds[0]])
+            triB.append(uv[uvIds[k]])
+            triC.append(uv[uvIds[k+1]])
+            vtxA.append(vtxIds[0])
+            vtxB.append(vtxIds[k])
+            vtxC.append(vtxIds[k+1])
+
+    return (np.array(triA), np.array(triB), np.array(triC),
+            np.array(vtxA), np.array(vtxB), np.array(vtxC))
+
+def _barycentric2DBatch(p:np.ndarray,
+                        a:np.ndarray,
+                        b:np.ndarray,
+                        c:np.ndarray):
+    """
+    Vectorised barycentric coords for one point p against N triangles.
+
+    :param p: (2,)
+    :param a: (N, 2)
+    :param b: (N, 2)
+    :param c: (N, 2)
+    :return: (N, 3) bary coords.
+    """
+    v0 = b - a # (N, 2)
+    v1 = c - a # (N, 2)
+    v2 = p - a # (N, 2)
+
+    d00 = (v0*v0).sum(axis=1)
+    d01 = (v0*v1).sum(axis=1)
+    d11 = (v1*v1).sum(axis=1)
+    d20 = (v2*v0).sum(axis=1)
+    d21 = (v2*v1).sum(axis=1)
+
+    denom = d00*d11 - d01*d01
+    valid = np.abs(denom) > 1e-10
+
+    bv = np.where(valid, (d11*d20 - d01*d21)
+                  / np.where(valid, denom, 1.0), -1.0)
+
+    bw = np.where(valid, (d00*d21 - d01*d20)
+                  / np.where(valid, denom, 1.0), -1.0)
+
+    bu = 1.0 - bv - bw
+
+    return np.stack([bu, bv, bw], axis=1) # (N, 3)
+
+def remapWeightsUV(weights:list[float],
+                   srcGeo:om.MDagPath,
+                   destGeo:om.MDagPath,
+                   srcUVSet:Optional[str]=None,
+                   destUVSet:Optional[str]=None) -> list[float]:
+    """
+    Remaps weights in UV space. Where available this should be preferred over
+    :func:`remapWeightsBary`, as it's less noisy and fairly quick.
+    """
+    #---------------------------|    Prep
+
+    srcShapeDagPath, deleteSrc = _asMesh(srcGeo)
+    destShapeDagPath, deleteDest = _asMesh(destGeo)
+
+    try:
+        srcMeshFn = om.MFnMesh(srcShapeDagPath)
+
+        #-----------------------|    Cook
+
+        numInfluences = len(weights) // srcMeshFn.numVertices
+        srcWeights = np.array(weights,
+                              dtype=np.float64).reshape(-1, numInfluences)
+        triA, triB, triC, vtxA, vtxB, vtxC = _buildUVTriangleArrays(srcMeshFn,
+                                                                    srcUVSet)
+
+        # Collect dest UVs
+        destUVs = []
+        it = om.MItMeshVertex(destShapeDagPath)
+
+        if destUVSet is None:
+            destUVSet = tuple()
+        else:
+            destUVSet = (destUVSet,)
+
+        for vtx in it:
+            destUVs.append(vtx.getUV(*destUVSet))
+
+        destUVs = np.array(destUVs, dtype=np.float64)
+
+        result = np.zeros((len(destUVs), numInfluences), dtype=np.float64)
+
+        for i, p in enumerate(destUVs):
+            bary = _barycentric2DBatch(p, triA, triB, triC)
+            inside = np.all(bary >= 0, axis=1)
+            hit = np.argmax(inside)
+
+            if not inside[hit]:
+                continue
+
+            bu, bv, bw = bary[hit]
+
+            result[i] = (bu*srcWeights[vtxA[hit]] +
+                         bv*srcWeights[vtxB[hit]] +
+                         bw*srcWeights[vtxC[hit]])
+
+        resultList = result.ravel().tolist()
+
+    finally:
+        if deleteSrc:
+            om.MGlobal.deleteNode(getParent(srcShapeDagPath).node())
+
+        if deleteDest:
+            om.MGlobal.deleteNode(getParent(destShapeDagPath).node())
+
+    return resultList
