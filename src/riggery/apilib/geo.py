@@ -11,6 +11,8 @@ def createMeshFromSurfaceCage(surface:om.MDagPath) -> om.MDagPath:
     Builds a mesh from the cage of the given NURBS surface. The mesh will be
     generated under a matched transform at the same level as *surface*.
 
+    Simple, uniform-grid UVs will be automatically generated.
+
     :return: The DAG path to the mesh shape or transform node.
     """
     srfShapeDagPath = toShape(surface)
@@ -39,13 +41,39 @@ def createMeshFromSurfaceCage(surface:om.MDagPath) -> om.MDagPath:
     meshFn = om.MFnMesh()
     meshFn.create(points, polyCounts, polyConnects)
 
+    #-------|    Default UVs
+
+    uArray = om.MFloatArray()
+    vArray = om.MFloatArray()
+
+    for i in range(numU):
+        for j in range(numV):
+            uArray.append(i / (numU - 1))
+            vArray.append(j / (numV - 1))
+
+    meshFn.setUVs(uArray, vArray)
+
+    uvCounts = om.MIntArray()
+    uvIds = om.MIntArray()
+
+    for i in range(numU - 1):
+        for j in range(numV - 1):
+            uvCounts.append(4)
+            uvIds.append(i * numV + j)
+            uvIds.append(i * numV + j + 1)
+            uvIds.append((i + 1) * numV + j + 1)
+            uvIds.append((i + 1) * numV + j)
+
+    meshFn.assignUVs(uvCounts, uvIds)
+
+    #-------|    Prepare return
+
     meshShapeMObject = meshFn.object()
     meshShapeDagPath = om.MDagPath.getAPathTo(meshShapeMObject)
 
     meshXfDagPath = om.MDagPath(meshShapeDagPath)
     meshXfDagPath.pop()
 
-    # Reparent
     srfXfDagPath = getParent(srfShapeDagPath)
     setParent(meshXfDagPath, getParent(srfXfDagPath))
 
@@ -56,9 +84,8 @@ def createMeshFromSurfaceCage(surface:om.MDagPath) -> om.MDagPath:
 
 def iterPointPositions(geo:om.MDagPath,
                        worldSpace:bool=False) -> Iterator[om.MPoint]:
-    """
-    Yields positions for any 'point'-like components on *geo*.
-    """
+    """Yields positions for any 'point'-like components on *geo*."""
+
     geoShapeDagPath = toShape(geo)
     itr = om.MItGeometry(geoShapeDagPath)
     out = (x.position() for x in itr)
