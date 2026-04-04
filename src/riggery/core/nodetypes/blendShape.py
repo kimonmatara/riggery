@@ -1743,7 +1743,7 @@ class BlendShape(WeightGeometryFilter):
         :return: The full list of base weights for the blend shape node.
         """
         return self.attr('weightList'
-                         )[0].attr('weights').readWeightsMulti(
+                         )[0].attr('weights').readWeights(
             self.numPoints(0),
             1.0
         )
@@ -1755,7 +1755,7 @@ class BlendShape(WeightGeometryFilter):
         :param weights: the full (non-sparse) weights list
         """
         self.attr('weightList'
-                  )[0].attr('weights').writeWeightsMulti(weights)
+                  )[0].attr('weights').writeWeights(weights)
         return self
 
     def getWeightsForTargetByIndex(self, targetIndex:int) -> list[float]:
@@ -1767,7 +1767,7 @@ class BlendShape(WeightGeometryFilter):
             'inputTargetGroup')[targetIndex].attr('targetWeights')
         numPoints = self.numPoints(0)
 
-        return weightAttr.readWeightsMulti(numPoints, 1.0)
+        return weightAttr.readWeights(numPoints, 1.0)
 
     def setWeightsForTargetByIndex(self, targetIndex:int, weights:list[float]):
         """
@@ -1776,6 +1776,6 @@ class BlendShape(WeightGeometryFilter):
         """
         weightAttr = self.attr('inputTarget')[0].attr(
             'inputTargetGroup')[targetIndex].attr('targetWeights')
-        weightAttr.writeWeightsMulti(weights)
+        weightAttr.writeWeights(weights)
         return self
 

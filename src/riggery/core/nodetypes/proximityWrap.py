@@ -1013,7 +1013,7 @@ class ProximityWrap(WeightGeometryFilter):
         :return: All component weights for the shape at the specified index.
         """
         return self.attr('weightList'
-                         )[shapeIndex].attr('weights').readWeightsMulti(
+                         )[shapeIndex].attr('weights').readWeights(
             self.numPoints(shapeIndex), 1.0)
 
     def setWeights(self,
@@ -1026,7 +1026,7 @@ class ProximityWrap(WeightGeometryFilter):
         :param weights: the complete weight list (one per vertex)
         """
         self.attr('weightList')[shapeIndex].attr(
-            'weights').writeWeightsMulti(weights)
+            'weights').writeWeights(weights)
         return self
 
     #------------------|    Mirror effects

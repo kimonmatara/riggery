@@ -43,9 +43,9 @@ class Morph(WeightGeometryFilter):
     def getWeights(self, index:int) -> list[float]:
         plug = self.attr('weightList')
         return plug[index].attr('weights'
-                                ).readWeightsMulti(self.numPoints(index), 1.0)
+                                ).readWeights(self.numPoints(index), 1.0)
 
     def setWeights(self, index:int, weights:list[float]):
         plug = self.attr('weightList')
-        plug[index].attr('weights').writeWeightsMulti(weights)
+        plug[index].attr('weights').writeWeights(weights)
         return self
