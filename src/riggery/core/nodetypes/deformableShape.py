@@ -8,6 +8,7 @@ from riggery.general.functions import short, resolve_flags
 from riggery.general.iterables import without_duplicates, expand_tuples_lists
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
+from ..datatypes import __pool__ as data
 
 
 # class ComponentTags:
@@ -69,6 +70,33 @@ class DeformableShape(nodes['GeometryShape']):
 
     def numPoints(self) -> int:
         return self.__apipointiterator__().count()
+
+    @short(worldSpace='ws')
+    def iterPoints(self,
+                   api:bool=False,
+                   worldSpace:bool=False
+                   ) -> Iterator[Union['data.Point', om.MPoint]]:
+        """
+        Iterates across this geometry's 'point' positions.
+
+        :param api: yield :class:`~maya.api.OpenMaya.MPoint` instead of
+            :class:`~riggery.core.datatypes.point.Point`; defaults to False
+        :param worldSpace/ws: yield world-space points; defaults to False
+        """
+        dagPath = self.__apimdagpath__()
+        itr = om.MItGeometry(dagPath)
+
+        out = (x.position() for x in itr)
+
+        if worldSpace:
+            worldMatrix = dagPath.inclusiveMatrix()
+            out = (x * worldMatrix for x in out)
+
+        if not api:
+            T = data['Point']
+            out = (T.fromApi(x) for x in out)
+
+        yield from out
 
     @property
     def input(self):
