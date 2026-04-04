@@ -332,3 +332,67 @@ def remapWeightsUV(weights:list[float],
             om.MGlobal.deleteNode(getParent(destShapeDagPath).node())
 
     return resultList
+
+def remapWeightsClosest(weights:list[float],
+                        srcGeo:om.MDagPath,
+                        destGeo:om.MDagPath,
+                        worldSpace:bool=False,
+                        k:int=6) -> list[float]:
+    """
+    :param k: the number of source vertices that contribute to each destination
+        vertex's weights; defaults to 6
+    """
+    #---------------------------|    Prep
+
+    if worldSpace:
+        space = om.MSpace.kWorld
+    else:
+        space = om.MSpace.kObject
+
+    srcShapeDagPath, deleteSrc = _asMesh(srcGeo)
+    destShapeDagPath, deleteDest = _asMesh(destGeo)
+
+    try:
+        srcMeshFn = om.MFnMesh(srcShapeDagPath)
+
+        #-----------------------|    Cook
+
+        numInfluences = len(weights) // srcMeshFn.numVertices
+        srcWeights = np.array(weights,
+                              dtype=np.float64).reshape(-1, numInfluences)
+
+        srcPoints = np.array(
+            [[p.x, p.y, p.z] for p in srcMeshFn.getPoints(space)],
+            dtype=np.float64
+        )
+
+        destMeshFn = om.MFnMesh(destShapeDagPath)
+        result = np.zeros((destMeshFn.numVertices, numInfluences),
+                          dtype=np.float64)
+        clampedK = min(k, len(srcPoints))
+
+        for i, pt in enumerate(
+                iterPointPositions(destShapeDagPath, worldSpace)
+        ):
+            closestPt, _ = srcMeshFn.getClosestPoint(pt, space)
+            cp = np.array([closestPt.x, closestPt.y, closestPt.z],
+                          dtype=np.float64)
+
+            dists = np.linalg.norm(srcPoints - cp, axis=1)
+            knnIdx = np.argpartition(dists, clampedK)[:clampedK]
+            knnDists = dists[knnIdx]
+
+            eps = 1e-8
+            invDists = 1.0 / np.maximum(knnDists, eps)
+            invDists /= invDists.sum()
+
+            result[i] = (invDists[:, np.newaxis]
+                         * srcWeights[knnIdx]).sum(axis=0)
+
+    finally:
+        if deleteSrc:
+            om.MGlobal.deleteNode(getParent(srcShapeDagPath).node())
+        if deleteDest:
+            om.MGlobal.deleteNode(getParent(destShapeDagPath).node())
+
+    return result.ravel().tolist()
