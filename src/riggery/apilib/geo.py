@@ -94,4 +94,4 @@ def iterPointPositions(geo:om.MDagPath,
         matrix = geoShapeDagPath.inclusiveMatrix()
         out = (x * matrix for x in out)
 
-    return list(out)
+    yield from out
