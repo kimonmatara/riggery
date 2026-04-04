@@ -11,7 +11,7 @@ def toShape(dagPath:om.MDagPath, ranked:bool=False) -> Optional[om.MDagPath]:
     node = dagPath.node()
 
     if node.hasFn(om.MFn.kShape):
-        return node
+        return dagPath
 
     if node.hasFn(om.MFn.kTransform):
         if ranked:
