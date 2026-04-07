@@ -29,9 +29,12 @@ class Number(__pool__['Math']):
         if others:
             node = nodes['Sum'].createNode()
             self >> node.attr('input')[0]
+
             for i, other in enumerate(others, start=1):
                 node.attr('input')[i].put(other)
+
             return node.attr('output').asType(type(self))
+
         return self
 
     @cache_plug_method
@@ -680,7 +683,7 @@ class Number(__pool__['Math']):
 
         :param str operation: the expression operation, for example ``'sin'``
         :return: the expression output
-        :rtype: :class:`~bongo.plugtypes.number.Number`
+        :rtype: :class:`~riggery.core.plugtypes.number.Number`
         """
         node = nodes['Expression'].createNode()
 
@@ -784,7 +787,8 @@ class Number(__pool__['Math']):
         """
         Reads a deformer weights plug.
 
-        :param length: The number of expected elements.
+        :param length: the number of expected elements (call ``numPoints()``
+            on the deformer where in doubt)
         :param default: The value to use for elements missing from the multi-
             array.
         :return: The weights.
