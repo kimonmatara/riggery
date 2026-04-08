@@ -6,7 +6,7 @@ from typing import Optional, Iterator, Union, Literal, Iterable, TypeAlias
 import math
 
 from . import mixedmode as _mm
-from .mixedmode import Axis, MixedMatrix
+from .mixedmode import Axis, MixedMatrix, MixedScalar, MixedPoint
 
 from . import names as _nm
 
@@ -60,29 +60,50 @@ def idealRotateOrder(boneAxis:str, curlAxis:str) -> str:
     thirdAxis = [ax for ax in 'xyz' if ax not in (boneAxis, curlAxis)][0]
     return boneAxis+curlAxis+thirdAxis
 
-def getLengthRatios(points) -> list:
+# def getLengthRatios(points) -> list:
+#     """
+#     .. warning::
+#
+#         Value-only.
+#
+#     For each point, returns a ratio from 0.0 to 1.0 representing how far along
+#     the chain the point is.
+#     """
+#     points = list(points)
+#     num = len(points)
+#
+#     if num > 1:
+#         cumulativeLengths = [0.0]
+#
+#         for thisPoint, nextPoint in zip(points, points[1:]):
+#             vector = nextPoint - thisPoint
+#             cumulativeLengths.append(cumulativeLengths[-1] + vector.length())
+#
+#         fullLength = cumulativeLengths[-1]
+#         return [x / fullLength for x in cumulativeLengths]
+#
+#     return []
+
+def getLengthRatios(
+        points:Iterable[MixedPoint],
+        detailReturn:bool=False
+) -> Union[list[MixedScalar], tuple[list[MixedScalar], list[MixedScalar]]]:
     """
-    .. warning::
-
-        Value-only.
-
-    For each point, returns a ratio from 0.0 to 1.0 representing how far along
-    the chain the point is.
+    :return: If *detailReturn* is True, tuple of lengthRatios,
+        cumulativeLengths. Otherwise, cumulativeLengths only.
     """
-    points = list(points)
-    num = len(points)
+    points = (_mm.conform(x, (plugs['Point'], data['Point']), force=True)
+            for x in points)
+    mags = ((y - x).length() for x, y in pairwise(points))
+    sums = list(accumulate(mags, initial=0))
 
-    if num > 1:
-        cumulativeLengths = [0.0]
+    fullSum = sums[-1]
+    out = [0.0] + [x / fullSum for x in sums[1:-1]] + [1.0]
 
-        for thisPoint, nextPoint in zip(points, points[1:]):
-            vector = nextPoint - thisPoint
-            cumulativeLengths.append(cumulativeLengths[-1] + vector.length())
+    if detailReturn:
+        return out, sums
 
-        fullLength = cumulativeLengths[-1]
-        return [x / fullLength for x in cumulativeLengths]
-
-    return []
+    return out
 
 def alignPoints(points, sideVector):
     """
