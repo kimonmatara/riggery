@@ -247,7 +247,7 @@ class NurbsCurve(plugs['Geometry']):
         """
         if plug:
             return _geo.CurveSampleClosestPoint.create(self
-                                                    )[point].attr('parameter')
+                                                       )[point].attr('parameter')
 
         fn = self.__datamfn__()
         point = om.MPoint(point)
@@ -939,6 +939,25 @@ class NurbsCurve(plugs['Geometry']):
 
     #--------------------------------------|    Surfaces
 
+    @short(worldSpace='ws')
+    def boundary(self,
+                 curve2,
+                 curve3,
+                 curve4,
+                 endPoint:bool=False,
+                 order:bool=True,
+                 worldSpace:bool=False) -> 'plugs.NurbsSurface':
+        curve2, curve3, curve4 = (Elem(x).toPlug(worldSpace=worldSpace)
+                                  for x in (curve2, curve3, curve4))
+
+        node = nodes.Boundary.createNode(endPoint=endPoint, order=order)
+
+        for i, curve in enumerate([self] + [curve2, curve3, curve4], start=1):
+            curve >> node.attr(f'inputCurve{i}')
+
+        return node.attr('outputSurface')
+
+
     @short(autoReverse='ar',
            close='c',
            degree='d',
@@ -1004,8 +1023,8 @@ class NurbsCurve(plugs['Geometry']):
             surfaces = []
 
             for (thisCurve, nextCurve), (thisReverse, nextReverse) in zip(
-                zip(inputCurves, inputCurves[1:]),
-                zip(reverses, reverses[1:])
+                    zip(inputCurves, inputCurves[1:]),
+                    zip(reverses, reverses[1:])
             ):
                 surface = thisCurve.loft(
                     nextCurve,
