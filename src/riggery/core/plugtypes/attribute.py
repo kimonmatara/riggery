@@ -1476,6 +1476,14 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     #-----------------------------------------|    Type wrangling
 
+    def toPlug(self, **kwargs):
+        """
+        Returns ``self``. Keyword arguments are ignored. Here for interface
+        parity with
+        :meth:`riggery.core.nodetypes.deformableShape.DeformableShape.asPlug`.
+        """
+        return self
+
     def asType(self, T:type):
         """
         Assigns the type *T* to this instance. This is an in-place operation,
