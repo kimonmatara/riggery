@@ -137,6 +137,16 @@ class Mesh(SurfaceShape):
 
         return meshFn.getUVAtPoint(closestPoint, space, uvSet)
 
+    def getClosestFace(self, point:'data.Point', worldSpace:bool=False):
+        point = om.MPoint(point)
+        meshFn = self.__apimfn__(dag=True)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        return meshFn.getClosestPoint(point, space)[1]
+
+    def getPolygonVertices(self, faceIndex:int) -> list[int]:
+        meshFn = self.__apimfn__(dag=True)
+        return list(meshFn.getPolygonVertices(faceIndex))
+
     def getUVSet(self) -> str:
         """Returns the name of the current UV set."""
         return m.polyUVSet(str(self), q=True, currentUVSet=True)[0]
