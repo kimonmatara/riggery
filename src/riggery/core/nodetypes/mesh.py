@@ -84,6 +84,44 @@ class Mesh(SurfaceShape):
 
     #-------------------------------------|    UVs
 
+    def copyVertsByUVFrom(self, otherMesh,
+                          srcUVSet:Optional[str]=None,
+                          destUVSet:Optional[str]=None):
+        otherMesh = nodes['DagNode'](otherMesh)
+
+        if srcUVSet is None:
+            srcUVSet = otherMesh.uvSet
+
+        if destUVSet is None:
+            destUVSet = self.uvSet
+
+        result = m.transferAttributes(str(otherMesh),
+                                      str(self),
+                                      transferPositions=1,
+                                      transferNormals=0,
+                                      transferUVs=0,
+                                      transferColors=0,
+                                      sampleSpace=3,
+                                      sourceUvSpace=srcUVSet,
+                                      targetUvSpace=destUVSet,
+                                      searchMethod=3,
+                                      flipUVs=0,
+                                      colorBorders=1)
+        return self
+
+    def copyUVsFrom(self, otherMesh):
+        result = m.transferAttributes(str(otherMesh),
+                                      str(self),
+                                      transferPositions=0,
+                                      transferNormals=0,
+                                      transferUVs=2,
+                                      transferColors=0,
+                                      sampleSpace=4,
+                                      searchMethod=3,
+                                      flipUVs=0,
+                                      colorBorders=1)
+        return self
+
     def getClosestUV(self,
                      point:'data.Point',
                      worldSpace:bool=False,
