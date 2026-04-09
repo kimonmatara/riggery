@@ -9,6 +9,7 @@ from riggery.general.iterables import without_duplicates, expand_tuples_lists
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
+from ..elem import Elem
 
 
 # class ComponentTags:
@@ -131,6 +132,18 @@ class DeformableShape(nodes['GeometryShape']):
         )[0]
         return self.attr(attrName)
 
+    @short(worldSpace='ws')
+    def getOutput(self, worldSpace:bool=False):
+        """
+        Convenience method. Returns ``.worldOutput`` if *worldSpace* is True,
+        otherwise ``.localOutput``.
+
+        Alias: ``asPlug``.
+        """
+        return self.worldOutput if worldSpace else self.localOutput
+
+    toPlug = getOutput
+
     def hasHistory(self) -> bool:
         """
         :return: ``True`` if there's an input on this shape node.
@@ -146,11 +159,12 @@ class DeformableShape(nodes['GeometryShape']):
         inputs = self.input.inputs(plugs=True)
 
         if inputs:
-            return inputs[0]
+            return inputs[0].asType(type(self.input))
 
         if create:
-            return plugs['Attribute'].fromStr(m.deformableShape(str(self),
-                                                                cog=True)[0])
+            return plugs['Attribute'].fromStr(
+                m.deformableShape(str(self), cog=True)[0]
+            ).asType(type(self.input))
 
     def newInput(self):
         """
@@ -159,16 +173,20 @@ class DeformableShape(nodes['GeometryShape']):
         'orig' shape. The shape's output is returned in all cases.
         """
         existingInput = self.input.inputs(plugs=True)
+
         if existingInput:
             existingInput = existingInput[0]
             existingInput // self.input
+
         newInput = plugs['Attribute'](
             m.deformableShape(str(self),
                               originalGeometry=True,
                               createOriginalGeometry=True)[0]
         )
+
         if existingInput:
             existingInput >> newInput.node().input
+
         return newInput
 
     @short(create='c')
@@ -183,6 +201,20 @@ class DeformableShape(nodes['GeometryShape']):
         if (not create) and result == '':
             return None
         return plugs['Attribute'](result).node()
+
+    def getDeformerInputs(self) -> tuple['DeformableShape', 'DeformableShape']:
+        """
+        :return: A tuple of originalGeometry, deformedGeometry. The two may flow
+            from the same original shape (local / world, respectively) if called
+            on a shape with no history.
+        """
+        historyInput = self.getHistoryInput()
+        origShape = self.getOrigShape(create=True)
+
+        if historyInput is None:
+            historyInput = origShape.worldOutput
+
+        return origShape.localOutput, historyInput
 
     #-------------------------------------|
     #-------------------------------------|    COMPONENT TAGS
@@ -399,3 +431,48 @@ class DeformableShape(nodes['GeometryShape']):
                               create=True,
                               newTagName=tagName,
                               **kwargs)
+
+    #---------------------------|    Live surfaces
+
+    @classmethod
+    def getLive(cls) -> Optional['DeformableShape']:
+        try:
+            out = m.makeLive(q=True, registry=0)
+        except:
+            return
+
+        if out:
+            return cls(out[0])
+
+    @classmethod
+    def makeNoneLive(cls):
+        m.makeLive(none=True)
+
+    def makeLive(self):
+        m.makeLive(str(self))
+        return self
+
+    def makeDead(self):
+        m.makeLive(removeObjects=str(self))
+        return self
+
+    #---------------------------|    Generic deformers
+
+    def shrinkWrapTo(self, other:'nodes.DagNode', **swAttrs):
+        """
+        Configures a shrink wrap deformer.
+
+        :param other: the 'target' geometry, as a plug or shape
+        :param \*\*swAttrs: values or plugs to configure the shrinkWrap node
+            attributes
+        """
+        origInput, deformedInput = self.getDeformerInputs()
+        other = Elem(other).toPlug(worldSpace=True)
+
+        node = nodes.ShrinkWrap.createNode(**swAttrs)
+        other >> node.attr('targetGeom')
+        origInput >> node.attr('originalGeometry')[0]
+        deformedInput >> node.attr('input')[0].attr('inputGeometry')
+
+        node.attr('outputGeometry')[0] >> self.input
+        return self
