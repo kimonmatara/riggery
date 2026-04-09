@@ -3,16 +3,22 @@
 from itertools import islice
 from typing import Iterable, Any, Iterator
 
-def expand_tuples_lists(*items) -> list:
+def expand_tuples_lists(*items, keep_tuples:bool=False) -> list:
     """
     Flattens nested tuples and lists into a single list.
     """
     out = []
 
     for item in items:
-        if isinstance(item, (tuple, list)):
+        if isinstance(item, tuple):
+            if keep_tuples:
+                out.append(item)
+            else:
+                for member in item:
+                    out += expand_tuples_lists(member, keep_tuples=False)
+        elif isinstance(item, list):
             for member in item:
-                out += expand_tuples_lists(member)
+                out += expand_tuples_lists(member, keep_tuples=keep_tuples)
         else:
             out.append(item)
 
