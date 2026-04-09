@@ -488,3 +488,16 @@ class NurbsSurface(plugs['Geometry']):
             v >> node.attr(k)
 
         return node.attr('outputPolygon')
+
+    def slidyTessellate(self, uNumber:int, vNumber:int):
+        node = nodes.NurbsTessellate.createNode(
+            explicitTessellationAttributes=True,
+            inputSurface=self,
+            uNumber=uNumber,
+            vNumber=vNumber,
+            polygonType=1,
+            uType=1,
+            vType=1,
+            format=2
+        )
+        return node.attr('outputPolygon')
