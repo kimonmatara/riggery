@@ -1,3 +1,4 @@
+from typing import Iterable
 from functools import reduce
 
 def deep_merge_dicts(*dicts) -> dict:
@@ -71,3 +72,36 @@ def deep_intersect_dicts(*dicts) -> dict:
         return out
 
     return reduce(lambda x, y: intersect_two(x, y), dicts)
+
+def autofill(incomplete_dict:dict, complete_dicts:Iterable[dict]) -> None:
+    """
+    Auto-fills missing fields on *incomplete_dict* only where, based on existing
+    *complete_dicts*, there can be only one unambiguous value. Useful for auto-
+    filling asset registry entries based on precedent.
+
+    :param incomplete_dict: the dictionary to fill
+    :param complete_dicts: an iterable / list / whatever of extant complete
+        records; the key list will be taken from the first one
+    :return: None. This is an in-place operation.
+    """
+    complete_dicts = list(complete_dicts)
+
+    if complete_dicts:
+        all_keys = set(complete_dicts[0].keys())
+
+        def matches(incomplete, complete):
+            return all((complete[k] == v for k, v in incomplete.items()))
+
+        changed = True
+
+        while changed:
+            changed = False
+            candidates = [complete_dict for complete_dict in complete_dicts
+                          if matches(incomplete_dict, complete_dict)]
+
+            for key in all_keys - set(incomplete_dict.keys()):
+                values = {candidate[key] for candidate in candidates}
+
+                if len(values) == 1:
+                    incomplete_dict[key] = values.pop()
+                    changed = True
