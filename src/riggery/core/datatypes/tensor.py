@@ -2,6 +2,7 @@ import operator
 from typing import Optional, Iterable, Union
 from ..datatypes import __pool__
 from ..plugtypes import __pool__ as _plugs
+from ..lib.mixedmode import isPlug
 
 
 def addOperator(opName, clsname, dct, unary=False) -> None:
@@ -49,7 +50,11 @@ def addOperator(opName, clsname, dct, unary=False) -> None:
             # E.g. __iadd__
 
             def iMeth(self, other):
-                self[:] = op(self, other)
+                result = op(self, other)
+
+                if not isPlug(result):
+                    self[:] = op(self, other)
+
                 return self
 
             iMethName = iMeth.__name__ = f'__i{opName}__'
