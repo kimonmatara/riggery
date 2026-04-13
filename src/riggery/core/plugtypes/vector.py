@@ -519,6 +519,10 @@ class Vector(plugs['Tensor3Float']):
         """
         return self.asType(plugs['Point'])
 
+    def asCarrier(self) -> 'plugs.Quaternion':
+        """Equivalent to self().rotateTo(self)."""
+        return self.().rotateTo(self)
+
     #-----------------------------------------|    Effects
 
     def sphereClamp(
