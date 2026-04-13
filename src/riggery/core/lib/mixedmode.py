@@ -1,5 +1,7 @@
 """Miscellaneous tools for maths operations that mix values and attributes."""
 
+from itertools import groupby
+from functools import reduce
 from pprint import pprint
 from typing import Union, Any, Optional, TypeAlias, Iterable, Literal
 
@@ -564,3 +566,37 @@ def createOrthoMatrix(*args, w=None):
             return _createOrthoMatrixFromFreeAxes(arg1, arg2, arg3, arg4, w)
 
     raise TypeError("unsupported signature")
+
+def multMatrices(*matrices):
+    """
+    Multiplies multiple mixed-mode matrices with DG-efficient grouping
+    """
+    infos = [info(m, (_data['Matrix'],
+                      _plugs['Matrix']), force=True) for m in matrices]
+    n = len(infos)
+
+    if n == 0:
+        raise ValueError("no matrices specified")
+
+    if n == 1:
+        return infos[0][0]
+
+    # Collapse any adjacent soft matrices
+    items = []
+    hasPlugs = False
+
+    for isPlugs, group in groupby(infos, key=lambda x: x[2]):
+        matrices = [member[0] for member in group]
+
+        if isPlugs:
+            items += matrices
+            hasPlugs = True
+        else:
+            items.append(reduce(lambda x, y: x * y, matrices))
+
+    if hasPlugs:
+        node = _nodes['MultMatrix'].createNode()
+        node.attr('matrixIn').feedMulti(items)
+        return node.attr('matrixSum')
+
+    return items[0]
