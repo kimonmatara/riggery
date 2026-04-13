@@ -1137,12 +1137,32 @@ class Attribute(Elem, metaclass=AttributeMeta):
             return plug.evaluateNumElements()
         return plug.numElements()
 
-    def setNumElements(self, number:int):
-        """
-        Only works if the array is empty. Call :meth:`clearMulti` first if in
-        doubt.
-        """
-        self.__apimplug__().setNumElements(number)
+    # The blow is just a memory hint, it doesn't do what we intend
+    # def setNumElements(self, number:int):
+    #     """
+    #     Only works if the array is empty. Call :meth:`clearMulti` first if in
+    #     doubt.
+    #     """
+    #     self.__apimplug__().setNumElements(number)
+    #     return self
+
+    def forceNumElements(self, number:int):
+        """Force-sets the multi-array size."""
+
+        currentNum = self.numElements()
+
+        if currentNum > number:
+            for plug in list(self)[number:]:
+                m.removeMultiInstance(str(plug), b=True)
+
+        elif currentNum < number:
+            mPlug = self.__apimplug__()
+
+            for i, x in enumerate(range(number - currentNum),
+                                  start=self.nextIndex()):
+                elemMPlug = mPlug.elementByLogicalIndex(i)
+                elemMPlug.destructHandle(elemMPlug.asMDataHandle())
+
         return self
 
     def lastElement(self):
