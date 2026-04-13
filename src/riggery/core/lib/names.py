@@ -1,4 +1,5 @@
 """Tools to manage Maya names."""
+from typing import Callable
 import json
 import os
 import re
@@ -228,6 +229,10 @@ class Name:
                 pass
 
         return legalise('_'.join(elems), allowEmpty=True)
+
+def named(f:Callable, *args, **kwargs): # for use in comprehensions; preload a lambda
+    with Name(*args, **kwargs):
+        return f()
 
 @short(typeSuffix='ts',
        nodeType='nt',
