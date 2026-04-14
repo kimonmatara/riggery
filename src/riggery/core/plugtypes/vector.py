@@ -521,7 +521,7 @@ class Vector(plugs['Tensor3Float']):
 
     def asCarrier(self) -> 'plugs.Quaternion':
         """Equivalent to self().rotateTo(self)."""
-        return self.().rotateTo(self)
+        return self().rotateTo(self)
 
     #-----------------------------------------|    Effects
 
