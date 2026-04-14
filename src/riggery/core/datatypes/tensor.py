@@ -55,7 +55,7 @@ def addOperator(opName, clsname, dct, unary=False) -> None:
                 if not isPlug(result):
                     self[:] = op(self, other)
 
-                return self
+                return result
 
             iMethName = iMeth.__name__ = f'__i{opName}__'
             iMeth.__qualname__= f'{clsname}.{iMethName}'
