@@ -177,5 +177,28 @@ def pad_nones(items:list, conserve:bool=True) -> list:
 
 def chunks(iterable, n) -> Iterator[list]:
     it = iter(iterable)
+
     while chunk := list(islice(it, n)):
         yield chunk
+
+def check_index(index:int, length:int, positive:bool=False) -> int:
+    """
+    Simple index checker.
+
+    :param index: the index to check
+    :param length: the length of the list
+    :param positive: reject negative indices; defaults to False
+    :raises IndexError: The index is outside the allowed range.
+    :return: The unmodified index.
+    """
+    if index >= 0:
+        if index < length:
+            return index
+        raise IndexError('index out of range')
+    else:
+        if positive:
+            raise IndexError('negative indices not supported')
+        if index > -length - 1:
+            return index
+        else:
+            raise IndexError('index out of range')
