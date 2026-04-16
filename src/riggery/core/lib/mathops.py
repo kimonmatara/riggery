@@ -49,6 +49,23 @@ def nextAxisLetter(axis1:str, axis2:Optional[str]=None, /) -> str:
                                          asString=True,
                                          includeNegative=True)
 
+def prevAxisLetter(axis1:str, axis2:Optional[str]=None, /) -> str:
+    """The reverse of :func:`nextAxisLetter`."""
+    if axis2 is None:
+        neg = '-' in axis1
+        out = 'zyx'[(('zyx'.index(axis1.strip('-')))+1) % 3]
+        if neg:
+            out = '-' + out
+        return out
+    else:
+        vec1 = axisLetterToVector(axis1)
+        vec2 = axisLetterToVector(axis2)
+        vec3 = vec2.cross(vec1)
+
+        return data.Matrix().closestAxis(vec3,
+                                         asString=True,
+                                         includeNegative=True)
+
 def flipAxisLetter(axis:str) -> str:
     if axis.startswith('-'):
         return axis[1:]
