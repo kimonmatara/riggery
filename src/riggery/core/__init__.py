@@ -1,6 +1,6 @@
 from importlib import reload
 from .elem import Elem
-from .lib.names import Name
+from .lib.names import Name, named
 from .lib.namespaces import Namespace
 from .lib.controls import createControl, createControlStack, ShapeScale
 from .lib.mixedmode import createOrthoMatrix, createScaleMatrix
