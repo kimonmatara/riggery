@@ -38,8 +38,10 @@ def addOperator(opName, clsname, dct, unary=False) -> None:
         def invMeth(self, other):
             if isinstance(other, (float, int)):
                 return type(self)([op(other, elem) for elem in self])
+
             if len(other) >= self.__shape__:
                 return type(self)([op(a, b) for a, b in zip(other, self)])
+
             return NotImplemented
 
         invMethName = invMeth.__name__ = f'__r{opName}__'
