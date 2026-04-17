@@ -523,6 +523,12 @@ class Vector(plugs['Tensor3Float']):
         """Equivalent to self().rotateTo(self)."""
         return self().rotateTo(self)
 
+    # def flipIfCloserTo(self, other):
+    #     other = _mm.conform(other, (plugs['Vector'], data['Vector']), force=1)
+    #     dot = self.dot(other, normalize=1)
+    #     invDot = -dot
+    #     return (dot > invDot).ifElse(self, -self, type(self))
+
     #-----------------------------------------|    Effects
 
     def sphereClamp(
