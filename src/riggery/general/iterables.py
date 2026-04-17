@@ -181,24 +181,28 @@ def chunks(iterable, n) -> Iterator[list]:
     while chunk := list(islice(it, n)):
         yield chunk
 
-def check_index(index:int, length:int, positive:bool=False) -> int:
+def check_index(index:int,
+                length:int,
+                reject_negative:bool=False) -> int:
     """
     Simple index checker.
 
     :param index: the index to check
     :param length: the length of the list
-    :param positive: reject negative indices; defaults to False
-    :raises IndexError: The index is outside the allowed range.
-    :return: The unmodified index.
+    :param reject_negative: throw IndexError for negative indices; defaults to
+        False
+    :return: The absolute index, rolled if it was negative to start with.
     """
-    if index >= 0:
-        if index < length:
-            return index
-        raise IndexError('index out of range')
-    else:
-        if positive:
-            raise IndexError('negative indices not supported')
-        if index > -length - 1:
-            return index
-        else:
-            raise IndexError('index out of range')
+    if length == 0:
+        raise IndexError('the sequence is empty')
+
+    if index < 0:
+        if reject_negative:
+            raise IndexError('negative indices are not allowed')
+
+        index = index % length
+
+    if index < length:
+        return index
+
+    raise IndexError("index out of range")
