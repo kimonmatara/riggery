@@ -268,3 +268,32 @@ def cast_params(f):
 
         return f(*out_args, **out_kwargs)
     return wrapper
+
+class roperty:
+    """
+    Similar to Python's `cached_property`, but strictly read-only.
+    """
+    def __init__(self, f):
+        self.f = f
+        self.name = None
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, inst, instype=None):
+        if inst is None:
+            return self
+
+        if self.name in inst.__dict__:
+            return inst.__dict__[self.name]
+
+        value = self.f(inst)
+        inst.__dict__[self.name] = value
+        
+        return value
+
+    def __set__(self, inst, value):
+        raise AttributeError(f"'{self.name}' is readonly")
+
+    def __delete__(self, inst):
+        inst.__dict__.pop(self.name, None)
