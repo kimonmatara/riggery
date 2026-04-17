@@ -3,6 +3,32 @@ import typing as _th
 import types as _t
 from collections import abc as _abc
 
+from .iterables import expand_tuples_lists
+
+class SentinelMeta(type):
+
+    def __new__(meta, clsname, bases, dct):
+        dct['__instance__'] = None
+        return super().__new__(meta, clsname, bases, dct)
+
+    def __call__(cls, *args):
+        if cls.__instance__ is None:
+            cls.__instance__ = super().__call__()
+        return cls.__instance__
+
+class Sentinel(metaclass=SentinelMeta):
+    """Singleton sentinel class."""
+
+SENTINEL = Sentinel()
+
+class Undefined(Sentinel):
+
+    def __bool__(self):
+        return False
+
+UNDEFINED = Undefined()
+
+
 def isinstance_quiet(instance:object, possible_type: _th.Type) -> bool:
     """
     Runs :func:`isinstance` but supresses :class:`TypeError` to return
@@ -180,7 +206,7 @@ def conform_instance(instance:_th.Any,
                     pass
 
         elif (hint_matches(base_hint, (_th.Iterable, _abc.Iterable,
-                                      _th.Iterator, _abc.Iterator))
+                                       _th.Iterator, _abc.Iterator))
               and isiterable(instance)):
 
             if hint_matches(base_hint, (tuple,)):
@@ -349,3 +375,42 @@ def conform_instance(instance:_th.Any,
         return instance
 
     raise TypeError("could not conform")
+
+def iter_mro_dicts(
+        *classes:type,
+        stop_before:_th.Union[type, tuple[type], list[type]]=object,
+        stop_after:_th.Optional[
+            _th.Union[type, tuple[type], list[type]]
+        ]=None,
+) -> _th.Iterator[dict]:
+    """
+    Yields dictionaries from class MROs, recursively.
+
+    :param \*classes: the starting classes
+    :param stop_after: stop after processing any of these classes; defaults to
+        None
+    :param stop_before: stop as soon as any of these classes are encountered;
+        defaults to ``object``
+    """
+    if stop_before is not None:
+        stop_before = expand_tuples_lists(stop_before)
+    else:
+        stop_before = []
+
+    if stop_after is not None:
+        stop_after = expand_tuples_lists(stop_after)
+    else:
+        stop_after = []
+
+    visited = set()
+
+    for c in classes:
+        for T in c.__mro__:
+            if stop_before and T in stop_before:
+                return
+
+            if T not in visited:
+                visited.add(T)
+                yield T.__dict__
+                if stop_after and T in stop_after:
+                    return
