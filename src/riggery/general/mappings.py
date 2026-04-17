@@ -1,5 +1,7 @@
-from typing import Iterable
+from collections.abc import Hashable
+from typing import Iterable, Union, Any
 from functools import reduce
+from .types import UNDEFINED
 
 def deep_merge_dicts(*dicts) -> dict:
     """
@@ -105,3 +107,22 @@ def autofill(incomplete_dict:dict, complete_dicts:Iterable[dict]) -> None:
                 if len(values) == 1:
                     incomplete_dict[key] = values.pop()
                     changed = True
+
+def get_first_in_dicts(key:Hashable,
+                       dicts:Iterable[dict],
+                       default=UNDEFINED, /) -> Any:
+    """
+    :param key: the key to retrieve
+    :raises KeyError:
+    :return: The first successful value retrieval amongst *dicts*.
+    """
+    for d in dicts:
+        try:
+            return d[key]
+        except KeyError:
+            continue
+
+    if default is UNDEFINED:
+        raise KeyError(f"{repr(key)} not found in the dicts")
+
+    return default
