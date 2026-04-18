@@ -1072,3 +1072,16 @@ def parallelTransport(
                        + [endNormal])
 
         return normals
+
+def atan2(x, y):
+    x, _, xIsPlug = _mm.info(x, (float, plugs.Number))
+    y, _, yIsPlug = _mm.info(y, (float, plugs.Number))
+
+    if xIsPlug or yIsPlug:
+        node = nodes['Atan2'].createNode()
+        node.attr('input1').put(x, xIsPlug)
+        node.attr('input2').put(y, yIsPlug)
+
+        return node.attr('output')
+
+    return math.atan2(x, y)
