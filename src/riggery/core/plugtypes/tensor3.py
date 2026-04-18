@@ -12,6 +12,20 @@ class Tensor3(__pool__['Tensor']):
     __datacls__ = _data['Tensor3']
     __shape__ = 3
 
+    #-----------------------------------------|    Row access
+
+    @property
+    def x(self):
+        return __pool__.Attribute.fromMPlug(self.__apimplug__().child(0))
+
+    @property
+    def y(self):
+        return __pool__.Attribute.fromMPlug(self.__apimplug__().child(1))
+
+    @property
+    def z(self):
+        return __pool__.Attribute.fromMPlug(self.__apimplug__().child(2))
+
     #-----------------------------------------|    Add
 
     def __add__(self, other):
