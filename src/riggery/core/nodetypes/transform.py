@@ -983,6 +983,36 @@ class Transform(nodes['DagNode']):
 
         return self
 
+    #-----------------------------------------|    Convert to joint
+
+    def convertToJoint(self):
+        """
+        Converts this node, both at the Maya object and instance level, into a
+        joint. Does nothing if this is already a joint.
+        """
+        if self.__apimobject__().apiType() == om.MFn.kJoint:
+            m.warning("Already a joint: '{}'".format(str(self)))
+            return self
+
+        name = self.shortName()
+        nodeA = self.__apimdagpath__()
+        nodeB = nodes['Joint'].createNode().__apimdagpath__()
+
+        _nodeA = nodeA.fullPathName()
+        _nodeB = nodeB.fullPathName()
+
+        result = m.nodeCast(_nodeA,
+                            _nodeB, swapValues=True, cda=True)
+
+        self.__apiobjects__.clear()
+        self.__apiobjects__['MDagPath'] = nodeB
+        m.delete(_nodeA)
+        self.name = name
+        self.__class__ = nodes['Joint']
+        self.attr('drawStyle').set(2)
+
+        return self
+
     #-----------------------------------------|    Repr
 
     @short(conformShapeNames='csn')
