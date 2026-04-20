@@ -40,6 +40,8 @@ MixedMatrix:TypeAlias = Union[
 ]
 
 MixedQuaternion:TypeAlias = Union['_data.Quaternion', '_plugs.Quaternion']
+MixedEulerRotation:TypeAlias = Union['_data.EulerRotation', '_plugs.EulerRotation']
+
 Axis:TypeAlias = Literal['x', 'y', 'z', '-x', '-y', '-z']
 
 #-----------------------------------------|
@@ -225,15 +227,29 @@ def conform(item,
     """
     return info(item, preferredTypes=preferredTypes, force=force)[0]
 
-def vectorInfo(item) -> tuple[MixedVector, bool]:
-    """
-    Convenience wrapper of :func:`info` when vectors are expected. Returns just
-    conformed vector, isPlug. The conform is forced (i.e. points will be
-    conformed to vectors).
-    """
-    vector, _, isPlug = info(item, (_plugs['Vector'],
-                                    _data['Vector']), force=True)
-    return vector, isPlug
+def _quickInfo(x, types):
+    out, _, isPlug = info(x, types, force=True)
+    return out, isPlug
+
+def asScalar(item) -> tuple[MixedScalar, bool]:
+    return _quickInfo(item, (plugs['Number'], int, float), force=False)
+
+def asVector(item) -> tuple[MixedVector, bool]:
+    return _quickInfo(item, (plugs['Vector'], data['Vector']), force=True)
+
+def asPoint(item) -> tuple[MixedPoint, bool]:
+    return _quickInfo(item, (plugs['Point'], data['Point']), force=True)
+
+def asEulerRotation(item) -> tuple[MixedEulerRotation, bool]:
+    return _quickInfo(item, (plugs['EulerRotation'], data['EulerRotation']),
+                      force=True)
+
+def asMatrix(item) -> tuple[MixedMatrix, bool]:
+    return _quickInfo(item, (plugs['Matrix'], data['Matrix']), force=True)
+
+def asQuaternion(item) -> tuple[MixedQuaternion, bool]:
+    return _quickInfo(item, (plugs['Quaternion'], data['Quaternion']),
+                      force=True)
 
 #-----------------------------------------|
 #-----------------------------------------|    MISC OPERATIONS
