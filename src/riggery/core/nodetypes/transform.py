@@ -335,36 +335,64 @@ class Transform(nodes['DagNode']):
             channels at current values; defaults to False
         :return: self
         """
-        translate, rotate, scale, shear = resolve_flags(
-            translate, rotate, scale, shear
-        )
+        #-----------------|    Wrangle flags, early bail
+
+        translate, rotate, scale, shear = resolve_flags(translate,
+                                                        rotate,
+                                                        scale,
+                                                        shear)
+
         if not any([translate, rotate, scale, shear]):
             return self
 
+        isFiltered = not all((translate, rotate, scale, shear))
+
+        chans = {'translate': translate,
+                 'rotate': rotate,
+                 'scale': scale,
+                 'shear': shear}
+
+        #-----------------|    Conform
+
         matrix = data['Matrix'](matrix)
 
-        if not all([translate, rotate, scale, shear]):
-            matrix = matrix.pick(translate=translate,
-                                 rotate=rotate,
-                                 scale=scale,
-                                 shear=shear,
-                                 default=self.getMatrix(worldSpace=False))
+        #-----------------|    Localise
+
+        useOpm = zeroChannels or preserveChannels
 
         if worldSpace:
-            matrix *= self.attr('pim')[0].get()
+            if useOpm:
+                pnt = self.parent
 
-        if zeroChannels:
-            matrix *= self.attr('opm').get()
-            self.setMatrix(data['Matrix']())
-            self.attr('opm').set(matrix)
-        elif preserveChannels:
-            matrix *= self.attr('opm').get()
-            matrix = self.attr('im').get() * matrix
+                if pnt is not None:
+                    matrix *= pnt.attr('wim')()
+            else:
+                matrix *= self.attr('pim')[0].get()
+
+        #-----------------|    Prefilter
+
+        if isFiltered:
+            if useOpm:
+                default = self.attr('dagLocalMatrix')()
+            else:
+                default = self.getMatrix()
+
+            matrix = matrix.pick(default=default, **chans)
+
+        #-----------------|    Apply
+
+        if useOpm:
+            if preserveChannels:
+                matrix = self.attr('im')() * matrix
+            else: # zero channels
+                m.xform(str(self), matrix=data['Matrix']())
+
             self.attr('opm').set(matrix)
         else:
             m.xform(str(self), matrix=matrix)
 
         return self
+
 
     def makeIdentity(self, *args, **kwargs):
         """
