@@ -67,11 +67,10 @@ class Number(__pool__['Math']):
         other, shape, isPlug = _mm.info(other)
 
         if shape is None:
-            node = nodes.PlusMinusAverage.createNode()
-            node.attr('operation').set(2)
-            self >> node.attr('input1D')[0]
-            node.attr('input1D')[1].put(other, isPlug)
-            return node.attr('output1D')
+            node = nodes['Subtract'].createNode()
+            node.attr('input1').connectInput(self)
+            node.attr('input2').put(other, isPlug)
+            return node.attr('output')
 
         return NotImplemented
 
@@ -93,22 +92,21 @@ class Number(__pool__['Math']):
         """
         Returns the average of [*self*] + others.
         """
-        node = nodes.PlusMinusAverage.createNode()
-        node.attr('operation').set(3)
-        self >> node.attr('input1D')[0]
+        node = nodes['Average'].createNode()
+        node.attr('input')[0].connectInput(self)
 
-        for i, item in enumerate(others, start=1):
-            node.attr('input1D')[i].put(item)
+        for i, x in enumerate(others, start=1):
+            node.attr('input')[i].put(x)
 
-        return node.attr('output1D')
+        return node.attr('output')
 
     #-----------------------------------------|    Multiply
 
     @cache_dg_output
     def __neg__(self) -> 'Number':
-        node = nodes.MultDL.createNode()
-        self >> node.attr('input1')
-        node.attr('input2').set(-1.0)
+        node = nodes['Negate'].createNode()
+        node.attr('input').connectInput(self)
+
         return node.attr('output').asType(type(self))
 
     def multiply(self, *others):
@@ -168,11 +166,10 @@ class Number(__pool__['Math']):
         other, shape, isPlug = _mm.info(other)
 
         if shape is None:
-            node = nodes.MultiplyDivide.createNode()
-            node.attr('operation').set(2)
-            self >> node.attr('input1X')
-            node.attr('input2X').put(other, isPlug)
-            return node.attr('outputX')
+            node = nodes['Divide'].createNode()
+            node.attr('input1').connectInput(self)
+            node.attr('input2').put(other, isPlug)
+            return node.attr('output')
 
         if shape == 3:
             node = nodes.MultiplyDivide.createNode()
@@ -749,6 +746,12 @@ class Number(__pool__['Math']):
         """
         node = nodes['Atan'].createNode()
         self >> node.attr('input')
+        return node.attr('output')
+
+    def atan2(self, other:_mm.MixedScalar):
+        node = nodes['Atan2'].createNode()
+        node.attr('input1').connectInput(self)
+        node.attr('input2').put(other)
         return node.attr('output')
 
     #-----------------------------------------|    Conversions

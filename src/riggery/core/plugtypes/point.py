@@ -127,20 +127,24 @@ class Point(plugs['Vector']):
         if shape is None:
             node = nodes.MultiplyDivide.createNode()
             self >> node.attr('input1')
+
             for child in node.attr('input2').children:
                 child.put(other, isPlug)
+
             return node.attr('output')
 
         if shape == 3:
             node = nodes.MultiplyDivide.createNode()
             self >> node.attr('input1')
             node.attr('input2').put(other, isPlug)
+
             return node.attr('output')
 
         if shape == 16:
-            node = nodes.PointMatrixMultDL.createNode()
-            self >> node.attr('inPoint')
-            node.attr('inMatrix').put(other, isPlug)
+            node = nodes['MultiplyPointByMatrix'].createNode()
+            node.attr('input').connectInput(self)
+            node.attr('matrix').put(other, isPlug)
+
             return node.attr('output')
 
         if shape == 4: # vector * quaternion

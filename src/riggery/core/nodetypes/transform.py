@@ -14,6 +14,7 @@ from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 from ..lib.evaluation import cache_dg_output
 from ..lib import mixedmode as _mm
+from ..lib import mathops as _mo
 from ..lib import controls as _c
 from ..lib import controlshapes as _cs
 from ..lib import namespaces as _ns
@@ -769,6 +770,123 @@ class Transform(nodes['DagNode']):
 
     #-----------------------------------------|    Rigging
 
+    @short(worldSpace='ws',
+           maintainOffset='mo',
+           plug='p')
+    def rotateByVector(self, *args,
+                       worldSpace:bool=False,
+                       decompose:bool=False,
+                       maintainOffset:bool=False,
+                       plug:Optional[bool]=None):
+        """
+        :param \*args: one of these signatures:
+          targetVector: Union[Axis, MixedVector]
+
+          - or -
+
+          objectVector: Union[Axis, MixedDataVector]
+          targetVector: Union[Axis, MixedVector]
+
+        :param worldSpace/ws: localises the reference vector; defaults to False
+        :param maintainOffset/mo: ignored if only a single argument is passed;
+          rotates relative to the current orientation; defaults to False
+        :param plug/p: specify True if *worldSpace* is True, and you want
+          *targetVector* to be persistently localised against the parent
+          matrix even if it's a value and not a plug; defaults to True if
+          *targetVector* is a plug, False otherwise
+        :param decompose/d: apply via decomposition into the rotate channels;
+          if this is False, and *worldSpace* was requested, then localisation
+          will be performed against the first parent, and may break if the
+          hierarchy changes later; defaults to False
+        """
+        # Wrangle args signature
+        num = len(args)
+
+        if num == 1:
+            targetVector = args[0]
+            vectorToRotate = None
+            skipMo = True
+        else:
+            vectorToRotate, targetVector = args
+            skipMo = False
+
+        if isinstance(targetVector, str):
+            targetVector = _mo.axisLetterToVector(targetVector)
+            targetVectorIsPlug = False
+
+        else:
+            targetVector, targetVectorIsPlug = _mm.asVector(targetVector)
+
+        if plug is None:
+            plug = targetVectorIsPlug
+
+        if vectorToRotate is None:
+            vectorToRotate = targetVector.get()
+        else:
+            if isinstance(vectorToRotate, str):
+                vectorToRotate = _mo.axisLetterToVector(vectorToRotate)
+            else:
+                vectorToRotate = data['Vector'](vectorToRotate)
+
+        # Localise target vector
+        if worldSpace:
+            if decompose:
+                pim = self.attr('pim')[0].get(plug=plug)
+                targetVector *= pim
+            else:
+                parent = self.parent
+
+                if parent is not None:
+                    pim = parent.attr('wim').get(plug=plug)
+                    targetVector *= pim
+
+        if decompose:
+            _origMatrix = self.getMatrix()
+        else:
+            _origMatrix = self.attr('dagLocalMatrix')()
+
+        _origMatrix = _origMatrix.pick(r=True)
+        vectorToRotate *= _origMatrix
+
+        # Cook
+        matrix = vectorToRotate.rotateTo(targetVector).asMatrix()
+
+        if maintainOffset and not skipMo:
+            matrix = _origMatrix * matrix.asOffset()
+
+        matrixIsPlug = _mm.isPlug(matrix)
+
+        if decompose:
+            eulerRotation = matrix.decompose(
+                rotateOrder=self.attr('ro').get(plug=matrixIsPlug)
+            )['rotate']
+
+            self.attr('r').put(eulerRotation, matrixIsPlug)
+
+            if matrixIsPlug:
+                self.attr('r').splitInput()
+        else:
+            opmInput = next(self.attr('opm').iterInputs(plugs=True), None)
+
+            if opmInput is None:
+                opmValue = self.attr('opm')()
+
+                if not opmValue.isIdentity():
+                    matrix = matrix.pick(r=True, default=opmValue)
+
+                matrix >> self.attr('opm')
+            else:
+                if not plug:
+                    raise RuntimeError(
+                        "Can't modify offsetParentMatrix because it is "
+                        "connected."
+                    )
+
+                matrix = matrix.pick(r=True, default=opmInput)
+                matrix >> self.attr('opm')
+
+        return self
+
     @short(maintainOffset='mo',
            afterInput='ai')
     def driveOpm(self,
@@ -1010,6 +1128,7 @@ class Transform(nodes['DagNode']):
         self.name = name
         self.__class__ = nodes['Joint']
         self.attr('drawStyle').set(2)
+        self.attr('segmentScaleCompensate').set(False)
 
         return self
 

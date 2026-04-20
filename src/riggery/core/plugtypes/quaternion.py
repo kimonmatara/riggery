@@ -40,7 +40,9 @@ class Quaternion(__pool__['Tensor4']):
             defaults to True
         :return: The locator (transform).
         """
-        loc = nodes.Locator.createNode().getParent()
+        locShape = nodes.Locator.createNode()
+        loc = loc.parent
+        loc.attr('displayLocalAxis').set(True)
 
         if name is not None:
             loc.name = name

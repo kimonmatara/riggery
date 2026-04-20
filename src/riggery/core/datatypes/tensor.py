@@ -141,6 +141,13 @@ class Tensor(__pool__['Data'], list, metaclass=TensorMeta):
 
     #-------------------------------------|    Plug interop
 
+    def get(self) -> 'Tensor':
+        """
+        Returns ``self``. For quick flattening-to-values when working with a
+        mixture of plugs and values.
+        """
+        return self
+
     def plugClass(self) -> type:
         return _plugs[type(self).__name__]
 

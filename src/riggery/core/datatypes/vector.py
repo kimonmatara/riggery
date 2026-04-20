@@ -345,17 +345,24 @@ class Vector(__pool__['Tensor3']):
         :return: The cross product of *self* and *other*.
         """
         other, shape, isPlug = _mm.info(other)
+
         if isPlug:
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(2)
+            node = nodes['CrossProduct'].createNode()
             node.attr('input1').set(self)
             node.attr('input2').put(other, True)
+
+            output = node.attr('output')
+
             if normalize:
-                node.attr('normalizeOutput').set(normalize)
-            return node.attr('output')
+                output = output.normal()
+
+            return output
+
         out = om.MVector(self) ^ om.MVector(other)
+
         if normalize:
             out = out.normal()
+
         return Vector(out)
 
     def dot(self, other, normalize:bool=False):
@@ -366,14 +373,19 @@ class Vector(__pool__['Tensor3']):
         :return: The cross product of *self* and *other*.
         """
         other, shape, isPlug = _mm.info(other)
+
         if isPlug:
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(1)
+            node = nodes['DotProduct'].createNode()
+
+            if normalize:
+                self = self.normal()
+                other = other.normal()
+
             node.attr('input1').set(self)
             node.attr('input2').put(other, True)
-            if normalize:
-                node.attr('normalizeOutput').set(normalize)
-            return node.attr('outputX')
+
+            return node.attr('output')
+
         else:
             a = om.MVector(self)
             b = om.MVector(other)
@@ -381,6 +393,7 @@ class Vector(__pool__['Tensor3']):
             if normalize:
                 a = a.normal()
                 b = b.normal()
+
             return a * b
 
     def rotateByAxisAngle(self, axis, angle):
@@ -478,29 +491,25 @@ class Vector(__pool__['Tensor3']):
                 return node.attr('output').asType(self.plugClass())
 
             if shape == 16: # (vector-matrix or point-matrix)
-                if self.__ispoint__:
-                    node = nodes.PointMatrixMultDL.createNode()
-                    node.attr('inPoint').set(self)
-                    other >> node.attr('inMatrix')
-                else:
-                    node = nodes.VectorProduct.createNode()
-                    node.attr('operation').set(3)
-                    node.attr('input1').set(self)
-                    other >> node.attr('matrix')
-                return node.attr('output')
+                op = nodes['Multiply{}ByMatrix'.format(
+                    'Point' if self.__ispoint__ else 'Vector'
+                )].createNode()
+
+                op.attr('input').set(self)
+                op.attr('matrix').connectInput(other)
+
+                return op.attr('output')
 
             if shape == 4:
                 matrix = other.asRotateMatrix()
 
-                if self.__ispoint__:
-                    node = nodes.PointMatrixMultDL.createNode()
-                    node.attr('inPoint').set(self)
-                    matrix >> node.attr('inMatrix')
-                else:
-                    node = nodes.VectorProduct.createNode()
-                    node.attr('operation').set(3)
-                    node.attr('input1').set(self)
-                    matrix >> node.attr('matrix')
+                op = nodes['Multiply{}ByMatrix'.format(
+                    'Point' if self.__ispoint__ else 'Vector'
+                )].createNode()
+
+                node.attr('input').set(self)
+                node.attr('matrix').connectInput(matrix)
+
                 return node.attr('output')
 
             return NotImplemented
@@ -541,19 +550,19 @@ class Vector(__pool__['Tensor3']):
 
         if shape == 3:
             if isPlug:
-                node = nodes.VectorProduct.createNode()
-                node.attr('operation').set(2)
+                node = nodes['CrossProduct'].createNode()
                 node.attr('input1').set(self)
-                node.attr('input2').put(other, isPlug)
+                node.attr('input2').connectInput(other)
+
                 return node.attr('output')
 
             return self.cross(other)
 
         if shape == 16:
             if isPlug:
-                node = nodes['PointMatrixMultDL'].createNode()
-                node.attr('inPoint').set(self)
-                node.attr('inMatrix').put(other, isPlug)
+                node = nodes['MultiplyPointByMatrix'].createNode()
+                node.attr('input').set(self)
+                node.attr('matrix').connectInput(other)
                 return node.attr('output')
 
             return __pool__['Point'](om.MPoint(self) * om.MMatrix(other))
@@ -565,10 +574,10 @@ class Vector(__pool__['Tensor3']):
 
         if shape == 3:
             if isPlug:
-                node = nodes.VectorProduct.createNode()
-                node.attr('operation').set(2)
-                node.attr('input1').put(other, isPlug)
+                node = nodes['CrossProduct'].createNode()
+                node.attr('input1').connectInput(other)
                 node.attr('input2').set(self)
+
                 return node.attr('output')
 
             return type(self)(om.MVector(other) ^ om.MVector(self))

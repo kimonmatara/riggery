@@ -202,10 +202,10 @@ class Matrix(plugs['Tensor']):
             return node.attr('matrixSum')
 
         if shape == 3:
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(3)
-            node.attr('input1').put(other, isPlug)
-            self >> node.attr('matrix')
+            node = nodes['MultiplyVectorByMatrix'].createNode()
+            node.attr('input').put(other, isPlug)
+            node.attr('matrix').connectInput(self)
+
             return node.attr('output')
 
         return NotImplemented
@@ -216,9 +216,10 @@ class Matrix(plugs['Tensor']):
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3:
-            node = nodes.PointMatrixMultDL.createNode()
-            node.attr('inPoint').put(other, isPlug)
-            self >> node.attr('inMatrix')
+            node = nodes['MultiplyPointByMatrix'].createNode()
+            node.attr('input').connectInput(other)
+            node.attr('matrix').connectInput(self)
+
             return node.attr('output')
 
         return NotImplemented
@@ -281,24 +282,27 @@ class Matrix(plugs['Tensor']):
         :return: The vector or point for the specified row.
         """
         nw = self._getRowNetworkNode()
+
         if index == 3:
             plug = nw.attr('outPosition')
+
             if not plug.inputs():
-                node = nodes['PointMatrixMultDL'].createNode()
-                self >> node.attr('inMatrix')
-                node.attr('output') >> plug
+                node = nodes['MultiplyPointByMatrix'].createNode()
+                node.attr('matrix').connectInput(self)
+                plug.connectInput(node.attr('output'))
+
             return plug
 
         plug = nw.attr('outAxes')[index]
 
         if not plug.inputs():
-            node = nodes['VectorProduct'].createNode()
-            node.attr('operation').set(3)
-            self >> node.attr('matrix')
-            node.attr('input1').set([(1, 0, 0),
-                                     (0, 1, 0),
-                                     (0, 0, 1)][index])
+            node = nodes['MultiplyVectorByMatrix'].createNode()
+            node.attr('matrix').connectInput(self)
+            node.attr('input').set([(1, 0, 0),
+                                    (0, 1, 0),
+                                    (0, 0, 1)][index])
             node.attr('output') >> plug
+
         return plug
 
     def getAxis(self, axis:Literal['x', 'y', 'z', '-x', '-y', '-z', 'w']):
@@ -928,6 +932,7 @@ class Matrix(plugs['Tensor']):
         :return: The determinant of this matrix
         """
         node = nodes['Determinant'].createNode()
+
         self >> node.attr('input')
         return node.attr('output')
 

@@ -12,8 +12,13 @@ class Bool(__pool__['Number']):
     def NOT(self):
         """
         Unary 'not' operator, since Python doesn't allow you to override ``!``
-        or ``not(~)`` directly.
+        or ``not(~)`` directly. You can also use invert (~).
         """
+        node = _nodes['Not'].createNode()
+        self >> node.attr('input')
+        return node.attr('output')
+
+    def __invert__(self):
         node = _nodes['Not'].createNode()
         self >> node.attr('input')
         return node.attr('output')

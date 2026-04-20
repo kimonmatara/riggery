@@ -6,14 +6,19 @@ from riggery.core.lib.serialize import simplify
 from riggery.general.functions import short
 from riggery.internal.typeutil import UNDEFINED
 import riggery.core.lib.skel as _sk
-from riggery.core.lib import names as _nm
-from riggery.core.lib import meshutil as _mu
+from riggery.core.lib import (names as _nm,
+                              meshutil as _mu,
+                              mixedmode as _mm,
+                              mathops as _mo)
 
 from ..nodetypes import __pool__ as nodes
 from ..datatypes import __pool__ as data
+from ..plugtypes import __pool__ as plugs
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
+
+Axis = _mm.Axis
 
 
 class Joint(nodes['Transform']):
@@ -191,6 +196,25 @@ class Joint(nodes['Transform']):
         return state
 
     #------------------------------------------|    Orientation
+
+    # @short(worldSpace='ws', plug='p')
+    # def aimJointOrient(self,
+    #                    targetPoint:Union[_mm.MixedPoint],
+    #                    axis:_mm.Axis,
+    #                    upAxis:Optional[Axis]=None,
+    #                    upVector:Optional[_mm.MixedVector]=None,
+    #                    worldSpace:bool=False,
+    #                    plug:Optional[bool]=None):
+    #
+    #     #-----------------------|    Resolve args
+    #
+    #     targetPoint, targetPointIsPlug = _mm.asPoint(targetPoint)
+    #
+    #     if upAxis is not None:
+    #         if upVector is None:
+    #             upVector = _mo.axisLetterToVector(upVector)
+    #
+    #
 
     def reset(self):
         """

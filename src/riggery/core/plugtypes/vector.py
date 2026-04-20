@@ -265,13 +265,15 @@ class Vector(plugs['Tensor3Float']):
         :param normalize: normalize the output vector; defaults to False
         :return: The cross product of *self* and *other*.
         """
-        node = nodes.VectorProduct.createNode()
-        self >> node.attr('input1')
+        node = nodes['CrossProduct'].createNode()
+        node.attr('input1').connectInput(self)
         other >> node.attr('input2')
-        node.attr('operation').set(2)
+        output = node.attr('output')
+
         if normalize:
-            node.attr('normalizeOutput').set(True)
-        return node.attr('output')
+            output = output.normal()
+
+        return output
 
     def dot(self, other, normalize:bool=False):
         """
@@ -280,13 +282,15 @@ class Vector(plugs['Tensor3Float']):
             True, but defaults to False for parity with the API
         :return: The cross product of *self* and *other*.
         """
-        node = nodes.VectorProduct.createNode()
-        node.attr('operation').set(1)
-        self >> node.attr('input1')
-        other >> node.attr('input2')
         if normalize:
-            node.attr('normalizeOutput').set(True)
-        return node.attr('outputX')
+            self = self.normal()
+            other = _mm.asVector(other)[0].normal()
+
+        node = nodes['DotProduct'].createNode()
+        node.attr('input1').connectInput(self)
+        other >> node.attr('input2')
+
+        return other
 
     def rotateByAxisAngle(self, axisVector, angle):
         """
@@ -419,10 +423,10 @@ class Vector(plugs['Tensor3Float']):
             return node.attr('output')
 
         if shape == 16:
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(3)
-            self >> node.attr('input1')
+            node = nodes['MultiplyVectorByMatrix'].createNode()
+            node.attr('input').connectInput(self)
             node.attr('matrix').put(other, isPlug)
+
             return node.attr('output')
 
         if shape == 4: # vector * quaternion
@@ -436,16 +440,17 @@ class Vector(plugs['Tensor3Float']):
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3: # cross product
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(2)
-            self >> node.attr('input1')
+            node = nodes['CrossProduct'].createNode()
+            node.attr('input1').connectInput(self)
             node.attr('input2').put(other, isPlug)
+
             return node.attr('output')
 
         if shape == 16: # point-matrix mult
-            node = nodes.PointMatrixMultDL.createNode()
-            self >> node.attr('inPoint')
-            node.attr('inMatrix').put(other, isPlug)
+            node = nodes['MultiplyPointByMatrix'].createNode()
+            node.attr('input').connectInput(self)
+            node.attr('matrix').put(other, isPlug)
+
             return node.attr('output')
 
         return NotImplemented
@@ -454,10 +459,10 @@ class Vector(plugs['Tensor3Float']):
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3: # cross product
-            node = nodes.VectorProduct.createNode()
-            node.attr('operation').set(2)
+            node = nodes['CrossProduct'].createNode()
             node.attr('input1').put(other, isPlug)
             self >> node.attr('input2')
+
             return node.attr('output')
 
         return NotImplemented

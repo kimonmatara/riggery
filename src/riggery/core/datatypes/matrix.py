@@ -126,10 +126,10 @@ class Matrix(data['Tensor']):
 
         if shape == 3:
             if isPlug:
-                node = nodes.VectorProduct.createNode()
-                node.attr('operation').set(3)
-                node.attr('input1').put(other, isPlug)
+                node = nodes['MultiplyVectorByMatrix'].createNode()
                 node.attr('matrix').set(self)
+                other >> node.attr('input')
+
                 return node.attr('output')
 
             return data['Vector'](om.MVector(other) * self.api)
@@ -143,9 +143,10 @@ class Matrix(data['Tensor']):
 
         if shape == 3:
             if isPlug:
-                node = nodes.PointMatrixMultDL.createNode()
-                node.attr('inMatrix').set(self)
-                other.put(other, True)
+                node = nodes['MultiplyPointByMatrix'].createNode()
+                node.attr('input').connectInput(other)
+                node.attr('matrix').set(self)
+
                 return node.attr('output')
 
             return data['Point'](om.MPoint(other) * self.api)
@@ -823,6 +824,9 @@ class Matrix(data['Tensor']):
         cross = x.cross(y).normal()
         dot = cross.dot(z.normal())
         return dot > 1-1e-7
+
+    def isIdentity(self) -> bool:
+        return self.api.isEquivalent(om.MMatrix.kIdentity)
 
     def isFlipped(self) -> bool:
         """

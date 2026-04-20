@@ -36,16 +36,17 @@ class Point(Vector):
                 return node.attr('output')
 
             if shape == 16:
-                node = nodes.PointMatrixMultDL.createNode()
-                node.attr('inPoint').set(self)
-                node.attr('inMatrix').put(other, True)
+                node = nodes['MultiplyPointByMatrix'].createNode()
+                node.attr('input').set(self)
+                node.attr('matrix').connectInput(other)
+
                 return node.attr('output')
 
-            if shape == 4:
-                matrix = other.asMatrix()
-                node = nodes.PointMatrixMultDL.createNode()
-                node.attr('inPoint').set(self)
-                node.attr('inMatrix').put(matrix, True)
+            if shape == 4: # mult by quat
+                node = nodes['MultiplyPointByMatrix'].createNode()
+                node.attr('input').set(self)
+                node.attr('matrix').connectInput(other.asMatrix())
+
                 return node.attr('output')
 
         if shape == 16:

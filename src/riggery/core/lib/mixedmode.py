@@ -18,29 +18,36 @@ from riggery.internal.str2api import getMPlug
 from .nativeunits import nativeunits
 
 #-----------------------------------------|
-#-----------------------------------------|    TYPE ALIASES
+#-----------------------------------------|    TYPE HINTS
 #-----------------------------------------|
 
 MixedScalar:TypeAlias = Union[float, int, '_plugs.Number']
-MixedVector:TypeAlias = Union[
-    tuple[float, float, float],
-    '_data.Vector',
-    '_plugs.Vector'
-]
-MixedPoint:TypeAlias = Union[
-    tuple[float, float, float],
-    '_data.Point',
-    '_plugs.Point'
-]
 
-MixedMatrix:TypeAlias = Union[
-    tuple[tuple([float] * 16)],
-    '_data.Matrix',
-    '_plugs.Matrix'
-]
+MixedVectorValue:TypeAlias = Union[Iterable[float], '_data.Vector']
+MixedVectorPlug:TypeAlias = Union[str, '_plugs.Vector']
+MixedVector:TypeAlias = Union[MixedVectorValue, MixedVectorPlug]
 
-MixedQuaternion:TypeAlias = Union['_data.Quaternion', '_plugs.Quaternion']
-MixedEulerRotation:TypeAlias = Union['_data.EulerRotation', '_plugs.EulerRotation']
+MixedPointValue:TypeAlias = Union[Iterable[float], '_data.Point']
+MixedPointPlug:TypeAlias = Union[str, '_plugs.Point']
+MixedPoint:TypeAlias = Union[MixedPointValue, MixedPointPlug]
+
+MixedMatrixValue:TypeAlias = Union[Iterable[float], '_data.Matrix']
+MixedMatrixPlug:TypeAlias = Union[str, '_plugs.Matrix']
+MixedMatrix:TypeAlias = Union[MixedMatrixValue, MixedMatrixPlug]
+
+MixedQuaternionValue:TypeAlias = Union[Iterable[float], '_data.Quaternion']
+MixedQuaternionPlug:TypeAlias = Union[str, '_plugs.Quaternion']
+MixedQuaternion:TypeAlias = Union[MixedQuaternionValue, MixedQuaternionPlug]
+
+MixedEulerRotationValue:TypeAlias = Union[
+    Iterable[float],
+    '_data.EulerRotation'
+]
+MixedEulerRotationPlug:TypeAlias = Union[str, '_plugs.EulerRotation']
+MixedEulerRotation:TypeAlias = Union[
+    MixedEulerRotationValue,
+    MixedEulerRotationPlug
+]
 
 Axis:TypeAlias = Literal['x', 'y', 'z', '-x', '-y', '-z']
 
@@ -227,29 +234,29 @@ def conform(item,
     """
     return info(item, preferredTypes=preferredTypes, force=force)[0]
 
-def _quickInfo(x, types):
-    out, _, isPlug = info(x, types, force=True)
+def _quickInfo(x, types, force):
+    out, _, isPlug = info(x, types, force=force)
     return out, isPlug
 
 def asScalar(item) -> tuple[MixedScalar, bool]:
-    return _quickInfo(item, (plugs['Number'], int, float), force=False)
+    return _quickInfo(item, (_plugs['Number'], int, float), False)
 
 def asVector(item) -> tuple[MixedVector, bool]:
-    return _quickInfo(item, (plugs['Vector'], data['Vector']), force=True)
+    return _quickInfo(item, (_plugs['Vector'], _data['Vector']), True)
 
 def asPoint(item) -> tuple[MixedPoint, bool]:
-    return _quickInfo(item, (plugs['Point'], data['Point']), force=True)
+    return _quickInfo(item, (_plugs['Point'], _data['Point']), True)
 
 def asEulerRotation(item) -> tuple[MixedEulerRotation, bool]:
-    return _quickInfo(item, (plugs['EulerRotation'], data['EulerRotation']),
-                      force=True)
+    return _quickInfo(item, (_plugs['EulerRotation'], _data['EulerRotation']),
+                      True)
 
 def asMatrix(item) -> tuple[MixedMatrix, bool]:
-    return _quickInfo(item, (plugs['Matrix'], data['Matrix']), force=True)
+    return _quickInfo(item, (_plugs['Matrix'], _data['Matrix']), True)
 
 def asQuaternion(item) -> tuple[MixedQuaternion, bool]:
-    return _quickInfo(item, (plugs['Quaternion'], data['Quaternion']),
-                      force=True)
+    return _quickInfo(item, (_plugs['Quaternion'], _data['Quaternion']),
+                      True)
 
 #-----------------------------------------|
 #-----------------------------------------|    MISC OPERATIONS
@@ -553,6 +560,13 @@ def _createOrthoMatrixFromLetterAxes(aimAxis, aimVector,
             out.w = w
 
         return out
+
+# This should not really exist; Maya doesn't let you perform direct vector *
+# quat anyway, so using this would invite extraneous conversions in the OO
+# methods
+# def createOrthoQuaternion(*args) -> 'MixedQuaternion':
+#     """Delegates to :func:`createOrthoMatrix` and pulls the quat."""
+#     return createOrthoMatrix(*args).quaternion()
 
 def createOrthoMatrix(*args, w=None):
     """
