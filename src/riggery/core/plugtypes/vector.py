@@ -185,7 +185,9 @@ class Vector(plugs['Tensor3Float']):
         outAxis = node.attr('axis')
 
         aligned = outAxis.length().lt(1e-6)
-        dot = normal.dot(aligned.ifElse(normal, outAxis), normalize=True)
+        dot = normal.dot(aligned.ifElse(normal,
+                                        outAxis,
+                                        plugs['Vector']), normalize=True)
         flipped = dot.lt(0.0)
 
         pb = nodes['Network'].createNode()
