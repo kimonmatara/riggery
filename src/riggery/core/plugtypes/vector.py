@@ -188,7 +188,6 @@ class Vector(plugs['Tensor3Float']):
         dot = normal.dot(aligned.ifElse(normal,
                                         outAxis,
                                         plugs['Vector']), normalize=True)
-        print(type("The type of vector is ", dot))
         flipped = dot.lt(0.0)
 
         pb = nodes['Network'].createNode()
@@ -293,7 +292,7 @@ class Vector(plugs['Tensor3Float']):
         node.attr('input1').connectInput(self)
         other >> node.attr('input2')
 
-        return other
+        return node.attr('output')
 
     def rotateByAxisAngle(self, axisVector, angle):
         """
