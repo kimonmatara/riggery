@@ -188,6 +188,7 @@ class Vector(plugs['Tensor3Float']):
         dot = normal.dot(aligned.ifElse(normal,
                                         outAxis,
                                         plugs['Vector']), normalize=True)
+        print(type("The type of vector is ", dot))
         flipped = dot.lt(0.0)
 
         pb = nodes['Network'].createNode()
