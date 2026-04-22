@@ -381,6 +381,22 @@ class Joint(nodes['Transform']):
                                                firstHit=firstHit):
             yield f"{_mesh}.vtx[{i}]"
 
+    #------------------------------------------|    Chains
+
+    def iterChains(self,
+                   minLength:Optional[int]=None,
+                   maxLength:Optional[int]=None) -> Iterator['_sk.Chain']:
+        """
+        Delegates to :meth:`riggery.core.lib.skel.Chain.iterChainsFromRoot`.
+
+        From the docs:
+
+        Yields all chains that ultimately lead up to *root*. This is relevant
+        for 'wishbone' type situations where you want each function chain to be
+        yielded separately.
+        """
+        yield from _sk.Chain.iterChainsFromRoot(self)
+
     #------------------------------------------|    Serialization
 
     def macro(self) -> dict:
