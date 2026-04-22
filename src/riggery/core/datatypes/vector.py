@@ -507,10 +507,10 @@ class Vector(__pool__['Tensor3']):
                     'Point' if self.__ispoint__ else 'Vector'
                 )].createNode()
 
-                node.attr('input').set(self)
-                node.attr('matrix').connectInput(matrix)
+                op.attr('input').set(self)
+                op.attr('matrix').connectInput(matrix)
 
-                return node.attr('output')
+                return op.attr('output')
 
             return NotImplemented
 
