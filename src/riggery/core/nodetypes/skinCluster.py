@@ -1226,9 +1226,15 @@ class SkinCluster(GeometryFilter):
         kwargs = macro['cmdFlags'].copy()
 
         if _nm.Name.__elems__:
-            del(kwargs['name'])
+            try:
+                del(kwargs['name'])
+            except:
+                pass
 
         inst = r.skinCluster(*args, **kwargs)[0]
+
+        if _nm.Name.__elems__:
+            inst.rename()
 
         # Configure attributes
         for attrName, attrState in macro['attrStates'].items():
