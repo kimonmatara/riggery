@@ -220,7 +220,7 @@ class Matrix(plugs['Tensor']):
             node.attr('input').connectInput(other)
             node.attr('matrix').connectInput(self)
 
-            return node.attr('output')
+            return node.attr('output').asPoint()
 
         return NotImplemented
 

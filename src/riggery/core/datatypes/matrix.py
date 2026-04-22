@@ -147,7 +147,7 @@ class Matrix(data['Tensor']):
                 node.attr('input').connectInput(other)
                 node.attr('matrix').set(self)
 
-                return node.attr('output')
+                return node.attr('output').asPoint()
 
             return data['Point'](om.MPoint(other) * self.api)
 

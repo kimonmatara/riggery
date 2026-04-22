@@ -453,7 +453,7 @@ class Vector(plugs['Tensor3Float']):
             node.attr('input').connectInput(self)
             node.attr('matrix').put(other, isPlug)
 
-            return node.attr('output')
+            return node.attr('output').asPoint()
 
         return NotImplemented
 
@@ -525,6 +525,9 @@ class Vector(plugs['Tensor3Float']):
         This is purely a type change; no DG modifications are performed.
         """
         return self.asType(plugs['Point'])
+
+    def asVector(self):
+        return self
 
     def asCarrier(self) -> 'plugs.Quaternion':
         """Equivalent to self().rotateTo(self)."""

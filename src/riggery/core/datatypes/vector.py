@@ -565,7 +565,7 @@ class Vector(__pool__['Tensor3']):
                 node = nodes['MultiplyPointByMatrix'].createNode()
                 node.attr('input').set(self)
                 node.attr('matrix').connectInput(other)
-                return node.attr('output')
+                return node.attr('output').asPoint()
 
             return __pool__['Point'](om.MPoint(self) * om.MMatrix(other))
 

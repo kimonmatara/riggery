@@ -40,14 +40,14 @@ class Point(Vector):
                 node.attr('input').set(self)
                 node.attr('matrix').connectInput(other)
 
-                return node.attr('output')
+                return node.attr('output').asPoint()
 
             if shape == 4: # mult by quat
                 node = nodes['MultiplyPointByMatrix'].createNode()
                 node.attr('input').set(self)
                 node.attr('matrix').connectInput(other.asMatrix())
 
-                return node.attr('output')
+                return node.attr('output').asPoint()
 
         if shape == 16:
             return Point(self.api * om.MMatrix(other))
@@ -95,6 +95,9 @@ class Point(Vector):
 
     def asVector(self) -> '__pool__.Vector':
         return __pool__['Vector'](self)
+
+    def asPoint(self):
+        return self
 
     #-----------------------------------------|    Comparisons
 

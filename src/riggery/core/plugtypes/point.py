@@ -145,7 +145,7 @@ class Point(plugs['Vector']):
             node.attr('input').connectInput(self)
             node.attr('matrix').put(other, isPlug)
 
-            return node.attr('output')
+            return node.attr('output').asPoint()
 
         if shape == 4: # vector * quaternion
             return self * other.asRotateMatrix()
