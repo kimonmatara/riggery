@@ -23,6 +23,17 @@ Axis = _mm.Axis
 
 class Joint(nodes['Transform']):
 
+    #------------------------------------------|    Retrievers
+
+    @classmethod
+    def iterRootJoints(cls) -> Iterator['Joint']:
+        """
+        Yields joints in the scene that don't have a joint parent.
+        """
+        for joint in cls.ls():
+            if not isinstance(joint.parent, cls):
+                yield joint
+
     #------------------------------------------|    Constructor(s)
 
     @classmethod
