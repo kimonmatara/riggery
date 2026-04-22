@@ -33,17 +33,27 @@ class Chain(list):
     #-------------------------------------------|    Loaders
 
     @classmethod
-    def iterChainsFromRoot(cls, root:'nodes.Joint') -> Iterator['Chain']:
+    def iterChainsFromRoot(cls,
+                           root:'nodes.Joint',
+                           minLength:Optional[int]=None,
+                           maxLength:Optional[int]=None) -> Iterator['Chain']:
         """
         Yields all chains that ultimately lead up to *root*. This is relevant
         for 'wishbone' type situations where you want each function chain to be
         yielded separately.
         """
         chain = cls.fromStart(root)
+
+        if ((minLength is not None and len(chain) < minLength)
+                or (maxLength is not None and len(chain) > maxLength)):
+            return
+
         yield chain
 
         for child in chain[-1].iterChildren(type='joint'):
-            yield from cls.iterChainsFromRoot(child)
+            yield from cls.iterChainsFromRoot(child,
+                                              minLength=minLength,
+                                              maxLength=maxLength)
 
     @classmethod
     @short(expandLeftovers='exp',
