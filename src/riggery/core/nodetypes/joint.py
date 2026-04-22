@@ -395,7 +395,9 @@ class Joint(nodes['Transform']):
         for 'wishbone' type situations where you want each function chain to be
         yielded separately.
         """
-        yield from _sk.Chain.iterChainsFromRoot(self)
+        yield from _sk.Chain.iterChainsFromRoot(self,
+                                                minLength=minLength,
+                                                maxLength=maxLength)
 
     #------------------------------------------|    Serialization
 
