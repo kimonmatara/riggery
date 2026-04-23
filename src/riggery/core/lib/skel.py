@@ -33,6 +33,15 @@ class Chain(list):
     #-------------------------------------------|    Loaders
 
     @classmethod
+    def ls(cls, minLength:Optional[int]=None, maxLength:Optional[int]=None):
+        """
+        Yields chains from the scene. Discrete chains will start either from
+        root joints or children of junction joints.
+        """
+        for joint in nodes['Joint'].iterRootJoints():
+            yield from cls.iterChainsFromRoot(joint)
+
+    @classmethod
     def iterChainsFromRoot(cls,
                            root:'nodes.Joint',
                            minLength:Optional[int]=None,
