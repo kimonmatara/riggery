@@ -185,7 +185,7 @@ class Geometry(Attribute, metaclass=GeometryMeta):
         out = m.geometryAttrInfo(str(self), **kwargs)
 
         for x in out:
-            yield plugs[x]
+            yield plugs['Attribute'](x)
 
     @short(outputsOnly='oo')
     def getPlugChain(self, outputsOnly:bool=False) -> list['Geometry']:

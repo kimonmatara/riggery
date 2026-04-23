@@ -853,7 +853,9 @@ class ProximityWrap(WeightGeometryFilter):
         outputs = (driverGeo.localOutput, driverGeo.worldOutput)
 
         for slot in self.attr('drivers'):
-            for historyOutput in slot.iterPlugChain(outputsOnly=True):
+            geoPlug = slot.attr('driverGeometry')
+
+            for historyOutput in geoPlug.iterPlugChain(outputsOnly=True):
                 for output in outputs:
                     if output == historyOutput:
                         return slot.index()
