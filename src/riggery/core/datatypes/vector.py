@@ -50,21 +50,6 @@ class Vector(__pool__['Tensor3']):
 
         return out
 
-    # def guessUpVector(self):
-    #     """
-    #     Runs comparisons against base X, Y and Z and vectors, and returns the
-    #     one that's most perpendicular to this vector.
-    #     """
-    #     _self = self.normal()
-    #     bestDot = None
-    #     outVector = None
-    #     for vector in map(Vector, [(1, 0, 0), (0, 1, 0), (0, 0, 1)]):
-    #         thisDot = abs(vector.dot(_self))
-    #         if bestDot is None or thisDot < bestDot:
-    #             bestDot = thisDot
-    #             outVector = vector
-    #     return outVector
-
     def closestAxisLetter(self) -> Literal['x', 'y', 'z', '-x', '-y', '-z']:
         """
         :return: The closest letter-axis representation of this vector.
@@ -469,8 +454,10 @@ class Vector(__pool__['Tensor3']):
                           (__pool__['Vector'], plugs['Vector']),
                           force=Tre)[0].length()
             out = out.normal() * _mm.blendScalars(l1, l2, weight)
+
         elif preserveLength:
             out = out.normal() * self.length()
+
         return out
 
     #-----------------------------------------|    Multiply
@@ -482,8 +469,10 @@ class Vector(__pool__['Tensor3']):
             if shape is None: # (scalar)
                 node = nodes.MultiplyDivide.createNode()
                 node.attr('input1').set(self)
+
                 for dest in node.attr('input2').children:
                     dest.put(other, isPlug)
+
                 return node.attr('output').asType(self.plugClass())
 
             if shape == 3: # (three scalars)
@@ -500,7 +489,9 @@ class Vector(__pool__['Tensor3']):
                 op.attr('input').set(self)
                 op.attr('matrix').connectInput(other)
 
-                return op.attr('output')
+                return op.attr('output').asType(plugs['Point']
+                                                if self.__ispoint__
+                                                else plugs['Vector'])
 
             if shape == 4:
                 matrix = other.asRotateMatrix()
@@ -512,7 +503,9 @@ class Vector(__pool__['Tensor3']):
                 op.attr('input').set(self)
                 op.attr('matrix').connectInput(matrix)
 
-                return op.attr('output')
+                return op.attr('output').asType(plugs['Point']
+                                                if self.__ispoint__
+                                                else plugs['Vector'])
 
             return NotImplemented
 
@@ -531,16 +524,19 @@ class Vector(__pool__['Tensor3']):
         if isPlug:
             if shape is None:
                 node = nodes.MultiplyDivide.createNode()
+
                 for dest in node.attr('input1').children:
                     dest.put(other, isPlug)
+
                 node.attr('input2').set(self)
-                return node.attr('output')
+                return node.attr('output').asType(self.plugClass())
 
             if shape == 3:
                 node = nodes.MultiplyDivide.createNode()
                 node.attr('input1').put(other, isPlug)
                 node.attr('input2').set(self)
-                return node.attr('output')
+
+                return node.attr('output').asType(self.plugClass())
 
             return NotImplemented
         return super().__rmul__(other)

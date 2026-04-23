@@ -131,14 +131,14 @@ class Point(plugs['Vector']):
             for child in node.attr('input2').children:
                 child.put(other, isPlug)
 
-            return node.attr('output')
+            return node.attr('output').asType(type(self))
 
         if shape == 3:
             node = nodes.MultiplyDivide.createNode()
             self >> node.attr('input1')
             node.attr('input2').put(other, isPlug)
 
-            return node.attr('output')
+            return node.attr('output').asType(type(self))
 
         if shape == 16:
             node = nodes['MultiplyPointByMatrix'].createNode()
@@ -148,7 +148,7 @@ class Point(plugs['Vector']):
             return node.attr('output').asPoint()
 
         if shape == 4: # vector * quaternion
-            return self * other.asRotateMatrix()
+            return (self * other.asRotateMatrix()).asType(type(self))
 
         return NotImplemented
 

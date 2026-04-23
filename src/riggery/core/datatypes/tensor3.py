@@ -27,7 +27,7 @@ class Tensor3(__pool__['Tensor']):
             for i, src, isPlug in enumerate(zip([self] + list(others),
                                                 arePlugs)):
                 pma.attr('input3D')[i].put(src, isPlug=isPlug)
-            return pma.attr('output3D')
+            return pma.attr('output3D').asType(self.plugClass())
 
         allItems = [self] + [infos[0] for info in infos]
         return type(self(reduce(lambda x, y: x + y, allItems)))

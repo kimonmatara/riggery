@@ -27,13 +27,13 @@ class Point(Vector):
                 for dest in node.attr('input2').children:
                     dest.put(other, True)
 
-                return node.attr('output')
+                return node.attr('output').asType(self.plugClass())
 
             if shape == 3:
                 node = nodes.MultiplyDivide.createNode()
                 node.attr('input1').set(self)
                 node.attr('input2').put(other, True)
-                return node.attr('output')
+                return node.attr('output').asType(self.plugClass())
 
             if shape == 16:
                 node = nodes['MultiplyPointByMatrix'].createNode()
@@ -118,7 +118,7 @@ class Point(Vector):
         return out
 
     def center(self, *others) -> 'Point':
-        return self.sum(*others) / (len(others) + 1)
+        return (self.sum(*others) / (len(others) + 1)).asPoint()
 
     def getLoopMatrix(self,
                       *others,

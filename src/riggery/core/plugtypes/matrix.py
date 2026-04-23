@@ -202,11 +202,23 @@ class Matrix(plugs['Tensor']):
             return node.attr('matrixSum')
 
         if shape == 3:
-            node = nodes['MultiplyVectorByMatrix'].createNode()
+            isPoint = isinstance(other, plugs['Point'])
+
+            if isPoint:
+                key = 'MultiplyPointByMatrix'
+            else:
+                key = 'MultiplyVectorByMatrix'
+
+            node = nodes[key].createNode()
             node.attr('input').put(other, isPlug)
             node.attr('matrix').connectInput(self)
 
-            return node.attr('output')
+            out = node.attr('output')
+
+            if isPoint:
+                out = out.asPoint()
+
+            return out
 
         return NotImplemented
 
@@ -291,7 +303,7 @@ class Matrix(plugs['Tensor']):
                 node.attr('matrix').connectInput(self)
                 plug.connectInput(node.attr('output'))
 
-            return plug
+            return plug.asPoint()
 
         plug = nw.attr('outAxes')[index]
 
@@ -312,8 +324,10 @@ class Matrix(plugs['Tensor']):
         """
         absAxis = axis.strip('-')
         vector = self.getRow('xyzw'.index(absAxis))
+
         if '-' in axis:
             vector = -vector
+
         return vector
 
     @property

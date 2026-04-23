@@ -227,7 +227,7 @@ class Vector(plugs['Tensor3Float']):
             vector dips to 0.0; defaults to False
         :return:
         """
-        return self.normal() * length
+        return (self.normal() * length).asType(type(self))
 
     def normal(self, quiet:bool=False):
         """
@@ -252,13 +252,17 @@ class Vector(plugs['Tensor3Float']):
         mag = self.length()
         isZero = mag.eq(0.0)
         patchbay = nodes.Network.createNode()
+
         fallbackMag = patchbay.addAttr('magnitudeOne',
                                        at='double',
                                        dv=1.0).lock()
+
         fallbackVec = patchbay.addVectorAttr('zeroVector',
                                              k=True).lock()
+
         mag = isZero.ifElse(fallbackMag, mag, type(mag))
-        out = isZero.ifElse(fallbackVec, self / mag)
+        out = isZero.ifElse(fallbackVec, self / mag, type(self))
+
         return out.asType(type(self))
 
     def cross(self, other, normalize:bool=False):
@@ -303,7 +307,7 @@ class Vector(plugs['Tensor3Float']):
         node = nodes['AxisAngleToQuat'].createNode()
         axisVector >> node.attr('inputAxis')
         angle >> node.attr('inputAngle')
-        return self * node.attr('outputQuat').asMatrix()
+        return (self * node.attr('outputQuat').asMatrix()).asType(type(self))
 
     def _rejectFrom(self, other:Union['data.Vector', 'plugs.Vector']):
         """Internal. Non-caching implementation of :meth:`rejectFrom`."""
@@ -532,12 +536,6 @@ class Vector(plugs['Tensor3Float']):
     def asCarrier(self) -> 'plugs.Quaternion':
         """Equivalent to self().rotateTo(self)."""
         return self().rotateTo(self)
-
-    # def flipIfCloserTo(self, other):
-    #     other = _mm.conform(other, (plugs['Vector'], data['Vector']), force=1)
-    #     dot = self.dot(other, normalize=1)
-    #     invDot = -dot
-    #     return (dot > invDot).ifElse(self, -self, type(self))
 
     #-----------------------------------------|    Effects
 
