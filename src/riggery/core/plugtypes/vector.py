@@ -180,6 +180,8 @@ class Vector(plugs['Tensor3Float']):
 
         if normal is None:
             return node.attr('angle')
+        else:
+            normal = _mm.asVector(normal)[0]
 
         outAngle = node.attr('angle')
         outAxis = node.attr('axis')
