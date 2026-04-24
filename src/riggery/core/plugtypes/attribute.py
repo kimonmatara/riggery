@@ -1991,6 +1991,25 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     #-----------------------------------------|    Repr
 
+    @short(force='f')
+    def rename(self, newName:str, force:bool=False):
+        if self.isDynamic():
+            dodgedLock = False
+
+            if self.isLocked():
+                if force:
+                    self.unlock()
+                    dodgedLock = True
+                else:
+                    raise RuntimeError("can't rename a locked attribute")
+
+            m.renameAttr(str(self), newName)
+
+            if dodgedLock:
+                self.lock()
+        else:
+            raise TypeError("can't rename a non-dynamic attribute")
+
     def attrName(self, longName:bool=False) -> str:
         """
         :param longName: return the long attribute name; defaults to ``False``
