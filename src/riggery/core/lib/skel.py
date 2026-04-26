@@ -205,6 +205,15 @@ class Chain(list):
 
     #-------------------------------------------|    Constructor(s)
 
+    def __new__(cls, items=None, /):
+        if cls is Chain:
+
+            if items is not None:
+                if len(items) == 2:
+                    cls = Bone
+
+        return object.__new__(cls)
+
     @classmethod
     def createTriad(cls,
                     p1:data['Point'],
@@ -217,6 +226,7 @@ class Chain(list):
                     curlVector=None,
                     rotateOrder:Union[str, int]=0,
                     tipMatrix=None):
+
         if bevel not in (0, None):
             points = [p1] + _tr.bevelTriad(p1, p2, p3, bevel) + [p3]
         else:
@@ -1163,14 +1173,27 @@ class Chain(list):
             newChain = newChain[:-1] + cls.fromStart(self[-1])
 
         self[:] = newChain
+        self.retype()
 
         return self
+
+    def retype(self) -> None:
+        if len(self) == 2:
+            self.__class__ = Bone
+        else:
+            self.__class__ = Chain
 
     def __getitem__(self, item):
         out = super().__getitem__(item)
         if isinstance(item, slice):
             return type(self)(out)
         return out
+
+    def __contains__(self, item:Union[str, list, 'nodes.DagNode']):
+        if isinstance(item, list):
+            return issublist(item, self)
+
+        return super().__contains__(item)
 
     @property
     def bones(self) -> Iterator['Chain']:
@@ -1300,9 +1323,44 @@ class Chain(list):
         else:
             value = nodes['DagNode'](value)
         super().__setitem__(key, value)
+        self.retype()
 
     #-------------------------------------------|    Repr
 
     def __repr__(self):
         return "{}({})".format(type(self).__name__,
                                repr([str(x) for x in self]))
+
+
+class Bone(Chain):
+
+    #-------------------------------------------|    Sampling
+
+    @short(plug='p')
+    def getVector(self, plug=False):
+        points = list(self.iterPoints(plug=plug))
+        return points[1] - points[0]
+
+    vector = property(getVector)
+
+    @short(plug='p')
+    def getStartUpVector(self, axis:_mm.Axis, plug=False):
+        mtx = self[0].attr('wm').get(plug=plug)
+        return mtx.getAxis(axis)
+
+    @short(plug='p')
+    def getEndUpVector(self, axis:_mm.Axis, plug=False):
+        mtx = self[1].attr('wm').get(plug=plug)
+        axisVec = mtx.getAxis(axis)
+
+        thisTangent = self.getVector(plug=plug)
+        nextTangent = self[1].attr('wm').get(plug=plug).getAxis(
+            self.detectBoneAxis()
+        )
+
+        carrier = nextTangent.rotateTo(thisTangent)
+        return axisVec * carrier
+
+    @short(plug='p')
+    def getUpVectorAtRatio(self, ratio:_mm.MixedScalar):
+        ...
