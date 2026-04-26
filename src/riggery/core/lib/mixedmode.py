@@ -22,6 +22,7 @@ from .nativeunits import nativeunits
 #-----------------------------------------|
 
 MixedScalar:TypeAlias = Union[float, int, '_plugs.Number']
+MixedScalarValue:TypeAlias = Union[float, int]
 
 MixedVectorValue:TypeAlias = Union[Iterable[float], '_data.Vector']
 MixedVectorPlug:TypeAlias = Union[str, '_plugs.Vector']
@@ -75,8 +76,9 @@ def isSingleVector(item:Any) -> bool:
 def isPlug(item) -> bool:
     if isinstance(item, str):
         try:
-            Attribute.fromStr(item)
+            _plugs['Attribute'].fromStr(item)
             return True
+
         except:
             return False
 
@@ -224,6 +226,21 @@ def info(
         return item, shape, True
 
     raise TypeError(f"Can't conform item {item} to a math type.")
+
+def asValue(item):
+    if isinstance(item, str):
+        if '.' in item:
+            try:
+                plug = _plugs['Attribute'](item)
+            except:
+                return item
+            return plug()
+        return item
+
+    if isinstance(item, _plugs['Attribute']):
+        return item()
+
+    raise TypeError("couldn't parse item of type {}".format(type(item)))
 
 def conform(item,
             preferredTypes:Union[None, type, tuple[type], list[type]]=None,
