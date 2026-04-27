@@ -47,7 +47,8 @@ class GeometryFilter(DependNode):
                        name:Optional[str]=None,
                        useComponentTags:bool=True,
                        **nodeConfig):
-        kwargs = {'useComponentTags': True, 'type': cls.__melnode__}
+        kwargs = {'useComponentTags': True, 'type': cls.__melnode__,
+                  'includeHiddenSelections': True}
 
         if name:
             kwargs['name'] = name
