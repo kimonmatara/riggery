@@ -46,6 +46,7 @@ class GeometryFilter(DependNode):
         next([...], None) to get the first result or None.
         """
         geo = nodes['DependNode'](geo).toShape()
+
         history = m.listHistory(geo, fullNodeName=True, historyAttr=True)
         visited = set()
 
@@ -56,7 +57,10 @@ class GeometryFilter(DependNode):
                 try:
                     if m.objectType(item, isAType=cls.__melnode__):
                         visited.add(item)
-                        yield DependNode(item)
+                        deformer = DependNode(item)
+
+                        if geo in deformer.shapes:
+                            yield deformer
                 except:
                     continue
 
