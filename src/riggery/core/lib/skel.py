@@ -206,12 +206,18 @@ class Chain(list):
     #-------------------------------------------|    Constructor(s)
 
     def __new__(cls, items=None, /):
-        if cls is Chain:
-            if items is not None:
-                if len(items) == 2:
-                    cls = Bone
+        if items is None:
+            items = list()
+        else:
+            items = list(items)
 
-        return list.__new__(cls)
+        if cls is Chain:
+            if len(items) == 2:
+                cls = Bone
+
+        inst = list.__new__(cls)
+        inst._iniItems = items
+        return inst
 
     @classmethod
     def createTriad(cls,
@@ -380,10 +386,11 @@ class Chain(list):
     #-------------------------------------------|    Init
 
     def __init__(self, items=None, /):
-        if items is None:
-            super().__init__()
-        else:
-            super().__init__(conform(*items))
+        super().__init__(self._iniItems)
+        # if items is None:
+        #     super().__init__()
+        # else:
+        #     super().__init__(conform(*items))
 
     #-------------------------------------------|    Orientation
 
