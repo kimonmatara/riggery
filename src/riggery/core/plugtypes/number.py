@@ -158,6 +158,12 @@ class Number(__pool__['Math']):
                 self >> child
             return node.attr('output')
 
+        if shape == 16:
+            node = nodes['PassMatrix'].createNode()
+            self >> node.attr('inScale')
+            node.attr('inMatrix').put(other, isPlug)
+            return node.attr('outMatrix')
+
         return NotImplemented
 
     #-----------------------------------------|    Divide
