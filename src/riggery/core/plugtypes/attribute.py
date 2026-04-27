@@ -133,11 +133,12 @@ class Attribute(Elem, metaclass=AttributeMeta):
         # (eminently on curve CV inputs), so it's been discarded; remember this
         # if tempted to roll back in
 
-        # If both are multis, connect at multi level
+        # If both are multis, connect at multi level; ignore this check for
+        # messages
 
-        if src.isMulti():
-            if not dest.isMulti():
-                src = src[0]
+        if ((not isinstance(dest, __pool__['Message']))
+                and (src.isMulti() and not dest.isMulti())):
+            src = src[0]
         else:
             if dest.isMulti():
                 dest = dest.nextElement()
@@ -1188,7 +1189,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         if self.isMulti():
             return self
-        return self.__apimplug__().array()
+        return self.fromMPlug(self.__apimplug__().array())
 
     @short(lock='l', start='s')
     def feedMulti(self, sources, lock=False, start=0):
