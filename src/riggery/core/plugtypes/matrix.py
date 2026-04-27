@@ -2,15 +2,16 @@ from functools import cached_property, reduce
 from typing import Union, Optional, Literal
 
 from riggery.core.lib.evaluation import cache_dg_output
-from riggery.general.functions import short, resolve_flags
+from riggery.general.functions import short, resolve_flags, cast_params
 from riggery.general.iterables import expand_tuples_lists
 import riggery.internal.mfnmatches as _mfm
-from ..lib import names as _nm
+from ..lib import mixedmode as _mm, \
+    names as _nm
+from ..lib.evaluation import cache_plug_method
+from ..lib.dgcache import dgcache
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
-from ..lib import mixedmode as _mm, \
-    names as _nm
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
@@ -149,6 +150,43 @@ class Matrix(plugs['Tensor']):
         attrFn.default = mobj
         return self
 
+    #-----------------------------------------|    Add / sub
+
+    @dgcache
+    def _add(self,
+             other:Union['Matrix', 'data.Matrix']) -> 'Matrix':
+        other, shape, isPlug = _mm.info(other)
+
+        if shape == 16:
+            node = nodes['AddMatrix'].createNode()
+            self >> node.attr('matrixIn')[0]
+            node.attr('matrixIn')[1].put(other, isPlug)
+            out = node.attr('matrixSum')
+            return out
+
+        raise TypeError('expected a matrix')
+
+    def __add__(self, other):
+        try:
+            return self._add(other)
+        except TypeError as e:
+            return NotImplemented
+
+    def __sub__(self, other):
+        other, shape, isPlug = _mm.info(other)
+
+        if shape == 16:
+            node = nodes['WtAddMatrix'].createNode()
+            self >> node.attr('wtMatrix')[0].attr('matrixIn')
+            node.attr('wtMatrix')[0].attr('weightIn').set(1.0)
+
+            node.attr('wtMatrix')[1].attr('matrixIn').put(other, isPlug)
+            node.attr('wtMatrix')[1].attr('weightIn').set(-1.0)
+
+            return node.attr('matrixSum')
+
+        return NotImplemented
+
     #-----------------------------------------|    Mult
 
     def multiply(self, *others):
@@ -190,10 +228,17 @@ class Matrix(plugs['Tensor']):
             self >> node.attr('matrixIn')[0]
             node.attr('matrixIn')[1].put(other, isPlug)
             return node.attr('matrixSum')
+
         return NotImplemented
 
     def __rmul__(self, other):
         other, shape, isPlug = _mm.info(other)
+
+        if shape is None:
+            node = nodes['PassMatrix'].createNode()
+            node.attr('inScale').put(other, isPlug)
+            self >> node.attr('inMatrix')
+            return node.attr('outMatrix')
 
         if shape == 16:
             node = nodes.MultMatrix.createNode()
@@ -548,6 +593,13 @@ class Matrix(plugs['Tensor']):
         self.z >> node.z
         self.w >> node.w
         return node.attr('output')
+
+    def makeAffine(self):
+        """
+        Resets [3][3] (the homogeneous coordinate) to 1.0. This is useful for
+        situations where you've blanket-scaled a matrix (say via passMatrix).
+        """
+        return self.asFourByFourMatrix()
 
     #-----------------------------------------|    Decomposition
 
