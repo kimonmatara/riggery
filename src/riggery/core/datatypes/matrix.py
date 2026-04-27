@@ -95,6 +95,37 @@ class Matrix(data['Tensor']):
         out.attr('displayLocalAxis').set(True)
         return out
 
+    #-------------------------------------------|    Sub
+
+    def __add__(self, other):
+        other, shape, isPlug = _mm.info(other)
+
+        if shape == 16:
+            if isPlug:
+                node = nodes['AddMatrix'].createNode()
+                node.attr('matrixIn')[0].set(self)
+                node.attr('matrixIn')[1].connectInput(other)
+                return node.attr('matrixSum')
+
+            return type(self).fromApi(self.api - other.api)
+        return NotImplemented
+
+    def __sub__(self, other):
+        other, shape, isPlug = _mm.info(other)
+
+        if shape == 16:
+            if isPlug:
+                node = nodes['WtAddMatrix'].createNode()
+                node.attr('wtMatrix')[0].attr('matrixIn').set(self)
+                node.attr('wtMatrix')[0].attr('weightIn').set(1.0)
+                node.attr('wtMatrix')[1].attr('matrixIn').connectInput(other)
+                node.attr('wtMatrix')[1].attr('weightIn').set(-1.0)
+                return node.attr('matrixSum')
+
+            return type(self).fromApi(self.api - other.api)
+
+        return NotImplemented
+
     #-------------------------------------------|    Mult
 
     def __mul__(self, other):
