@@ -383,27 +383,34 @@ class ProximityWrap(WeightGeometryFilter):
             variety of sources (scalars, vectors, matrices etc) and configures
             the node accordingly; defaults to None
         """
-        drivens = filter(bool, expand_tuples_lists(*drivens))
-        drivens = (nodes['DagNode'](x).toShape() for x in drivens)
-        drivens = list(without_duplicates(drivens))
-
-        if not drivens:
-            raise RuntimeError("no drivens specified")
-
-        node = cls.createNode(**nodeConfig)
+        node = cls.createDeformer(*drivens, **nodeConfig)
 
         if globalScale is not None:
             node.putGlobalScale(globalScale)
 
-        for i, driven in enumerate(drivens):
-            historyInput = driven.getHistoryInput(True)
-            origShape = driven.getOrigShape(True)
-
-            origShape.localOutput >> node.attr('originalGeometry')[i]
-            historyInput >> node.attr('input')[i].attr('inputGeometry')
-            node.attr('outputGeometry')[i] >> driven.input
-
         return node
+
+        # drivens = filter(bool, expand_tuples_lists(*drivens))
+        # drivens = (nodes['DagNode'](x).toShape() for x in drivens)
+        # drivens = list(without_duplicates(drivens))
+        #
+        # if not drivens:
+        #     raise RuntimeError("no drivens specified")
+        #
+        # node = cls.createNode(**nodeConfig)
+        #
+        # if globalScale is not None:
+        #     node.putGlobalScale(globalScale)
+        #
+        # for i, driven in enumerate(drivens):
+        #     historyInput = driven.getHistoryInput(True)
+        #     origShape = driven.getOrigShape(True)
+        #
+        #     origShape.localOutput >> node.attr('originalGeometry')[i]
+        #     historyInput >> node.attr('input')[i].attr('inputGeometry')
+        #     node.attr('outputGeometry')[i] >> driven.input
+        #
+        # return node
 
     #-------------------------------------|
     #-------------------------------------|    Interfaces
