@@ -88,10 +88,10 @@ class GeometryFilter(DependNode):
                     if m.objectType(item, isAType=cls.__melnode__):
                         deformer = DependNode(item)
                         visited.add(deformer)
-                        yield deformer
 
-                        # if geo in deformer.shapes:
-                        #     yield deformer
+                        if geo in deformer.shapes:
+                            yield deformer
+
                 except:
                     continue
 
