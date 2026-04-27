@@ -9,6 +9,7 @@ from riggery.general.iterables import without_duplicates, expand_tuples_lists
 from ..nodetypes import __pool__ as nodes
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
+from ..lib import names as _nm
 from ..elem import Elem
 
 
@@ -467,12 +468,17 @@ class DeformableShape(nodes['GeometryShape']):
             attributes
         """
         origInput, deformedInput = self.getDeformerInputs()
+
+        kwargs = {}
+
+        if _nm.Name.__elems__:
+            kwargs['name'] = _nm.Name.evaluate(nodeType='shrinkWrap')
+
+        deformer = Elem(m.deformer(self, type='shrinkWrap', **kwargs)[0])
         other = Elem(other).toPlug(worldSpace=True)
+        other >> deformer.attr('targetGeom')
 
-        node = nodes.ShrinkWrap.createNode(**swAttrs)
-        other >> node.attr('targetGeom')
-        origInput >> node.attr('originalGeometry')[0]
-        deformedInput >> node.attr('input')[0].attr('inputGeometry')
+        for k, v in swAttrs.items():
+            deformer.attr(k).put(v)
 
-        node.attr('outputGeometry')[0] >> self.input
-        return self
+        return deformer
