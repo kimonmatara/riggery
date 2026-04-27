@@ -108,6 +108,10 @@ def cache_plug_method(f):
     """
     Caches the outputs of plug methods.
 
+    This needs rethinking / rewriting. The impl is fiendishly complex, should
+    probably be modernized around signature.bind(...) etc, and fails in edge
+    cases which are difficult to troubleshoot.
+
     Requires *exhaustive* type hinting (including for return type) to work
     reliably. Don't use it on methods which can't be type hinted. Alternatively,
     combine it with :func:`riggery.general.functions.enforce_type_hints` to cut
