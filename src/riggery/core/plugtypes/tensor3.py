@@ -1,8 +1,10 @@
+from typing import Union
 from riggery.core.lib.evaluation import cache_dg_output
 from ..plugtypes import __pool__
 from ..datatypes import __pool__ as _data
 from ..nodetypes import __pool__ as nodes
 from ..lib import mixedmode as _mm
+from ..lib.dgcache import dgcache
 
 import maya.api.OpenMaya as om
 
@@ -49,32 +51,46 @@ class Tensor3(__pool__['Tensor']):
             return node.attr('output3D').asType(type(self))
 
         return NotImplemented
-    
+
     #-----------------------------------------|    Sub
 
-    def __sub__(self, other):
+    @dgcache
+    def vectorFrom(self, other) -> '__pool__.Vector':
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3:
-            node = nodes.PlusMinusAverage.createNode()
-            node.attr('operation').set(2)
+            node = nodes['PlusMinusAverage'].createNode()
+            node.attr('operation').set(2) # subtract
             self >> node.attr('input3D')[0]
             node.attr('input3D')[1].put(other, isPlug)
             return node.attr('output3D').asType(__pool__['Vector'])
 
-        return NotImplemented
+        raise TypeError("expected a triple")
 
-    def __rsub__(self, other):
+    @dgcache
+    def vectorTo(self, other) -> '__pool__.Vector':
         other, shape, isPlug = _mm.info(other)
 
         if shape == 3:
-            node = nodes.PlusMinusAverage.createNode()
-            node.attr('operation').set(2)
-            self >> node.attr('input3D')[1]
+            node = nodes['PlusMinusAverage'].createNode()
+            node.attr('operation').set(2) # subtract
             node.attr('input3D')[0].put(other, isPlug)
+            self >> node.attr('input3D')[1]
             return node.attr('output3D').asType(__pool__['Vector'])
 
-        return NotImplemented
+        raise TypeError("expected a triple")
+
+    def __sub__(self, other):
+        try:
+            return self.vectorFrom(other)
+        except TypeError:
+            return NotImplemented
+
+    def __rsub__(self, other):
+        try:
+            return self.vectorTo(other)
+        except TypeError:
+            return NotImplemented
 
     #-----------------------------------------|    Average
 
