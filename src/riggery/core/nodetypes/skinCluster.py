@@ -816,7 +816,7 @@ class SkinCluster(GeometryFilter):
                 for x in range(iterations):
                     mel.eval('artAttrSkinPaintCtx -e -clear `currentCtx`')
 
-            r.skinCluster(self, e=True, fnw=True)
+            #r.skinCluster(self, e=True, fnw=True)
             r.skinCluster(self, e=True, nw=nw)
             m.setToolTo(initCtx)
 
