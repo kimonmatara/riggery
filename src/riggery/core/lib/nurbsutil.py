@@ -513,7 +513,7 @@ def tangentLengthToHandleLength(tangentLength):
     :return: The length a unified Bezier handle would need to have to produce
         this length of curve tangent.
     """
-    return _mm.conform(tangentLength, _plugs['Float'])  * (2/3)
+    return _mm.conform(tangentLength, plugs['Float'])  * (2/3)
 
 def handleLengthToTangentLength(handleLength):
     """
@@ -521,4 +521,4 @@ def handleLengthToTangentLength(handleLength):
     :return: The length a curve tangent would have if sampled at the anchor
         parameter driven by the Bezier anchor handle.
     """
-    return _mm.conform(handleLength, _plugs['Float']) / (2/3)
+    return _mm.conform(handleLength, plugs['Float']) / (2/3)
