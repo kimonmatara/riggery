@@ -40,6 +40,33 @@ class GeometryFilter(DependNode):
     #-------------------------------------|    Constructors
 
     @classmethod
+    @short(name='n',
+           useComponentTags='uct')
+    def createDeformer(cls,
+                       *geometries,
+                       name:Optional[str]=None,
+                       useComponentTags:bool=True,
+                       **nodeConfig):
+        kwargs = {'useComponentTags': True, 'type': cls.__melnode__}
+
+        if name:
+            kwargs['name'] = name
+        else:
+            if _nm.Name.__elems__:
+                kwargs['name'] = _nm.Name.evaluate(nodeType=cls.__melnode__)
+
+        geometries = without_duplicates(
+            map(str, expand_tuples_lists(*geometries))
+        )
+
+        node = DependNode(m.deformer(*geometries, **kwargs)[0])
+
+        for k, v in nodeConfig.items():
+            node.attr(k).put(v)
+
+        return node
+
+    @classmethod
     def fromGeo(cls, geo) -> Iterator['GeometryFilter']:
         """
         Yields deformers of this type in the specified geometry's history. Use
