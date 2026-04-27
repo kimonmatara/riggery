@@ -60,7 +60,9 @@ class GeometryFilter(DependNode):
             map(str, expand_tuples_lists(*geometries))
         )
 
-        node = DependNode(m.deformer(*geometries, **kwargs)[0])
+        m.select(*geometries)
+
+        node = DependNode(m.deformer(**kwargs)[0])
 
         for k, v in nodeConfig.items():
             node.attr(k).put(v)
