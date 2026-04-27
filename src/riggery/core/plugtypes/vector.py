@@ -1,3 +1,4 @@
+import itertools as _itr
 from typing import Union, Optional
 import math
 
@@ -299,6 +300,112 @@ class Vector(plugs['Tensor3Float']):
         other >> node.attr('input2')
 
         return node.attr('output')
+
+    def reciprocal(self,
+                   other:_mm.MixedVector,
+                   dot:Optional[_mm.MixedScalar]=None):
+        """
+        Equivalent to 1.0 / self.normal().dot(other.normal()).
+
+        Used for mitering solutions. If you treat this (self) as a 'reference'
+        axis, and *other* as an axis that rotates against *self*, the reciprocal
+        is the stretch factor required to miter *other* (i.e. stretch it to fill
+        a corner).
+
+        This will approach infinity / conk out loudly as the two vectors become
+        perpendicular.
+
+        :param dot: if you already have the dot product, provide it here to
+            avoid extraneous calculations; note that the dot product must be
+            in the -1 to 1 range (normalized inputs); providing it here also
+            gives you a chance to clamp it to avoid pure 0.0 (which lead to
+            inifinity / NaN outputs)
+        """
+        other, otherIsPlug = _mm.asVector(other)
+
+        if dot is None:
+            dot = self.normal().dot(other.normal())
+        else:
+            dot, dotIsPlug = _mm.asScalar(dot)
+
+        return 1.0 / dot
+
+    def miter(self,
+              vectorToSkew:_mm.MixedVector,
+              fallbackHingeVector:_mm.MixedVector,
+              epsilon:float=1e-4) -> tuple['plugs.Vector', 'plugs.Number']:
+        """
+        With ``self`` as a reference axial vector, and ``vectorToSkew`` as a
+        vector that starts parallel to it but rotates away from it, returns the
+        vector along which *vectorToSkew* should be stretched to fill a miter
+        corner, and the magnitude. The vector will always be perpendicular to
+        *self*.
+
+        :param vectorToSkew: the tilted section vector
+        :param fallbackHingeVector: a vector perpendicular to *self*; this will
+            be used to guard against the degenerate (aligned) case
+        """
+        vectorToSkew, _ = _mm.asVector(vectorToSkew)
+        fallbackHingeVector, _ = _mm.asVector(fallbackHingeVector)
+
+        hingeVector, hingeAngle = vectorToSkew.axisAngleTo(self)
+        dot = hingeAngle.cos()
+        aligned = dot.abs() > 1.0 - epsilon
+
+        hingeVector = aligned.ifElse(fallbackHingeVector,
+                                     hingeVector,
+                                     plugs['Vector'])
+
+        stretchDirection = hingeVector.cross(self).normal()
+        stretchAmount = self.reciprocal(vectorToSkew, dot)
+
+        return stretchDirection, stretchAmount
+
+    # def miterMatrix(self,
+    #                 vectorToSkew:_mm.MixedVector,
+    #                 fallbackHingeVector:_mm.MixedVector,
+    #                 epsilon:float=1e-4):
+    #     """
+    #     With ``self`` as a reference axial vector, and ``vectorToSkew`` as a
+    #     vector that starts parallel to it but rotates away from it, returns a
+    #     matrix that can be used to stretch *vectorToSkew* to fill a miter
+    #     corner.
+    #
+    #     If applying to a *matrix* instead, premultiply it with that matrix
+    #     (i.e miterMatrix * otherMatrix).
+    #     """
+    #     direction, amount = self.miter(vectorToSkew,
+    #                                    fallbackHingeVector,
+    #                                    epsilon)
+    #
+    #     dOuterD = direction.outer(direction)
+    #
+    #     return (data['Matrix']()
+    #             + (dOuterD * (amount - 1))).makeAffine()
+
+    def outer(self, other:_mm.MixedVector) -> 'plugs.Matrix':
+        """
+        Computes the outer product (a.k.a. tensor product) of two vectors,
+        yielding a 4x4 matrix.
+
+        Unlike the dot product which collapses two vectors to a scalar, the
+        outer product expands them into a matrix. Transforming any vector V
+        by the result measures how much of *self* is in V, then scales *other*
+        by that amount.
+        """
+        other, otherIsPlug = _mm.asVector(other)
+
+        ff = nodes['FourByFourMatrix'].createNode()
+
+        for ax in 'xyz':
+            thisChild = getattr(self, ax)
+            destCompound = getattr(ff, ax)
+
+            for aax, destPlug in zip('xyz', destCompound.children):
+                otherChild = getattr(other, aax)
+                (thisChild * otherChild) >> destPlug
+
+        return ff.attr('output')
 
     def rotateByAxisAngle(self, axisVector, angle):
         """
