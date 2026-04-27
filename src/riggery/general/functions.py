@@ -228,10 +228,12 @@ def cast_params(f):
         elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
             pos_or_kw.append(param_name)
 
-    hints = get_type_hints(f)
-
     @wraps(f)
     def wrapper(*args, **kwargs):
+        # Doing this inside, rather than under cast_params(), to avoid hint
+        # eval problems
+        hints = get_type_hints(f)
+
         _pos_only = pos_only.copy()
         _pos_or_kw = pos_or_kw.copy()
 
