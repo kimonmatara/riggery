@@ -207,12 +207,11 @@ class Chain(list):
 
     def __new__(cls, items=None, /):
         if cls is Chain:
-
             if items is not None:
                 if len(items) == 2:
                     cls = Bone
 
-        return object.__new__(cls)
+        return list.__new__(cls)
 
     @classmethod
     def createTriad(cls,
