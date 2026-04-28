@@ -77,7 +77,8 @@ def bevelTriad(p0, p1, p2, length) -> tuple[
     b0 = points[1] + (v1.normal() * hyp)
     b1 = points[1] + (v2.normal() * hyp)
 
-    return p0, b0, b1, p2
+    out = p0, b0, b1, p2
+    return out
 
 def unbevelTriad(p0, p1, p2, p3) -> tuple[
     Union['_data.Point', '_plugs.Point'],
