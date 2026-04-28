@@ -4,12 +4,15 @@ import math
 from typing import Union, Optional, Iterable, Literal
 
 from riggery.general.functions import short
+from riggery.general.modules import LazyModule
 from ..datatypes import __pool__ as _data
 from ..plugtypes import __pool__ as _plugs
 from ..nodetypes import __pool__ as _nodes
 
 from . import mixedmode as _mm
 from . import names as _nm
+
+r = LazyModule('riggery.core as r')
 
 # The below is intended to match Maya's tolerances, which aren't particularly
 # high or accurate
