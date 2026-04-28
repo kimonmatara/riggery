@@ -8,7 +8,6 @@ import riggery.internal.mfnmatches as _mfm
 from ..lib import mixedmode as _mm, \
     names as _nm
 from ..lib.evaluation import cache_plug_method
-from ..lib.dgcache import dgcache
 from ..plugtypes import __pool__ as plugs
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
@@ -152,7 +151,6 @@ class Matrix(plugs['Tensor']):
 
     #-----------------------------------------|    Add / sub
 
-    @dgcache
     def _add(self,
              other:Union['Matrix', 'data.Matrix']) -> 'Matrix':
         other, shape, isPlug = _mm.info(other)

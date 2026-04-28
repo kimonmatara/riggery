@@ -4,7 +4,6 @@ from ..plugtypes import __pool__
 from ..datatypes import __pool__ as _data
 from ..nodetypes import __pool__ as nodes
 from ..lib import mixedmode as _mm
-from ..lib.dgcache import dgcache
 
 import maya.api.OpenMaya as om
 
@@ -54,7 +53,6 @@ class Tensor3(__pool__['Tensor']):
 
     #-----------------------------------------|    Sub
 
-    @dgcache
     def vectorFrom(self, other) -> '__pool__.Vector':
         other, shape, isPlug = _mm.info(other)
 
@@ -67,7 +65,6 @@ class Tensor3(__pool__['Tensor']):
 
         raise TypeError("expected a triple")
 
-    @dgcache
     def vectorTo(self, other) -> '__pool__.Vector':
         other, shape, isPlug = _mm.info(other)
 
