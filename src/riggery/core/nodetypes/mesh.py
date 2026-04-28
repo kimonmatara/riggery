@@ -402,7 +402,7 @@ class Mesh(SurfaceShape):
         if userNormals:
             kw['userNormals'] = True
 
-        return m.polyCompare(str(self), str(otherMesh), **kw)
+        return m.polyCompare(str(self), str(otherMesh), **kw) == 0
 
     #-------------------------------------|    Deformation effects
 
