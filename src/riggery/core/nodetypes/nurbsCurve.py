@@ -23,6 +23,48 @@ class NurbsCurve(nodes['CurveShape']):
     #-------------------------------------|    Constructor
 
     @classmethod
+    def createSpiral(cls,
+                     innerRadius:_mm.MixedScalar,
+                     outerRadius:_mm.MixedScalar,
+                     numLoops:int,
+                     pointsPerLoop:int,
+                     normal:_mm.MixedVector=(0, 1, 0),
+                     degree:Literal[1, 2, 3]=3):
+        """
+        Note that this doesn't account for ends that 'straighten' out when the
+        num points is too low on cubic curves. Oversample and reduce-by-
+        curvature where needed.
+        """
+        numPoints = int(round(numLoops * pointsPerLoop))
+        innerRadius = _mm.asScalar(innerRadius)[0]
+        outerRadius = _mm.asScalar(outerRadius)[0]
+
+        pb = nodes['Network'].createNode()
+
+        points = pb.addPointAttr('points', multi=True)
+
+        normal = _mm.asVector(normal)[0]
+        basis = data.Vector([0, 0, 1]).rotateTo(normal).asMatrix()
+
+        for i in range(numPoints):
+            t = i / (numPoints - 1)
+
+            angle = t * numLoops * 2 * math.pi
+            radius = _mm.blendScalars(innerRadius, outerRadius, t)
+
+            x = math.cos(angle) * radius
+            y = math.sin(angle) * radius
+
+            slot = points[i]
+
+            for src, dest in zip((x, y), list(slot.children)[:-1]):
+                src >> dest
+
+        out = cls.create(points, degree=degree)
+        (out.getHistoryInput() * basis) >> out.input
+        return out
+
+    @classmethod
     @short(center='c',
            degree='d',
            normal='nr',
