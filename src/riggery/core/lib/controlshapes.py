@@ -57,35 +57,50 @@ def transformCurveCVs(curveShape:str, translate=None, rotate=None, scale=None):
             args = list(translate) + [f'{curveShape}.cv[:]']
             m.move(*args, relative=True, objectSpace=True)
 
-def iterShapes(type:Union[str, list[str]], *sources) -> Iterator[str]:
+def getLocalShapeInput(shape:str) -> Optional[str]:
+    inpName = m.deformableShape(shape, deformShapeInAttr=True)
+
+    if inpName:
+        return m.connectionInfo(f"{shape}.{inpName[0]}", sfd=True)
+
+def shapeHasInput(shape:str) -> bool:
+    return bool(getLocalShapeInput(shape))
+
+def iterShapes(type:Union[str, list[str]],
+               *sources,
+               ignoreWithInputs:bool=False) -> Iterator[str]:
     """
     :param \*sources: curve shapes or transforms
+    :param ignoreWithInputs: skip curve shapes that have incoming geometry
+        connections; defaults to True
     :return: A list of shapes expanded / parsed from ``*sources``.
     """
     types = expand_tuples_lists(type)
-    yielded = set()
+    visited = set()
 
     for source in expand_tuples_lists(*sources):
         source = str(source)
 
         if m.objectType(source, isAType='transform'):
-            shapes = m.listRelatives(
-                source,
-                shapes=True,
-                type=types,
-                noIntermediate=True,
-                path=True
-            )
+            shapes = m.listRelatives(source,
+                                     shapes=True,
+                                     type=types,
+                                     noIntermediate=True,
+                                     path=True)
             if shapes:
                 for shape in shapes:
-                    if shape not in yielded:
-                        yielded.add(shape)
-                        yield shape
+                    if shape not in visited:
+                        visited.add(shape)
+                        if ignoreWithInputs and shapeHasInput(shape):
+                            continue
+                        else:
+                            yield shape
 
         elif any((m.objectType(source, isAType=x) for x in types)):
-            if source not in yielded:
-                yielded.add(source)
-                yield source
+            if source not in visited:
+                visited.add(source)
+                if not (ignoreWithInputs and shapeHasInput(source)):
+                    yield source
 
 def getCurveMacro(curveShape:str,
                   captureColor:bool=True,
@@ -261,14 +276,19 @@ class ControlShape:
                 *sources,
                 captureColor:bool=True,
                 captureVisInput:bool=True,
-                normalizePoints:bool=False) -> 'ControlShape':
+                normalizePoints:bool=False,
+                ignoreWithInputs:bool=True) -> 'ControlShape':
         """
         :raises NoShapesError: no detected curve shapes
         """
         macros = [getCurveMacro(curveShape,
                                 captureColor=captureColor,
                                 captureVisInput=captureVisInput)
-                  for curveShape in iterShapes('nurbsCurve', *sources)]
+                  for curveShape in iterShapes(
+                'nurbsCurve',
+                *sources,
+                ignoreWithInputs=ignoreWithInputs
+            )]
 
         if macros:
             inst = cls(macros)
@@ -617,7 +637,8 @@ def resolveSceneArchiveKeys(
 
 def captureSceneArchive(controls:Optional[Iterable[str]]=None, /,
                         ignoreReferenced:Optional[bool]=None,
-                        ignoreWithNamespaces:Optional[bool]=None) -> dict:
+                        ignoreWithNamespaces:Optional[bool]=None,
+                        ignoreWithInputs:bool=True) -> dict:
     """
     Captures scenewide control shape information.
 
@@ -640,8 +661,11 @@ def captureSceneArchive(controls:Optional[Iterable[str]]=None, /,
 
         if matches:
             try:
-                out[key] = ControlShape.capture(matches[0],
-                                                captureVisInput=False).macro()
+                out[key] = ControlShape.capture(
+                    matches[0],
+                    captureVisInput=False,
+                    ignoreWithInputs=ignoreWithInputs
+                ).macro()
             except NoShapesError:
                 continue
 
