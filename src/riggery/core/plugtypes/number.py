@@ -910,7 +910,7 @@ class Number(__pool__['Math']):
             multiplies it with the incoming input
         :return: self
         """
-        input = Attribute(input)
+        input = plugs['Attribute'](input)
 
         if multiply:
             existingInput = next(self.iterInputs(plugs=True), None)
