@@ -1,3 +1,4 @@
+from typing import Union, Literal
 from riggery.general.iterables import without_duplicates, expand_tuples_lists
 
 from ..nodetypes import __pool__ as nodes
@@ -76,7 +77,7 @@ class ShrinkWrap(WeightGeometryFilter):
                           'targetSmoothLevel': targetSmoothLevel})
 
         for k, v in moreAttrs.items():
-            node.attr('k').put(v)
+            node.attr(k).put(v)
 
         rockGeo.worldOutput >> node.attr('targetGeom')
         node.attr('outputGeometry').evaluate()
