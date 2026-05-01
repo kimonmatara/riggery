@@ -110,6 +110,14 @@ class Mesh(plugs['Geometry']):
 
         return node.attr('output')
 
+    #--------------------------------------|    Subidivide
+
+    def subdivide(self, divisions=1, /, **nodeConfig):
+        node = nodes['PolySmoothFace'].createNode(divisions=divisions,
+                                                  **nodeConfig)
+        self >> node.attr('inputPolymesh')
+        return node.attr('output')
+
     #--------------------------------------|    Sampling
 
     def closestPointOnMesh(self, refPoint):
