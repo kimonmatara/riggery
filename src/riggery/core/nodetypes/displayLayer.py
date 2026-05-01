@@ -1,3 +1,4 @@
+from typing import Iterator
 from ..nodetypes import __pool__ as nodes
 DependNode = nodes['DependNode']
 
@@ -14,19 +15,43 @@ class DisplayLayer(DependNode):
     #---------------------------------|    Constructor
 
     @classmethod
+    @short(selection='sl',
+           skipDefaultLayer='skd')
+    def ls(cls,
+           *patterns,
+           selection:bool=False,
+           skipDefaultLayer:bool=False) -> Iterator['DisplayLayer']:
+
+        for layer in super().ls(*patterns, selection=selection):
+            if skipDefaultLayer and layer.shortName(sns=True) == 'defaultLayer':
+                continue
+            yield layer
+
+    @classmethod
     @short(name='n')
-    def create(cls, *members, name=None):
+    def create(cls, *members, name=None, reuse:bool=False, **attrs):
+        if not name:
+            if _nm.Name.__elems__:
+                name = _nm.Name.evaluate(typeSuffix=cls.__typesuffix__)
+
         kwargs = {}
 
         if name:
             kwargs['name'] = name
-        elif _nm.Name.__elems__:
-            kwargs['name'] = _nm.Name.evaluate(nodeType='displayLayer')
 
-        layer = _nodes['DisplayLayer'](m.createDisplayLayer(empty=True,
-                                                           **kwargs))
+        if reuse and name:
+            if m.objExists(name):
+                if m.objectType(name, isType='displayLayer'):
+                    return cls(name)
+
+        layer = cls(m.createDisplayLayer(empty=True, **kwargs))
+
         if members:
             layer.addMembers(*members)
+
+        for k, v in attrs.items():
+            layer.attr(k).put(v)
+
         return layer
 
     #---------------------------------|    Members
