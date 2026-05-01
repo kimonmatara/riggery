@@ -272,7 +272,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     __pool__ = nodes
     __typesuffix__ = None
-    __node_defaults__:Optional[dict] = None
+    __node_defaults__ = {}
 
     tags = _tags.TagsGetter()
     sections = SectionsGetter()
