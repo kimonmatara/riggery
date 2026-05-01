@@ -272,6 +272,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     __pool__ = nodes
     __typesuffix__ = None
+    __node_defaults__:Optional[dict] = None
 
     tags = _tags.TagsGetter()
     sections = SectionsGetter()
@@ -323,7 +324,14 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         out = cls.fromMObject(mFn.create(nodeType, **kwargs))
 
-        for k, v in attrConfig.items():
+        if cls.__node_defaults__ is not None:
+            config = {}
+        else:
+            config = cls.__node_defaults__.copy()
+
+        config.update(attrConfig)
+
+        for k, v in config.items():
             out.attr(k).put(v)
 
         return out
