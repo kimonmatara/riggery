@@ -895,3 +895,28 @@ class Number(__pool__['Math']):
         _wt.writeWeights(self.__apimplug__(), weights, chunkSize=chunkSize)
 
         return self
+
+    @short(force='f', multiply='mul')
+    def connectInput(self, input, /,
+                     force:bool=False,
+                     quiet:bool=False,
+                     multiply:bool=False):
+        """
+        Connects from *input* plug into this plug.
+
+        :param force/f: replace any existing connection; defaults to False
+        :param quiet: prevent "already connected" warnings; defaults to False
+        :param multiply/mul: if there's already an incoming connection,
+            multiplies it with the incoming input
+        :return: self
+        """
+        input = Attribute(input)
+
+        if multiply:
+            existingInput = next(self.iterInputs(plugs=True), None)
+
+            if existingInput is not None:
+                input = existingInput * input
+
+        self._connect(input, self, force, quiet=quiet)
+        return self
