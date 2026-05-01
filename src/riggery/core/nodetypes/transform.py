@@ -556,8 +556,8 @@ class Transform(nodes['DagNode']):
         """
         return self.shape
 
-    @short(name='n')
-    def duplicate(self, *, name=None) -> list:
+    @short(name='n', parentOnly='po')
+    def duplicate(self, *, name=None, parentOnly:bool=False) -> list:
         """
         Thin wrapper for :func:`maya.cmds.duplicate`.
 
@@ -566,7 +566,14 @@ class Transform(nodes['DagNode']):
         :return: The duplicate, in a list, per PyMEL / Maya convention.
         """
         name = _n.resolveNameArg(name, typeSuffix=self.defaultTypeSuffix)
-        return [nodes['DagNode'](m.duplicate(str(self), name=name)[0])]
+        kwargs = {}
+
+        if parentOnly:
+            kwargs['parentOnly'] = True
+
+        return [nodes['DagNode'](m.duplicate(str(self),
+                                             name=name,
+                                             **kwargs)[0])]
 
     @short(type='typ',
            intermediate='i',
