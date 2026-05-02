@@ -1,5 +1,6 @@
 import re
 from typing import Optional, Union, Iterator, Any, Literal
+from contextlib import nullcontext
 
 from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
@@ -9,11 +10,14 @@ from ..elem import Elem
 WeightGeometryFilter = nodes['WeightGeometryFilter']
 
 import maya.cmds as m
+from maya.internal.nodes.proximitywrap.cmd_create \
+    import Command as ProximityWrapCommand
 
 from ..lib.selection import keepsel
 from ..lib import names as _nm
 
 from riggery.core.lib import mixedmode as _mm
+from riggery.core.lib.nodetracker import NodeTracker
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.strings import join_camel, cap
@@ -372,6 +376,48 @@ class ProximityWrap(WeightGeometryFilter):
     #-------------------------------------|
 
     @classmethod
+    def _convertSkinCluster(cls, skinCluster) -> 'ProximityWrap':
+        _skinCluster = str(skinCluster)
+
+        return nodes['DependNode'](
+            ProximityWrapCommand().convertSkinCluster(_skinCluster)
+        )
+
+    @classmethod
+    def createAsSkin(cls, *influencesAndGeo):
+        influencesAndGeo = expand_tuples_lists(*influencesAndGeo)
+        influencesAndGeo = map(str, influencesAndGeo)
+        influencesAndGeo = without_duplicates(influencesAndGeo)
+
+        skinCluster = m.skinCluster(*influencesAndGeo,
+                                    tsb=True,
+                                    dr=4,
+                                    bm=0,
+                                    omi=False,
+                                    nw=1,
+                                    sm=0,
+                                    mi=20,
+                                    mul=True,
+                                    rui=False,
+                                    ibp=True)[0]
+
+        doRename = bool(_nm.Name.__elems__)
+
+        if doRename:
+            ctx = NodeTracker()
+        else:
+            ctx = nullcontext()
+
+        with ctx as theContext:
+            pw = cls._convertSkinCluster(skinCluster)
+
+        if doRename:
+            for node in theContext:
+                node.rename()
+
+        return pw
+
+    @classmethod
     @short(globalScale='gs')
     def create(cls, *drivens, globalScale=None, **nodeConfig):
         """
@@ -389,28 +435,6 @@ class ProximityWrap(WeightGeometryFilter):
             node.putGlobalScale(globalScale)
 
         return node
-
-        # drivens = filter(bool, expand_tuples_lists(*drivens))
-        # drivens = (nodes['DagNode'](x).toShape() for x in drivens)
-        # drivens = list(without_duplicates(drivens))
-        #
-        # if not drivens:
-        #     raise RuntimeError("no drivens specified")
-        #
-        # node = cls.createNode(**nodeConfig)
-        #
-        # if globalScale is not None:
-        #     node.putGlobalScale(globalScale)
-        #
-        # for i, driven in enumerate(drivens):
-        #     historyInput = driven.getHistoryInput(True)
-        #     origShape = driven.getOrigShape(True)
-        #
-        #     origShape.localOutput >> node.attr('originalGeometry')[i]
-        #     historyInput >> node.attr('input')[i].attr('inputGeometry')
-        #     node.attr('outputGeometry')[i] >> driven.input
-        #
-        # return node
 
     #-------------------------------------|
     #-------------------------------------|    Interfaces
