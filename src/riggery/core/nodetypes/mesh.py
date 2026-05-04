@@ -43,45 +43,6 @@ class Mesh(SurfaceShape):
         )
         return data['Point'](point), faceId
 
-    # On standby; solution does not have parity with uvPin
-    # @short(worldSpace='ws')
-    # def getClosestMatrix(self,
-    #                      point:'data.Point',
-    #                      axis1:Literal['x', 'y', 'z', '-x', '-y', '-z'],
-    #                      ref1:Literal['u', 'v', 'n'],
-    #                      axis2:Literal['x', 'y', 'z', '-x', '-y', '-z'],
-    #                      ref2:Literal['u', 'v', 'n'],
-    #                      worldSpace:bool=False,
-    #                      uvSet:Optional[str]=None):
-    #
-    #     meshFn = self.__apimfn__(dag=True)
-    #     space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
-    #
-    #     if uvSet is None:
-    #         uvSet = self.uvSet
-    #
-    #     point, faceId = meshFn.getClosestPoint(om.MPoint(point), space)
-    #     faceVtxIds = meshFn.getPolygonVertices(faceId)
-    #
-    #     vtxId = min(faceVtxIds,
-    #                 key=lambda x: meshFn.getPoint(x, space).distanceTo(point))
-    #
-    #     refs = {}
-    #
-    #     if 'u' in (ref1, ref2):
-    #         refs['u'] = meshFn.getFaceVertexTangent(faceId, vtxId, space, uvSet)
-    #
-    #     if 'v' in (ref1, ref2):
-    #         refs['v'] = meshFn.getFaceVertexBinormal(faceId, vtxId, space,
-    #                                                  uvSet)
-    #
-    #     if 'n' in (ref1, ref2):
-    #         refs['n'] = meshFn.getFaceVertexNormal(faceId, vtxId, space)
-    #
-    #     return _mm.createOrthoMatrix(axis1, refs[ref1],
-    #                                  axis2, refs[ref2],
-    #                                  w=point).pick(t=True, r=True)
-
     #-------------------------------------|    UVs
 
     def copyVertsByUVFrom(self, otherMesh,
@@ -582,3 +543,60 @@ class Mesh(SurfaceShape):
         wrapNode.attr('outputGeometry')[0] >> self.input
 
         return out
+
+    #-------------------------------------|    Duplicate / clone
+
+    def hasTweaks(self) -> bool:
+        return m.polyCollapseTweaks(str(self), q=True, hasVertexTweaks=True)
+
+    def collapseTweaks(self):
+        _self = str(self)
+
+        if m.polyCollapseTweaks(_self, q=True, hasVertexTweaks=True):
+            m.polyCollapseTweaks(_self)
+
+        return self
+
+    @short(name='n',
+           intermediate='i',
+           parent='p',
+           collapseTweaks='ct')
+    def duplicate(self, *,
+                  name:Optional[str]=None,
+                  parent:Optional['nodes.Transform']=None,
+                  intermediate:Optional[bool]=None,
+                  collapseTweaks:bool=True) -> list['Mesh']:
+        """
+        Adds *collapseTweaks* with a default of True.
+        """
+        result = super().duplicate(name=name,
+                                   parent=parent,
+                                   intermediate=intermediate)
+        if collapseTweaks:
+            result[0].collapseTweaks()
+
+        return result
+
+    # #-------------------------------------|    Poly-duplicate-and-connect
+    #
+    # @short(preserveParent='pp',
+    #        connectTransform='ct')
+    # def clone(self, *,
+    #           newParent:bool=False,
+    #           parent=None,
+    #           connectTransform:Optional[bool]=None):
+    #     if newParent:
+    #         destParent = self.parent.duplicate(po=True)[0]
+    #     else:
+    #         if parent:
+    #             destParent = nodes['Transform'](newParent)
+    #
+    #             if connectTransform is None:
+    #                 connectTransform = False
+    #
+    #             if connectTransform:
+    #                 self.parent >> destParent.attr('opm')
+    #                 destParent.attr('it').set(False)
+    #                 destParent.resetSRT(force=True)
+    #         else:
+    #             destParent = self.parent
