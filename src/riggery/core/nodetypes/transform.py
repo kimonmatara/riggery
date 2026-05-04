@@ -436,8 +436,17 @@ class Transform(nodes['DagNode']):
             self.attr(chan).release(r=True)
         return self
 
-    @short(translate='t', rotate='r', scale='s', shear='sh')
-    def resetSRT(self, translate=None, rotate=None, scale=None, shear=None):
+    @short(translate='t',
+           rotate='r',
+           scale='s',
+           shear='sh',
+           force='f')
+    def resetSRT(self,
+                 translate=None,
+                 rotate=None,
+                 scale=None,
+                 shear=None,
+                 force:bool=False):
         """
         Resets translate, rotate, scale and shear on this transform node.
 
@@ -458,6 +467,10 @@ class Transform(nodes['DagNode']):
         ):
             if state:
                 plug = self.attr(chanName)
+
+                if force:
+                    plug.release(recurse=True)
+
                 for child, default in zip(plug.children, defaults):
                     try:
                         child.set(default)
