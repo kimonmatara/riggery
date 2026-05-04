@@ -29,6 +29,21 @@ DagNode = nodes['DagNode']
 Attribute = Plug = plugs['Attribute']
 
 def __getattr__(item:str):
-    obj = getattr(_cmds, item)
-    globals()[item] = obj
-    return obj
+    try:
+        obj = getattr(_cmds, item)
+        globals()[item] = obj
+        return obj
+
+    except AttributeError as e:
+        if item == 's':
+            sel = _cmds.ls(sl=True)
+            num = len(sel)
+
+            if num == 1:
+                return nodes['DependNode'](sel[0])
+
+            elif num > 1:
+                return list(map(nodes['DependNode'], sel))
+
+            else:
+                raise e
