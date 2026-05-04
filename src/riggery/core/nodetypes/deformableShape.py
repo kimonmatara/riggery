@@ -482,3 +482,36 @@ class DeformableShape(nodes['GeometryShape']):
             deformer.attr(k).put(v)
 
         return deformer
+
+    #---------------------------|   Duplicate-and-connect
+
+    @short(newTransform='nt',
+           connectTransform='ct')
+    def clone(self, *, newTransform:bool=True, connectTransform:bool=True):
+        """
+        Similar to ``polyDuplicateAndConnect``, but works with any geo type.
+
+        :param newTransform/nt: create a new transform for the cloned shape;
+            defaults to True
+        :param connectTransform/ct: ignored if *newTransform* is False; drive
+            the new transform to match the current one; defaults to True
+        """
+        curParent = self.parent
+
+        if newTransform:
+            parent = nodes['Transform'].create(parent=curParent.parent)
+
+            if connectTransform:
+                curParent.attr('dagLocalMatrix') >> parent.attr('opm')
+
+            parent.setMatrix(curParent.getMatrix())
+
+        else:
+            parent = curParent
+
+        outShape = self.duplicate(parent=parent)[0]
+        outShape.conformShapeName()
+
+        self.localOutput >> outShape.input
+
+        return outShape
