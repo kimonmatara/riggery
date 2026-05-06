@@ -30,19 +30,6 @@ class Mesh(SurfaceShape):
         """:return: The number of faces on this mesh."""
         return self.__apimfn__().numPolygons
 
-    @short(worldSpace='ws')
-    def getClosestPoint(self,
-                        point:'data.Point',
-                        worldSpace:bool=False) -> tuple['data.Point', int]:
-        """
-        :return: Tuple of closest point, face ID.
-        """
-        point, faceId = self.__apimfn__(dag=True).getClosestPoint(
-            om.MPoint(point),
-            om.MSpace.kWorld if worldSpace else om.MSpace.kObject
-        )
-        return data['Point'](point), faceId
-
     #-------------------------------------|    UVs
 
     @short(constructionHistory='ch',
@@ -158,6 +145,39 @@ class Mesh(SurfaceShape):
         meshFn = self.__apimfn__(dag=True)
         space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
         return meshFn.getClosestPoint(point, space)[1]
+
+    @short(worldSpace='ws')
+    def getClosestPoint(self,
+                        point:'data.Point',
+                        worldSpace:bool=False) -> tuple['data.Point', int]:
+        """
+        :return: Tuple of closest point, face ID.
+        """
+        point, faceId = self.__apimfn__(dag=True).getClosestPoint(
+            om.MPoint(point),
+            om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        )
+        return data['Point'](point), faceId
+
+    @short(worldSpace='ws')
+    def getClosestNormal(self,
+                         point:'data.Point',
+                         worldSpace:bool=False) -> 'data.Vector':
+        fn = self.__apimfn__(dag=True)
+        sp = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+
+        point, faceId = fn.getClosestPoint(om.MPoint(point), sp)
+
+        blendedNormal = om.MVector(0.0, 0.0, 0.0)
+        totalWeight = 0.0
+
+        for vId in fn.getPolygonVertices(faceId):
+            vPos = fn.getPoint(vId, sp)
+            weight = 1.0 / (point.distanceTo(vPos) + 1e-6)
+            blendedNormal += fn.getFaceVertexNormal(faceId, vId, sp) * weight
+            totalWeight += weight
+
+        return data['Vector'].fromApi((blendedNormal / totalWeight).normal())
 
     def getPolygonVertices(self, faceIndex:int) -> list[int]:
         meshFn = self.__apimfn__(dag=True)
