@@ -15,6 +15,25 @@ from riggery.general.functions import short
 import maya.api.OpenMaya as om
 import maya.cmds as m
 
+def bary(p, a, b, c):
+    v0 = om.MVector(b) - om.MVector(a)
+    v1 = om.MVector(c) - om.MVector(a)
+    v2 = om.MVector(p) - om.MVector(a)
+    d00 = v0 * v0
+    d01 = v0 * v1
+    d11 = v1 * v1
+    d20 = v2 * v0
+    d21 = v2 * v1
+    denom = d00 * d11 - d01 * d01
+
+    if abs(denom) < 1e-12:
+        return (1/3.0, 1/3.0, 1/3.0)
+
+    wb = (d11 * d20 - d01 * d21) / denom
+    wc = (d00 * d21 - d01 * d20) / denom
+
+    return (1.0 - wb - wc, wb, wc)
+
 
 class Mesh(SurfaceShape):
 
@@ -159,25 +178,76 @@ class Mesh(SurfaceShape):
         )
         return data['Point'](point), faceId
 
+    # @short(worldSpace='ws')
+    # def getClosestNormal(self,
+    #                      point:'data.Point',
+    #                      worldSpace:bool=False) -> 'data.Vector':
+    #     fn = self.__apimfn__(dag=True)
+    #     sp = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+    #
+    #     point, faceId = fn.getClosestPoint(om.MPoint(point), sp)
+    #
+    #     blendedNormal = om.MVector(0.0, 0.0, 0.0)
+    #     totalWeight = 0.0
+    #
+    #     for vId in fn.getPolygonVertices(faceId):
+    #         vPos = fn.getPoint(vId, sp)
+    #         weight = 1.0 / (point.distanceTo(vPos) + 1e-6)
+    #         blendedNormal += fn.getFaceVertexNormal(faceId, vId, sp) * weight
+    #         totalWeight += weight
+    #
+    #     return data['Vector'].fromApi((blendedNormal / totalWeight).normal())
+
     @short(worldSpace='ws')
     def getClosestNormal(self,
                          point:'data.Point',
                          worldSpace:bool=False) -> 'data.Vector':
-        fn = self.__apimfn__(dag=True)
-        sp = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+        dag = self.__apimdagpath__()
+        fnMesh = om.MFnMesh(dag)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
 
-        point, faceId = fn.getClosestPoint(om.MPoint(point), sp)
+        closestPoint, faceId = fnMesh.getClosestPoint(
+            om.MPoint(point), space=space
+        )
+
+        numTris = len(fnMesh.getPolygonVertices(faceId)) - 2
+        triWeights = None
+        triVertIds = None
+
+        itPoly = om.MItMeshPolygon(dag)
+        itPoly.setIndex(faceId)
+        numTris = itPoly.numTriangles()
+
+        bestWeights = None
+        bestVertIds = None
+        bestMinBary = None
+
+        for triIdx in range(numTris):
+            pts, vIds = itPoly.getTriangle(triIdx, space)
+            wa, wb, wc = bary(closestPoint, pts[0], pts[1], pts[2])
+
+            if wa >= -1e-4 and wb >= -1e-4 and wc >= -1e-4:
+                bestWeights = (wa, wb, wc)
+                bestVertIds = vIds
+                break
+
+            # track nearest triangle for fallback
+            minBary = min(wa, wb, wc)
+            if bestMinBary is None or minBary > bestMinBary:
+                bestMinBary = minBary
+                bestWeights = (max(wa, 0.0), max(wb, 0.0), max(wc, 0.0))
+                bestVertIds = vIds
 
         blendedNormal = om.MVector(0.0, 0.0, 0.0)
-        totalWeight = 0.0
+        totalWeight = sum(bestWeights)
 
-        for vId in fn.getPolygonVertices(faceId):
-            vPos = fn.getPoint(vId, sp)
-            weight = 1.0 / (point.distanceTo(vPos) + 1e-6)
-            blendedNormal += fn.getFaceVertexNormal(faceId, vId, sp) * weight
-            totalWeight += weight
+        for vId, w in zip(bestVertIds, bestWeights):
+            blendedNormal += fnMesh.getFaceVertexNormal(faceId,
+                                                        vId,
+                                                        space) * (w
+                                                                  / totalWeight)
 
-        return data['Vector'].fromApi((blendedNormal / totalWeight).normal())
+        return data['Vector'](blendedNormal.normal())
 
     def getPolygonVertices(self, faceIndex:int) -> list[int]:
         meshFn = self.__apimfn__(dag=True)
