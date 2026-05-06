@@ -45,6 +45,61 @@ class Mesh(SurfaceShape):
 
     #-------------------------------------|    UVs
 
+    @short(constructionHistory='ch',
+           insertBeforeDeformers='ibd')
+    def createPiecemealUVs(self,
+                           uvSet:Optional[str]=None,
+                           constructionHistory:Optional[bool]=None,
+                           insertBeforeDeformers:bool=False):
+        """
+        Creates a UV map with one shell per face.
+        """
+        prevSet = self.uvSet
+        hadHistory = self.hasHistory()
+
+        if hadHistory:
+            constructionHistory = True
+
+        elif constructionHistory is None:
+            constructionHistory = m.constructionHistory(q=True, tgl=True)
+
+        numFaces = self.numFaces()
+        selector = f"{self}.f[0:{numFaces}]"
+
+        kwargs = {}
+
+        if uvSet:
+            kwargs['cm'] = True
+            kwargs['uvs'] = uvSet
+
+        m.polyProjection(selector,
+                         ch=constructionHistory,
+                         type='Planar',
+                         ibd=False,
+                         md='y',
+                         **kwargs)
+
+        if uvSet:
+            self.uvSet = uvSet
+
+        kwargs = {}
+
+        if uvSet:
+            kwargs['uvs'] = uvSet
+
+        _self = str(self)
+
+        m.polyForceUV(_self, unitize=True, **kwargs)
+        m.u3dLayout(_self, res=256, scl=1, box=[0, 1, 0, 1])
+
+        if uvSet:
+            self.uvSet = prevSet
+
+        if (not constructionHistory) and not hadHistory:
+            self.deleteHistory()
+
+        return self
+
     def copyVertsByUVFrom(self, otherMesh,
                           srcUVSet:Optional[str]=None,
                           destUVSet:Optional[str]=None):
@@ -116,7 +171,7 @@ class Mesh(SurfaceShape):
 
     def setUVSet(self, uvSet:str):
         """Sets the current UV set."""
-        m.polyUVSet(str(self), e=True, currentUVSet=uvSet)
+        m.polyUVSet(str(self), e=True, currentUVSet=True, uvSet=uvSet)
         return self
 
     setCurrentUVSetName = setUVSet # for parity with PyMEL
