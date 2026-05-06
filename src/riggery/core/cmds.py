@@ -9,9 +9,8 @@ import maya.cmds as m
 
 def openScene(path) -> None:
     path = Path(path)
-    longType = {'.ma': 'mayaAscii', '.mb': 'mayaBinary'}[path.suffix]
+    # Not including the long type, as I've run into some weirdness
     m.file(path.as_posix(),
-           typ=longType,
            ignoreVersion=True,
            o=True,
            f=True,
@@ -21,7 +20,7 @@ def openScene(path) -> None:
 @short(namespace='ns')
 def importScene(path, namespace:Optional[str]=None) -> None:
     path = Path(path)
-    longType = {'.ma': 'mayaAscii', '.mb': 'mayaBinary'}[path.suffix]
+    # longType = {'.ma': 'mayaAscii', '.mb': 'mayaBinary'}[path.suffix]
     kwargs = {}
 
     if namespace:
@@ -31,7 +30,7 @@ def importScene(path, namespace:Optional[str]=None) -> None:
 
     m.file(path.as_posix(),
            i=True,
-           typ=longType,
+           # typ=longType,
            f=True,
            prompt=False,
            options='v=0;',
@@ -43,14 +42,14 @@ def importScene(path, namespace:Optional[str]=None) -> None:
 @short(namespace='ns')
 def referenceScene(path, namespace:Optional[str]=None) -> '_nodes.Reference':
     path = Path(path)
-    longType = {'.ma': 'mayaAscii', '.mb': 'mayaBinary'}[path.suffix]
+    # longType = {'.ma': 'mayaAscii', '.mb': 'mayaBinary'}[path.suffix]
 
     if not namespace:
         namespace = path.stem
 
     result = m.file(path.as_posix(),
                     r=True,
-                    typ=longType,
+                    # typ=longType,
                     prompt=False,
                     options='v=0;',
                     ignoreVersion=True,
