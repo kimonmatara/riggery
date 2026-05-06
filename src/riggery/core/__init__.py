@@ -47,3 +47,5 @@ def __getattr__(item:str):
 
             else:
                 raise e
+        else:
+            raise e
