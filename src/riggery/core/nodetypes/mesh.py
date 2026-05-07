@@ -159,11 +159,95 @@ class Mesh(SurfaceShape):
 
         return meshFn.getUVAtPoint(closestPoint, space, uvSet)
 
-    def getClosestFace(self, point:'data.Point', worldSpace:bool=False):
+    @short(worldSpace='ws')
+    def getClosestFace(self,
+                       point:'data.Point',
+                       worldSpace:bool=False) -> int:
         point = om.MPoint(point)
         meshFn = self.__apimfn__(dag=True)
         space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
         return meshFn.getClosestPoint(point, space)[1]
+
+    @short(worldSpace='ws',
+           uvSet='uvs')
+    def getClosestTriangleUVs(self,
+                              points:Iterable['data.Point'],
+                              worldSpace:bool=False,
+                              uvSet:Optional[str]=None
+                              ) -> list[tuple[float, float]]:
+        if not uvSet:
+            uvSet = ''
+
+        dagPath = self.__apimdagpath__()
+        meshFn = om.MFnMesh(dagPath)
+        points = [om.MPoint(x) for x in points]
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+
+        triCounts, triVerts = meshFn.getTriangles()
+
+        meshIntersector = om.MMeshIntersector()
+        meshIntersector.create(dagPath.node(), dagPath.inclusiveMatrix())
+
+        results = []
+
+        for point in points:
+            point = om.MPoint(point)
+            pointOnMesh = meshIntersector.getClosestPoint(point)
+            faceIdx = pointOnMesh.face
+
+            faceTriOffset = sum(triCounts[:faceIdx])
+            faceTriCount = triCounts[faceIdx]
+
+            closestTriVerts = None
+            closestDist = float('inf')
+
+            for i in range(faceTriCount):
+                offset = (faceTriOffset + i) * 3
+
+                vIdxs = [triVerts[offset], triVerts[offset + 1],
+                         triVerts[offset + 2]]
+
+                positions = [om.MVector(meshFn.getPoint(v, space))
+                             for v in vIdxs]
+
+                center = sum(positions, om.MVector()) / 3.0
+                dist = (om.MVector(point) - center).length()
+
+                if dist < closestDist:
+                    closestDist = dist
+                    closestTriVerts = vIdxs
+
+            faceVerts = list(meshFn.getPolygonVertices(faceIdx))
+
+            uvValues = [meshFn.getPolygonUV(faceIdx, faceVerts.index(v), uvSet)
+                        for v in closestTriVerts]
+
+            u = sum(uv[0] for uv in uvValues) / 3.0
+            v = sum(uv[1] for uv in uvValues) / 3.0
+
+            results.append((u, v))
+
+        return results
+
+    @short(uvSet='uvs',
+           worldSpace='ws')
+    def getPointAtUV(self, u, v,
+                     uvSet:Optional[str]=None,
+                     worldSpace:bool=False) -> Optional['data.Point']:
+        if not uvSet:
+            uvSet = ''
+
+        meshFn = self.__apimfn__(dag=True)
+        space = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
+
+        for i in range(meshFn.numPolygons):
+            try:
+                out = meshFn.getPointAtUV(i, u, v, space, uvSet)
+            except RuntimeError:
+                continue
+            return data['Point'](out)
+
+        return None
 
     @short(worldSpace='ws')
     def getClosestPoint(self,
@@ -177,26 +261,6 @@ class Mesh(SurfaceShape):
             om.MSpace.kWorld if worldSpace else om.MSpace.kObject
         )
         return data['Point'](point), faceId
-
-    # @short(worldSpace='ws')
-    # def getClosestNormal(self,
-    #                      point:'data.Point',
-    #                      worldSpace:bool=False) -> 'data.Vector':
-    #     fn = self.__apimfn__(dag=True)
-    #     sp = om.MSpace.kWorld if worldSpace else om.MSpace.kObject
-    #
-    #     point, faceId = fn.getClosestPoint(om.MPoint(point), sp)
-    #
-    #     blendedNormal = om.MVector(0.0, 0.0, 0.0)
-    #     totalWeight = 0.0
-    #
-    #     for vId in fn.getPolygonVertices(faceId):
-    #         vPos = fn.getPoint(vId, sp)
-    #         weight = 1.0 / (point.distanceTo(vPos) + 1e-6)
-    #         blendedNormal += fn.getFaceVertexNormal(faceId, vId, sp) * weight
-    #         totalWeight += weight
-    #
-    #     return data['Vector'].fromApi((blendedNormal / totalWeight).normal())
 
     @short(worldSpace='ws')
     def getClosestNormal(self,
