@@ -1347,6 +1347,47 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         """
         return om.MFnDependencyNode(self.__apimobject__()).hasUniqueName()
 
+    @classmethod
+    @short(namespace='ns',
+           typeSuffix='ts',
+           basename='bn')
+    def _constructUniqueName(cls, *,
+                             basename=None,
+                             typeSuffix=None,
+                             namespace=None):
+        """
+        To make names somewhat deterministic, inserted numbers are never padded.
+        """
+        if namespace is None:
+            namespace = ':'
+        else:
+            namespace = str(namespace).rstrip(':') + ':'
+
+        num = 0
+
+        if basename is None:
+            basename = 'anonymous'
+
+        basename = namespace + basename
+
+        while True:
+            elems = [basename]
+
+            if num > 0:
+                elems.append(str(num))
+
+            if typeSuffix:
+                elems.append(typeSuffix)
+
+            name = '_'.join(elems)
+
+            if m.objExists(name):
+                num += 1
+            else:
+                break
+
+        return name
+
     def absoluteName(self, **kwargs) -> str:
         """
         :param \*\*kwargs: these are discarded and are here for parity with
@@ -1355,6 +1396,10 @@ class DependNode(Elem, metaclass=DependNodeMeta):
             information.
         """
         return om.MFnDependencyNode(self.__apimobject__()).absoluteName()
+
+    @property
+    def defaultTypeSuffix(self) -> str:
+        return self.__typesuffix__
 
     @property
     def prefix(self) -> str:
@@ -1477,10 +1522,6 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         return self.clearName(*args, **kwargs)
 
     name = property(_getName, _setName, _clearName)
-
-    @property
-    def defaultTypeSuffix(self) -> Optional[str]:
-        return self.__typesuffix__
 
     def exists(self) -> bool:
         """
