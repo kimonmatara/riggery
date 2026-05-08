@@ -58,9 +58,13 @@ class SkinCluster(GeometryFilter):
         jointsAndGeo = expand_tuples_lists(jointsAndGeo)
 
         if name is None:
-            name = cls._deriveNameFromGeo(jointsAndGeo[-1])
+            if _nm.Name.__elems__:
+                name =_nm.Name.evaluate(typeSuffix=cls.__typesuffix__)
+            else:
+                name = cls._deriveNameFromGeo(jointsAndGeo[-1])
 
-        kwargs = self.DEFAULTS.copy()
+        kwargs = cls.DEFAULTS.copy()
+        kwargs.update(**overrides)
         kwargs['name'] = name
 
         return r.skinCluster(*jointsAndGeo, **kwargs)[0]
@@ -1712,6 +1716,17 @@ class SkinCluster(GeometryFilter):
     def _useSkinPercent(self) -> bool:
         return 'artAttrSkinContext' in m.currentCtx() or self.hasLockedWeights()
 
+    def resetWeightsForAllInfluences(self):
+        shape = next(self.shapes)
+        comp = shape.__point_comp_ext__
+
+        m.skinPercent(str(self),
+                      "{}.{}[0:{}]".format(shape,
+                                           shape.__point_comp_ext__,
+                                           shape.numPoints()),
+                      resetToDefault=True)
+        return self
+
     #-------------------------------------|    Additive skinning
 
     @short(maintainOffset='mo')
@@ -1720,7 +1735,9 @@ class SkinCluster(GeometryFilter):
                                 baseMatrix:_mm.MixedMatrix,
                                 maintainOffset:bool=False):
         """
-        Makes the specified influence relative to the given matrix.
+        Makes the specified influence relative to the given matrix. The way to
+        conceptualize bindPreMatrix is as the 'start' matrix of a delta
+        calculation.
 
         :param influence: the index of the influence to make relative; use
             :meth:`indexForInfluenceObject` if you don't have it
