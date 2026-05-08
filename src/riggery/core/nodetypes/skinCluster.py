@@ -35,51 +35,33 @@ from riggery.internal import str2api as _s2a
 if not m.pluginInfo('invertShape', loaded=1, q=1):
     m.loadPlugin('invertShape')
 
+
 class SkinCluster(GeometryFilter):
+
+    DEFAULTS = {'bindMethod': 0,
+                'dropoffRate': 4.5,
+                'maximumInfluences': 5,
+                'normalizeWeights': 1,
+                'obeyMaxInfluences': False,
+                'skinMethod': 0,
+                'toSelectedBones': True,
+                'weightDistribution': 1}
 
     #-------------------------------------|    Contructors
 
     @classmethod
-    @short(maximumInfluences='mi',
-           obeyMaxInfluences='omi',
-           skinMethod='sm',
-           weightDistribution='wd',
-           bindMethod='bm',
-           dropoffRate='dr',
-           normalizeWeights='nw',
-           removeUnusedInfluence='rui',
-           toSelectedBones='tsb',
-           name='n')
+    @short(name='n')
     def create(cls,
                *jointsAndGeo, # geo last, to match Maya
                name:Optional[str]=None,
-               maximumInfluences:Optional[int]=None,
-               obeyMaxInfluences:Optional[bool]=False,
-               skinMethod:int=0, # linear
-               weightDistribution:int=0, # distance
-               bindMethod:int=0, # closest distance
-               dropoffRate:Optional[float]=None,
-               normalizeWeights:int=1, # interactive,
-               removeUnusedInfluence:bool=False,
-               toSelectedBones:bool=True):
-
+               **overrides):
         jointsAndGeo = expand_tuples_lists(jointsAndGeo)
 
         if name is None:
             name = cls._deriveNameFromGeo(jointsAndGeo[-1])
 
-        kwargs = {'name': name}
-
-        for k, v in zip(
-                ('maximumInfluences', 'obeyMaxInfluences',
-                 'skinMethod', 'weightDistribution', 'bindMethod',
-                 'dropoffRate', 'normalizeWeights', 'toSelectedBones'),
-                (maximumInfluences, obeyMaxInfluences, skinMethod,
-                 weightDistribution, bindMethod, dropoffRate,
-                 normalizeWeights, toSelectedBones)
-        ):
-            if v is not None:
-                kwargs[k] = v
+        kwargs = self.DEFAULTS.copy()
+        kwargs['name'] = name
 
         return r.skinCluster(*jointsAndGeo, **kwargs)[0]
 
