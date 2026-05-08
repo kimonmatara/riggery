@@ -13,59 +13,9 @@ from ..lib import names as _nm
 from ..elem import Elem
 
 
-# class ComponentTags:
-#
-#     #-----------------------------------|    Init
-#
-#     def __init__(self, shape):
-#         self._node = shape
-#
-#     #-----------------------------------|    Props
-#
-#     def node(self) -> 'DeformableShape':
-#         return self._node
-#
-#     #-----------------------------------|    Get
-#
-#     def keys(self) -> Iterator[str]:
-#         yield from iter(self._node.localOutput.getComponentTagNames())
-#
-#     def values(self) -> Iterator[list[str]]:
-#         plug = self._node.localOutput
-#
-#         for name in plug.getComponentTagNames():
-#             yield plug.evalComponentTagExpression(name)
-#
-#     def items(self) -> Iterator[tuple[str, list[str]]]:
-#         plug = self._node.localOutput
-#
-#         for key in plug.getComponentTagNames():
-#             yield key, plug.evalComponentTagExpression(key)
-#
-#     def __getitem__(self, tagName:str):
-#         return self._node.localOutput.evalComponentTagExpression(tagName)
-#
-#     def __len__(self) -> int:
-#         return len(self._node.localOutput.getComponentTagNames())
-#
-#     #-----------------------------------|    Remove
-#
-#     def __delitem__(self, tagName:str):
-#         self._node.deleteComponentTag(tagName)
-#
-#     #-----------------------------------|    Repr
-#
-#     def __repr__(self):
-#         return "{}({})".format(self.__class__.__name__, repr(self._node))
-
-
 class DeformableShape(nodes['GeometryShape']):
 
     __point_comp_ext__ = None # e.g. 'vtx'
-
-    # @property
-    # def componentTags(self):
-    #     return ComponentTags(self)
 
     def __apipointiterator__(self) -> om.MItGeometry:
         return om.MItGeometry(self.__apimdagpath__())
@@ -457,7 +407,76 @@ class DeformableShape(nodes['GeometryShape']):
         m.makeLive(removeObjects=str(self))
         return self
 
-    #---------------------------|    Generic deformers
+    #---------------------------|    Deformer utils
+
+    def iterDeformers(self) -> Iterator['nodes.GeometryFilter']:
+        """
+        Yields deformers on this shape. The most recently-added deformer will be
+        first.
+        """
+        _self = str(self)
+        result = m.deformableShape(_self, outputPlugChain=True)
+
+        if result:
+            for item in reversed(result):
+                _node = item.split('.')[0]
+
+                if m.objectType(_node, isAType='geometryFilter'):
+                    deformer = nodes['GeometryFilter'](_node)
+
+                    if self in deformer.shapes:
+                        yield deformer
+
+    deformers = property(iterDeformers)
+
+    def conformDeformerNames(self):
+        typeMapping = {}
+
+        for deformer in self.deformers:
+            typeMapping.setdefault(deformer.__typesuffix__, []).append(deformer)
+
+        bn = self.parent.shortName(sns=True, sts=True)
+
+        for typeSuffix, deformers in typeMapping.items():
+            deformers.reverse()
+
+            # Prune deformers that look as if they were intentionally named
+            _toRename = []
+
+            for d in deformers:
+                n = d.shortName(sns=True)
+
+                mt1 = re.match(r"^(.*?)_"+typeSuffix+r"$", n)
+
+                if mt1:
+                    desc = mt1.group(1)
+
+                    if re.match(
+                        r"^"+bn+"(_[0-9]+)?"+"$", desc
+                    ):
+                        _toRename.append(d)
+                else:
+                    _toRename.append(d)
+
+            deformers = _toRename
+
+            for d in deformers:
+                d.name = '_tmp'
+
+            for i, deformer in enumerate(deformers):
+                ns = str(deformer.namespace).rstrip(':') + ':'
+                elems = [bn]
+
+                if i > 0:
+                    elems.append(str(i))
+
+                elems.append(typeSuffix)
+                newName = ns + ('_'.join(elems))
+                deformer.name = newName
+
+        return self
+
+    #---------------------------|    Rigging
 
     def shrinkWrapTo(self, other:'nodes.DagNode', **swAttrs):
         """
