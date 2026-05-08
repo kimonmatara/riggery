@@ -721,9 +721,25 @@ class GeometryFilter(DependNode):
         return self._getShapeMDagPathAtIndex(shapeIndex).node()
 
     def _getShapeMDagPathAtIndex(self, shapeIndex:int) -> om.MDagPath:
-        return oma.MFnGeometryFilter(
-            self.__apimobject__()
-        ).getPathAtIndex(shapeIndex)
+        deformerMObject = self.__apimobject__()
+        deformerFn = oma.MFnGeometryFilter(deformerMObject)
+        dagPath = deformerFn.getPathAtIndex(shapeIndex)
+
+        if dagPath.isValid():
+            return dagPath
+
+        # If we're still here, it might be because a complex graph has confused
+        # the fn method. Try a fallback
+
+        _self = str(self)
+        shapes = m.deformer(_self, q=True, geometry=True)
+
+        if shapes:
+            shape = shapes[shapeIndex]
+            shape = nodes['DagNode'](shape)
+            return shape.__apimdagpath__()
+
+        raise RuntimeError(f"no shapes could be retrieved from deformer {self}")
 
     def getShapeAtIndex(self, shapeIndex:int) -> 'nodes.DeformableShape':
         """
