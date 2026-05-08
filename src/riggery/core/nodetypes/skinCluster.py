@@ -21,6 +21,7 @@ import riggery.core as r
 from riggery.core.lib.selection import keepsel
 import riggery.core.lib.names as _nm
 from riggery.core.lib import skinwtio as _sw
+from riggery.core.lib import mixedmode as _mm
 
 from riggery.general.iterables import (expand_tuples_lists,
                                        without_duplicates,
@@ -1728,3 +1729,28 @@ class SkinCluster(GeometryFilter):
 
     def _useSkinPercent(self) -> bool:
         return 'artAttrSkinContext' in m.currentCtx() or self.hasLockedWeights()
+
+    #-------------------------------------|    Additive skinning
+
+    @short(maintainOffset='mo')
+    def makeInfluenceRelativeTo(self,
+                                influenceIndex:int,
+                                baseMatrix:_mm.MixedMatrix,
+                                maintainOffset:bool=False):
+        """
+        Makes the specified influence relative to the given matrix.
+
+        :param influence: the index of the influence to make relative; use
+            :meth:`indexForInfluenceObject` if you don't have it
+        :param baseMatrix: the 'base' matrix to make the influence relative to
+        """
+        baseMatrix = _mm.asMatrix(baseMatrix)[0]
+
+        if maintainOffset:
+            baseMatrix = (self.attr('matrix')[influenceIndex]()
+                          * baseMatrix.asOffset())
+
+        baseMatrix = baseMatrix.inverse()
+        baseMatrix >> self.attr('bindPreMatrix')[influenceIndex]
+
+        return self
