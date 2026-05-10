@@ -272,9 +272,8 @@ def cast_params(f):
     return wrapper
 
 class roperty:
-    """
-    Similar to Python's `cached_property`, but strictly read-only.
-    """
+    """Similar to Python's `cached_property`, but strictly read-only."""
+
     def __init__(self, f):
         self.f = f
         self.name = None
@@ -295,7 +294,7 @@ class roperty:
         return value
 
     def __set__(self, inst, value):
-        raise AttributeError(f"'{self.name}' is readonly")
+        raise AttributeError(f"'{self.name}' is read-only")
 
     def __delete__(self, inst):
         inst.__dict__.pop(self.name, None)
