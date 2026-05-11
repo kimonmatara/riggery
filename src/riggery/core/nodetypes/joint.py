@@ -43,7 +43,10 @@ class Joint(nodes['Transform']):
            parent='p',
            worldSpace='ws',
            freezeRotate='fr',
-           displayLocalAxis='dla')
+           displayLocalAxis='dla',
+           displayHandle='dh',
+           drawStyle='ds',
+           showRadius='sr')
     def create(cls, *,
                name:Optional[str]=None,
                matrix=None,
@@ -52,6 +55,9 @@ class Joint(nodes['Transform']):
                worldSpace:bool=False,
                freezeRotate:bool=True,
                displayLocalAxis:bool=True,
+               displayHandle:bool=False,
+               showRadius:bool=True,
+               drawStyle='Bone',
                radius:float=1.0):
         """
         :param name/n: if omitted, defaults to Name blocks
@@ -74,6 +80,11 @@ class Joint(nodes['Transform']):
                               displayLocalAxis=displayLocalAxis)
 
         node.attr('radius').set(radius)
+        node.attr('drawStyle').set(drawStyle)
+        node.attr('displayHandle').set(displayHandle)
+
+        if not showRadius:
+            node.attr('radius').hide()
 
         if freezeRotate:
             node.makeIdentity(rotate=True, apply=True, jointOrient=False)
