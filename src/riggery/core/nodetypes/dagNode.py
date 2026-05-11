@@ -41,6 +41,7 @@ class DagNode(DependNode):
         kwargs = {}
 
         name = _n.resolveNameArg(name, nodeType=nodeType)
+
         if name:
             kwargs['name'] = name
 
