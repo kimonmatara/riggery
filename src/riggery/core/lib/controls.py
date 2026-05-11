@@ -2,7 +2,7 @@
 Base tools for creating controls.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Iterable
 from contextlib import nullcontext
 from riggery.general.functions import short
 from riggery.general.iterables import expand_tuples_lists
@@ -13,6 +13,28 @@ from ..datatypes import __pool__ as data
 from ..nodetypes import __pool__ as nodes
 
 GLOBAL_SHAPE_SCALE = 8.0
+
+def _resolveKeyableChannelBoxArgs(keyable, channelBox) -> tuple[bool, bool]:
+    if not (keyable or channelBox):
+        return ['t', 'r', 'ro'], None
+
+    if keyable:
+        if isinstance(keyable, str):
+            keyable = [keyable]
+        else:
+            keyable = list(keyable)
+    else:
+        keyable = None
+
+    if channelBox:
+        if isinstance(channelBox, str):
+            channelBox = [channelBox]
+        else:
+            channelBox = list(channelBox)
+    else:
+        channelBox = None
+
+    return keyable, channelBox
 
 @short(worldSpace='ws',
        keyable='k',
@@ -65,16 +87,18 @@ def createControl(
     kwargs = {'name': name,
               'parent': parent,
               'rotateOrder': rotateOrder,
-              'zeroChannels': zeroChannels,
               'matrix': matrix,
-              'worldSpace': worldSpace}
+              'worldSpace': worldSpace,
+              'zeroChannels': zeroChannels}
 
     if asControl:
         if shape is None:
             if displayHandle is None:
                 kwargs['displayHandle'] = True
 
-    details['control'] = xf = nodes['Transform'].create(**kwargs)
+
+    T = nodes['Transform']
+    details['control'] = xf = T.create(**kwargs)
 
     if offsetGroups:
         details['offsetGroups'] = xf.createOffsetGroups(offsetGroups)
@@ -190,3 +214,97 @@ def createControlStack(
         controls.append(control)
 
     return controls
+
+
+@short(offsetGroups='og',
+       parent='p',
+       matrix='m',
+       worldSpace='ws',
+       axisRemap='ar',
+       keyable='k',
+       channelBox='cb',
+       rotateOrder='ro',
+       pickWalkParent='pwp')
+def createJointControl(
+        parent:Optional[Union[str, 'r.nodes.Transform']]=None,
+        matrix:Optional['data.Matrix']=None,
+        worldSpace:bool=False,
+        offsetGroups:Optional[Union[str, Iterable[str]]]=None,
+
+        shape:Optional[str]=None,
+        color:Optional[Union[str, int]]=None,
+        axisRemap:Optional[list[str]]=None,
+
+        keyable:Optional[Union[str, list[str]]]=None,
+        channelBox:Optional[Union[str, list[str]]]=None,
+        rotateOrder:Union[int, str]=0,
+
+        pickWalkParent:Optional[Union[str, 'r.nodes.DependNode']]=None,
+
+) -> 'nodes.Joint':
+
+    """
+    Notes
+    -----
+
+    -   The joint will *always* be zeroed indirectly. If there are offset
+        groups, the matrix will be applied to the top offset group's SRT
+        channels. Otherwise, if the joint is free-standing, the matrix will be
+        applied to its ``offsetParentMatrix``.
+    """
+    #------------------|    Wrangle arguments
+
+    keyable, channelBox = _resolveKeyableChannelBoxArgs(keyable, channelBox)
+
+    if parent:
+        parent = nodes['Transform'](parent)
+
+    if matrix is None:
+        matrix = data['Matrix']()
+    else:
+        matrix = data['Matrix'](matrix)
+
+    if worldSpace and parent:
+        matrix *= parent.getMatrix(ws=True).inverse()
+
+    if offsetGroups:
+        if isinstance(offsetGroups, str):
+            offsetGroups = [offsetGroups]
+        else:
+            offsetGroups = list(offsetGroups)
+
+    joint = nodes['Joint'].create(rotateOrder=rotateOrder,
+                                  displayLocalAxis=False,
+                                  showRadius=False,
+                                  drawStyle='None')
+
+    joint.maskAnimAttrs(keyable=keyable,
+                        channelBox=channelBox)
+
+    if shape:
+        joint.setControlShape(shape, color=color, axisRemap=axisRemap)
+
+    if pickWalkParent:
+        joint.pickWalkParent = pickWalkParent
+    else:
+        joint.isControl = True
+
+    if offsetGroups:
+        currentChild = joint
+
+        for pfx in offsetGroups:
+            with _nm.Name(pfx):
+                offsetGroup = nodes['Transform'].createNode()
+                currentChild.parent = offsetGroup
+                currentChild = offsetGroup
+
+        topNode = currentChild
+        topNode.setMatrix(matrix)
+    else:
+        topNode = joint
+        topNode.attr('opm').set(matrix)
+
+    if parent:
+        topNode.setParent(parent, relative=True)
+
+    return joint
