@@ -220,11 +220,14 @@ class Name:
 
         if typeSuffix:
             elems.append(typeSuffix)
+
         elif asControl:
             elems.append(CONTROLSUFFIX)
+
         elif nodeType is not None:
             try:
                 elems.append(TYPESUFFIXES[nodeType])
+
             except KeyError:
                 pass
 
