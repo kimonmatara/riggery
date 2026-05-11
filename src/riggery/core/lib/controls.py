@@ -273,10 +273,17 @@ def createJointControl(
         else:
             offsetGroups = list(offsetGroups)
 
+    if _nm.Name.__elems__:
+        name = _nm.Name.evaluate(asControl=True)
+    else:
+        with r.Name('anonymous'):
+            name = _nm.Name.evaluate(asControl=True)
+
     joint = nodes['Joint'].create(rotateOrder=rotateOrder,
                                   displayLocalAxis=False,
                                   showRadius=False,
-                                  drawStyle='None')
+                                  drawStyle='None',
+                                  name=name)
 
     joint.maskAnimAttrs(keyable=keyable,
                         channelBox=channelBox)
