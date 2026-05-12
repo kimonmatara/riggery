@@ -174,42 +174,101 @@ class Vector(plugs['Tensor3Float']):
         other >> node.attr('vector2')
         return (node.attr('axis'), node.attr('angle'))
 
-    def angleTo(self, other, normal=None, *, shortest:bool=False):
-        node = nodes['AngleBetween'].createNode()
-        self >> node.attr('vector1')
-        other >> node.attr('vector2')
-
-        if normal is None:
-            return node.attr('angle')
-        else:
-            normal = _mm.asVector(normal)[0]
-
-        outAngle = node.attr('angle')
-        outAxis = node.attr('axis')
-
-        aligned = outAxis.length().lt(1e-6)
-        dot = normal.dot(aligned.ifElse(normal,
-                                        outAxis,
-                                        plugs['Vector']), normalize=True)
-        flipped = dot.lt(0.0)
-
-        pb = nodes['Network'].createNode()
-
-        outAngle = flipped.ifElse(math.radians(360)-outAngle,
-                                  outAngle,
-                                  plugs['Angle'])
+    def angleTo(self,
+                other:_mm.MixedVector,
+                normal:Optional[_mm.MixedVector]=None, *,
+                shortest:bool=False,
+                matchDirection:Optional['plugs.Number', int, float]=None):
+        """
+        :param other: the vector towards which to measure the angle
+        :param normal: the clock normal; if this is provided, the angle will be
+            first conformed to a 360 range, and then modified by *shortest* or
+            *matchDirection*; defaults to None
+        :param shortest: if this is True, *normal* should be provided; cannot be
+            combined with *matchDirection*; returns an angle in the -180 to 180
+            range rather than 0 -> 360; defaults to False
+        :param matchDirection: if this is provided, it should be a scalar, and
+            *normal* should also be provided; when the scalar dips below 0.0,
+            the output will be recalculated as 360 - output; defaults to None
+        :return: The calculated angle.
+        """
+        #-----------------|    Parse args
 
         if shortest:
-            outAngle = outAngle.gt(math.radians(180)).ifElse(
-                outAngle - math.radians(360),
-                outAngle,
+            if normal is None:
+                raise ValueError("shortest cannot be used without a clock normal")
+
+            if matchDirection:
+                raise ValueError("shortest cannot be used with matchDirection")
+
+        other, otherIsPlug = _mm.asVector(other)
+
+        if normal is not None:
+            normal =_mm.asVector(normal)[0]
+
+        if matchDirection is not None:
+            if normal is None:
+                raise ValueError(
+                    "matchDirection cannot be used without a clock normal"
+                )
+
+            matchDirection, matchDirectionIsPlug = _mm.asScalar(matchDirection)
+
+        #-----------------|    Get the unsigned 180-range angle
+
+        angleBetweenNode = nodes['AngleBetween'].createNode()
+        self >> angleBetweenNode.attr('vector1')
+        angleBetweenNode.attr('vector2').put(other, otherIsPlug)
+
+        angle = angleBetweenNode.attr('angle')
+
+        #-----------------|    Early exit
+
+        if normal is None:
+            return angle
+
+        #-----------------|    Conform to full 360 range
+
+        axis = angleBetweenNode.attr('axis')
+
+        aligned = axis.length() < 1e-6
+        dot = normal.dot(aligned.ifElse(normal,
+                                        axis,
+                                        plugs['Vector']), normalize=True)
+
+        flipped = dot < 0.0
+
+        angle = flipped.ifElse(math.radians(360) - angle,
+                               angle,
+                               plugs['Angle'])
+
+        #-----------------|    Modifications
+
+        if shortest:
+            angle = (angle > math.radians(180)).ifElse(
+                angle - math.radians(360),
+                angle,
                 plugs['Angle']
             )
 
-        nw = nodes['Network'].createNode()
-        zero = nw.addAttr('zeroAngle', at='doubleAngle')
+        elif matchDirection is not None:
+            if matchDirectionIsPlug:
+                angle = (matchDirection < 0).ifElse(
+                    angle - math.radians(360),
+                    angle,
+                    plugs['Angle']
+                )
 
-        return aligned.ifElse(zero, outAngle, plugs['Angle'])
+            elif matchDirection < 0:
+                angle = angle - math.radians(360)
+
+        zero = angleBetweenNode.addAttr('zeroAngle',
+                                        at='doubleAngle',
+                                        hidden=True)
+
+        angle = aligned.ifElse(zero, angle, plugs['Angle'])
+
+        return angle
 
     @cache_dg_output
     def length(self):
