@@ -331,6 +331,14 @@ class Number(__pool__['Math']):
     def __le__(self, other):
         return self.le(other)
 
+    @cache_dg_output
+    def isNegative(self) -> 'plugs.Bool':
+        return self < 0
+
+    @cache_dg_output
+    def isZero(self) -> 'plugs.Bool':
+        return self.eq(0)
+
     #-----------------------------------------|    Graph flow
 
     def select(self, inputs, outputClass:Optional[type]=None, /):
@@ -412,6 +420,15 @@ class Number(__pool__['Math']):
         node.attr('modulus').put(other)
         return node.attr('output')
 
+    def modf(self) -> 'plugs.Number':
+        """
+        :return: Tuple of (fractional part, integer part) of this number. You'd
+            think the order would be the other way round, but this is the
+            convention from :mod:`math`.
+        """
+        tr = self.trunc()
+        return (self - tr), tr
+
     def __rmod__(self, other):
         """
         Implements the % operator (modulo).
@@ -453,12 +470,46 @@ class Number(__pool__['Math']):
         self >> node.attr('input')
         return node.attr('output')
 
+    def getSign(self) -> 'plugs.Bool':
+        """
+        property: ``.sign``
+
+        :return: Equivalent to ``self > 0``.
+        """
+        return self > 0
+
+    def setSign(self, positive:bool=True, /):
+        """
+        property: ``.sign``
+
+        :return: This scalar, coerced to the specified sign.
+        """
+        positive, positiveIsPlug = _mm.asBool(positive)
+
+        isPositive = self >= 0
+        inverted = -self
+        T = type(self)
+
+        if positiveIsPlug:
+            positiveOutput = isPositive.ifElse(self, inverted, T)
+            negativeOutput = isPositive.ifElse(inverted, self, T)
+
+            return positive.ifElse(positiveIsPlug, negativeOutput, T)
+
+        if positive:
+            return isPositive.ifElse(self, inverted, T)
+
+        return isPositive.ifElse(inverted, self, T)
+
+    sign = property(getSign, setSign)
+
     @cache_dg_output
     def trunc(self):
         """:return: The integer truncation of this number."""
 
         node = nodes['Truncate'].createNode()
         self >> node.attr('input')
+
         return node.attr('output')
 
     def min(self, *others):
