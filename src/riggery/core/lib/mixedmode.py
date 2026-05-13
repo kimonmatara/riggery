@@ -24,6 +24,8 @@ from .nativeunits import nativeunits
 MixedScalar:TypeAlias = Union[float, int, '_plugs.Number']
 MixedScalarValue:TypeAlias = Union[float, int]
 
+MixedBool:TypeAlias = Union[bool, int, '_plugs.Bool']
+
 MixedVectorValue:TypeAlias = Union[Iterable[float], '_data.Vector']
 MixedVectorPlug:TypeAlias = Union[str, '_plugs.Vector']
 MixedVector:TypeAlias = Union[MixedVectorValue, MixedVectorPlug]
@@ -260,6 +262,9 @@ def asScalar(item) -> tuple[MixedScalar, bool]:
 
 def asVector(item) -> tuple[MixedVector, bool]:
     return _quickInfo(item, (_plugs['Vector'], _data['Vector']), True)
+
+def asBool(item) -> tuple[MixedBool, bool]:
+    return _quickInfo(item, (_plugs['Bool'], bool), True)
 
 def asPoint(item) -> tuple[MixedPoint, bool]:
     return _quickInfo(item, (_plugs['Point'], _data['Point']), True)
