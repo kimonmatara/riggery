@@ -1135,3 +1135,11 @@ class Matrix(plugs['Tensor']):
             if smtx is not None:
                 matrix = smtx * matrix.pick(t=True, r=True)
         return matrix
+
+    def inspectValue(self):
+        value = self()
+        xf = om.MTransformationMatrix(value.api)
+        print("Translation: {}".format(xf.translation(om.MSpace.kTransform)))
+        print("Rotation: {}".format(xf.rotation()))
+        print("Scale: {}".format(xf.scale(om.MSpace.kTransform)))
+        print("Shear: {}".format(xf.shear(om.MSpace.kTransform)))
