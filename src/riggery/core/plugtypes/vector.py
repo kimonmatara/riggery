@@ -168,105 +168,58 @@ class Vector(plugs['Tensor3Float']):
     def matrixTo(self, otherVector):
         return self.quatTo(otherVector).asRotateMatrix()
 
-    def axisAngleTo(self, other) -> tuple:
+    def axisAngleTo(self, other) -> tuple['plugs.Vector', 'plugs.Angle']:
+        """
+        :return: The axis and angle to *other*, both as plugs. Note that these
+            are pulled from an ``angleBetween`` node, and the ``.axis`` output
+            should *not* be treated as sized cross product, because in collapsed
+            cases it becomes frame-dependent and may yield unintended results.
+        """
         node = nodes['AngleBetween'].createNode()
         self >> node.attr('vector1')
         other >> node.attr('vector2')
-        return (node.attr('axis'), node.attr('angle'))
+
+        return node.attr('axis'), node.attr('angle')
 
     def angleTo(self,
                 other:_mm.MixedVector,
                 normal:Optional[_mm.MixedVector]=None, *,
-                shortest:bool=False,
-                matchDirection:Optional['plugs.Number', int, float]=None):
-        """
-        :param other: the vector towards which to measure the angle
-        :param normal: the clock normal; if this is provided, the angle will be
-            first conformed to a 360 range, and then modified by *shortest* or
-            *matchDirection*; defaults to None
-        :param shortest: if this is True, *normal* should be provided; cannot be
-            combined with *matchDirection*; returns an angle in the -180 to 180
-            range rather than 0 -> 360; defaults to False
-        :param matchDirection: if this is provided, it should be a scalar, and
-            *normal* should also be provided; when the scalar dips below 0.0,
-            the output will be recalculated as 360 - output; defaults to None
-        :return: The calculated angle.
-        """
-        #-----------------|    Parse args
-
-        if shortest:
-            if normal is None:
-                raise ValueError("shortest cannot be used without a clock normal")
-
-            if matchDirection:
-                raise ValueError("shortest cannot be used with matchDirection")
+                shortest:bool=False):
 
         other, otherIsPlug = _mm.asVector(other)
 
+        angle = self.axisAngleTo(other)[1]
+
         if normal is not None:
-            normal =_mm.asVector(normal)[0]
+            normal, normalIsPlug = _mm.asVector(normal)
 
-        if matchDirection is not None:
-            if normal is None:
-                raise ValueError(
-                    "matchDirection cannot be used without a clock normal"
-                )
+            selfN = self.normal()
+            otherN = other.normal()
 
-            matchDirection, matchDirectionIsPlug = _mm.asScalar(matchDirection)
+            # Get the rotation axis
+            cross = selfN.cross(otherN)
+            crossLen = cross.length()
+            noRotation = crossLen < 1e-5
 
-        #-----------------|    Get the unsigned 180-range angle
+            # Normalize it carefully
+            pb = nodes['Network'].createNode()
+            one = pb.addAttr('one', at='double', k=1, dv=1.0).lock()
+            divisor = noRotation.ifElse(one, crossLen, plugs['Float'])
+            crossN = cross / divisor
 
-        angleBetweenNode = nodes['AngleBetween'].createNode()
-        self >> angleBetweenNode.attr('vector1')
-        angleBetweenNode.attr('vector2').put(other, otherIsPlug)
+            # pull a norm dot product against the normal
+            normalN = normal.normal()
+            dot = crossN.dot(normalN)
 
-        angle = angleBetweenNode.attr('angle')
+            dot >> pb.addAttr('dot', k=1)
 
-        #-----------------|    Early exit
-
-        if normal is None:
-            return angle
-
-        #-----------------|    Conform to full 360 range
-
-        axis = angleBetweenNode.attr('axis')
-
-        aligned = axis.length() < 1e-6
-        dot = normal.dot(aligned.ifElse(normal,
-                                        axis,
-                                        plugs['Vector']), normalize=True)
-
-        flipped = dot < 0.0
-
-        angle = flipped.ifElse(math.radians(360) - angle,
-                               angle,
-                               plugs['Angle'])
-
-        #-----------------|    Modifications
-
-        if shortest:
-            angle = (angle > math.radians(180)).ifElse(
-                angle - math.radians(360),
-                angle,
-                plugs['Angle']
-            )
-
-        elif matchDirection is not None:
-            if matchDirectionIsPlug:
-                angle = (matchDirection < 0).ifElse(
-                    angle - math.radians(360),
-                    angle,
-                    plugs['Angle']
-                )
-
-            elif matchDirection < 0:
-                angle = angle - math.radians(360)
-
-        zero = angleBetweenNode.addAttr('zeroAngle',
-                                        at='doubleAngle',
-                                        hidden=True)
-
-        angle = aligned.ifElse(zero, angle, plugs['Angle'])
+            if shortest:
+                angle = dot.isNegative().ifElse(-angle, angle, plugs['Angle'])
+            else:
+                # Calc full angle
+                angle = dot.isNegative().ifElse(math.radians(360) - angle,
+                                                angle,
+                                                plugs['Angle'])
 
         return angle
 
@@ -291,17 +244,42 @@ class Vector(plugs['Tensor3Float']):
         """
         return (self.normal() * length).asType(type(self))
 
-    def normal(self, quiet:bool=False):
+    def normal(self, quiet:bool=False) -> 'plugs.Vector':
         """
-        :param quiet: create a more involved network to avoid zero-length
-            errors; defaults to False
-        :return: A normalized version of this vector.
+        :param quiet: if True, delegates to :meth:`normalOrZero`; defaults to
+            False
+        :return: A normalized (or zero-length, if *quiet* is True) version of
+            this vector.
         """
         if quiet:
-            out = self._quietNormal()
-        else:
-            out = self._rawNormal()
-        return out
+            return self.normalOrZero()
+
+        return self._rawNormal()
+
+    def normalOrZero(self, *,
+                     epsilon:float=1e-5) -> tuple['plugs.Vector', 'plugs.Bool']:
+        """
+        Calculates a normalized or zero-length (if the input is zero-length)
+        vector without spitting out DG errors if the vector is zero-length.
+
+        :return: normal or zero-length, boolean output for isZeroLength
+        """
+        length = self.length()
+        collapsed = length < epsilon
+
+        node = nodes['MultiplyDivide'].createNode()
+        node.attr('operation').set(2)
+        one = node.addAttr('one', at='double', dv=1.0).lock()
+
+        divisor = collapsed.ifElse(one, length)
+
+        self >> node.attr('input1')
+        node.attr('input1').splitInput()
+
+        for dest in node.attr('input2').children:
+            divisor >> dest
+
+        return node.attr('output'), collapsed
 
     @cache_dg_output
     def _rawNormal(self):
