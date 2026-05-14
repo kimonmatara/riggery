@@ -455,8 +455,9 @@ class Chain(list):
 
     points = property(fget=iterPoints)
 
-    def getRatios(self) -> list[float]:
-        return _mo.getLengthRatios(self.points)
+    @short(plug='p')
+    def getRatios(self, plug:bool=False) -> list[float]:
+        return _mo.getLengthRatios(self.getPoints(p=plug))
 
     ratios = property(fget=getRatios)
 
