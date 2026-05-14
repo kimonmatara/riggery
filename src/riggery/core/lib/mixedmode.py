@@ -258,7 +258,7 @@ def _quickInfo(x, types, force):
     return out, isPlug
 
 def asScalar(item) -> tuple[MixedScalar, bool]:
-    return _quickInfo(item, (_plugs['Number'], int, float), False)
+    return _quickInfo(item, (_plugs['Number'], float, int), False)
 
 def asVector(item) -> tuple[MixedVector, bool]:
     return _quickInfo(item, (_plugs['Vector'], _data['Vector']), True)
