@@ -86,8 +86,12 @@ class CachedSample(Base):
         return self.index == 0
 
     @roperty
-    def is_last(self):
+    def is_last(self) -> bool:
         return self.index == len(self.owner) - 1
+
+    @roperty
+    def is_inner(self) -> bool:
+        return not (self.is_first or self.is_last)
 
     def next(self) -> 'CachedSample':
         try:
