@@ -1,10 +1,13 @@
 import os
 from pathlib import Path
 from tempfile import gettempdir
+from typing import Literal
 
 import maya.cmds as m
 import maya.mel as mel
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
+from riggery.general.functions import short
+
 from .selection import keepsel
 
 mel.eval('source MLdeleteUnused')
@@ -173,4 +176,53 @@ def stripdown(*nodes) -> list[str]:
 
                 if numMatches > 0:
                     out.append(matches[0])
+    return out
+
+#-------------------------------------------------|
+#-------------------------------------------------|    I/O
+#-------------------------------------------------|
+
+@short(namespace='ns')
+def openScene(path,
+              mode:Literal[0, 1, 2, 'open', 'import', 'reference']=0,
+              namespace=None):
+
+    print("Incoming mode: ", mode)
+
+    if isinstance(mode, str):
+        mode = ['open', 'import', 'reference'].index(mode)
+
+    path = Path(path)
+    kwargs = {'f': True, 'options':'v=0;', 'ignoreVersion':True}
+
+    if mode == 0:
+        kwargs['o'] =True
+
+    elif mode == 1:
+        kwargs['i'] = False
+        kwargs['pr'] = True
+
+        if namespace:
+            kwargs['namespace'] = namespace
+            kwargs['mergeNamespacesOnClash'] = False
+
+        else:
+            kwargs['rpr'] = path.stem
+
+    elif mode == 2:
+        if not namespace:
+            namespace = path.stem
+        kwargs['namespace'] = namespace
+        kwargs['gl'] = True
+        kwargs['mergeNamespacesOnClash'] = False
+        kwargs['r'] = True
+
+    else:
+        raise ValueError('Invalid mode')
+
+    out = m.file(path.as_posix(), **kwargs)
+
+    if mode == 2:
+        out = m.referenceQuery(out, referenceNode=True)
+
     return out
