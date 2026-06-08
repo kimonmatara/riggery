@@ -136,11 +136,32 @@ class Attribute(Elem, metaclass=AttributeMeta):
         # If both are multis, connect at multi level; ignore this check for
         # messages
 
-        if ((not isinstance(dest, __pool__['Message']))
-                and (src.isMulti() and not dest.isMulti())):
-            src = src[0]
+        """
+        srcIsMulti = src.isMulti()
+        destIsMulti = dest.isMulti()
+
+        if dest is message and dest is multi:
+            get next on dest
         else:
-            if dest.isMulti():
+            if src is multi:
+                if dest is multi:
+                    do nothing
+                else:
+                    get next element on src
+            else:
+                if dest is multi:
+                    get next element on dest
+        """
+        srcIsMulti = src.isMulti()
+        destIsMulti = dest.isMulti()
+
+        if dest.isMessage() and destIsMulti:
+            dest = dest.nextElement()
+        else:
+            if srcIsMulti:
+                if not destIsMulti:
+                    src = src.nextElement()
+            elif destIsMulti:
                 dest = dest.nextElement()
 
         _src = str(src)
@@ -163,6 +184,9 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
         with NativeUnits():
             m.connectAttr(str(src), str(dest), **kwargs)
+
+    def isMessage(self) -> bool:
+        return False
 
     @short(force='f')
     def connectOutput(self, output, /, force:bool=False, quiet:bool=False):
