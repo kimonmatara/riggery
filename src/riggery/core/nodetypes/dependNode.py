@@ -280,8 +280,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
     #-----------------------------------------|    Constructor(s)
 
     @classmethod
-    @short(selection='sl')
-    def ls(cls, *patterns, selection:bool=False) -> Iterator:
+    @short(selection='sl', orderedSelection='os')
+    def ls(cls, *patterns, selection:bool=False, orderedSelection:bool=False) -> Iterator:
         """
         Iterator. Yields objects of this type in the scene.
 
@@ -292,6 +292,9 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
         if selection:
             kwargs['selection'] = selection
+
+        elif orderedSelection:
+            kwargs['orderedSelection'] = orderedSelection
 
         if cls is not DependNode:
             kwargs['type'] = cls.__melnode__
