@@ -187,8 +187,6 @@ def openScene(path,
               mode:Literal[0, 1, 2, 'open', 'import', 'reference']=0,
               namespace=None):
 
-    print("Incoming mode: ", mode)
-
     if isinstance(mode, str):
         mode = ['open', 'import', 'reference'].index(mode)
 
@@ -199,7 +197,7 @@ def openScene(path,
         kwargs['o'] =True
 
     elif mode == 1:
-        kwargs['i'] = False
+        kwargs['i'] = True
         kwargs['pr'] = True
 
         if namespace:
@@ -220,7 +218,8 @@ def openScene(path,
     else:
         raise ValueError('Invalid mode')
 
-    out = m.file(path.as_posix(), **kwargs)
+    posixPath = path.as_posix()
+    out = m.file(posixPath, **kwargs)
 
     if mode == 2:
         out = m.referenceQuery(out, referenceNode=True)
