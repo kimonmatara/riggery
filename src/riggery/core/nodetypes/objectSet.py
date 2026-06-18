@@ -40,6 +40,9 @@ class ObjectSet(DependNode):
 
     #---------------------------------|    Add members
 
+    # The below should be renamed to addMembers; this is because remove()
+    # in other riggery contexts refers to "remove this object"
+
     def add(self, *members) -> 'ObjectSet':
         """Adds the specified members to this set."""
         members = list(
@@ -50,14 +53,57 @@ class ObjectSet(DependNode):
 
         return self
 
+    addMembers = add
+
+    def removeMembers(self, *members):
+        members = list(
+            without_duplicates(map(str, expand_tuples_lists(*members)))
+        )
+        if members:
+            m.sets(members, e=True, remove=str(self))
+
+        return self
+
     #---------------------------------|    Get members
 
-    def iterDagSetMembers(self) -> Iterator:
-        """
-        Yields objects that connect into the `dagSetMembers` multi-attribute.
-        Useful for quick ordered queries.
-        """
+    @short(recurse='r')
+    def iterDagSetMembers(self,
+                          recurse:bool=False) -> Iterator['nodes.DagNode']:
+        visited = set()
+
         for slot in self.attr('dagSetMembers'):
-            inputs = slot.inputs(plugs=True)
-            if inputs:
-                yield inputs[0].node()
+            input = next(slot.iterInputs(plugs=True), None)
+
+            if input is not None:
+                node = input.node()
+                visited.add(node)
+                yield node
+
+        if recurse:
+            for subset in self.iterSubsets(recurse=True):
+                for member in subset.iterDagSetMembers():
+                    if member not in visited:
+                        visited.add(member)
+                        yield member
+
+    def iterDnSetMembers(self) -> Iterator['nodes.DagNode']:
+        for slot in self.attr('dnSetMembers'):
+            input = next(slot.iterInputs(plugs=True), None)
+
+            if input is not None:
+                yield input.node()
+
+    def iterSubsets(self, recurse:bool=False) -> Iterator['nodes.DagNode']:
+        visited = set()
+
+        for item in self.iterDnSetMembers():
+            if isinstance(item, ObjectSet):
+                if item not in visited:
+                    visited.add(item)
+                    yield item
+
+                    if recurse:
+                        for member in item.iterSubsets(recurse=True):
+                            if member not in visited:
+                                visited.add(item)
+                                yield item
