@@ -136,22 +136,6 @@ class Attribute(Elem, metaclass=AttributeMeta):
         # If both are multis, connect at multi level; ignore this check for
         # messages
 
-        """
-        srcIsMulti = src.isMulti()
-        destIsMulti = dest.isMulti()
-
-        if dest is message and dest is multi:
-            get next on dest
-        else:
-            if src is multi:
-                if dest is multi:
-                    do nothing
-                else:
-                    get next element on src
-            else:
-                if dest is multi:
-                    get next element on dest
-        """
         srcIsMulti = src.isMulti()
         destIsMulti = dest.isMulti()
 
@@ -160,7 +144,8 @@ class Attribute(Elem, metaclass=AttributeMeta):
         else:
             if srcIsMulti:
                 if not destIsMulti:
-                    src = src.nextElement()
+                    src = src[0]
+
             elif destIsMulti:
                 dest = dest.nextElement()
 
