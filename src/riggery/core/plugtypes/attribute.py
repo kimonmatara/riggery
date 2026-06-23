@@ -1999,6 +1999,12 @@ class Attribute(Elem, metaclass=AttributeMeta):
 
     alias = property(getAlias, setAlias, clearAlias)
 
+    #-----------------------------------------|    Animation
+
+    @property
+    def animCurve(self) -> Optional['_nodes.AnimCurve']:
+        return next(self.iterInputs(type='animCurve'), None)
+
     #-----------------------------------------|    Repr
 
     @short(force='f')
