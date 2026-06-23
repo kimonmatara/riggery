@@ -1,10 +1,97 @@
 import re
-from typing import Optional, Literal, Union
+from typing import Optional, Literal, Union, Iterator
 
 from ..nodetypes import __pool__ as nodes
 DependNode = nodes['DependNode']
 
 import maya.cmds as m
+
+#-----------------------------------------|
+#-----------------------------------------|    INTERFACE
+#-----------------------------------------|
+
+class Adjunct:
+
+    #-----------------------------|    Init
+
+    def __init__(self, node:'AnimCurve'):
+        self._node = node
+
+    #-----------------------------|    Properties
+
+    def node(self) -> 'AnimCurve':
+        return self._node
+
+
+class Keyframe(Adjunct): # by index
+
+    #-----------------------------|    Init
+
+    def __init__(self, node:'AnimCurve', index:int):
+        super().__init__(node)
+        self._index = index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def exists(self) -> bool:
+        return self.node().keyExistsAtIndex(self.index)
+
+    #-----------------------------|    Time
+
+    def getTime(self) -> Optional[float]:
+        return self.node().getKeyTimeAtIndex(self.index)
+
+    time = property(getTime)
+
+    #-----------------------------|    Value
+
+    def getValue(self) -> Optional[float]:
+        return self.node().getKeyValueAtIndex(self.index)
+
+    value = property(getValue)
+
+    #-----------------------------|    Repr
+
+    def __repr__(self):
+        return "{}.keyframes[{}]".format(repr(self.node()), self.index)
+
+
+class Keyframes(Adjunct): # by index
+
+    #-----------------------------|    Get
+
+    def indices(self):
+        return self.node().getKeyIndices()
+
+    def values(self):
+        return self.node().getKeyValues()
+
+    def times(self):
+        return self.node().getKeyTimes()
+
+    def __iter__(self):
+        for index in self.indices():
+            yield Keyframe(self.node(), index)
+
+    def __len__(self):
+        return self.node().numKeys()
+
+    def findAtTime(self, time:float) -> Optional['Keyframe']:
+        index = self.node().getKeyIndexAtTime(time)
+
+        if index:
+            return Keyframe(self.node(), index)
+
+    def __getitem__(self, index:int):
+        if self.node().keyExistsAtIndex(index):
+            return Keyframe(self.node(), index)
+
+        raise IndexError(f"no keyframe at index {index}")
+
+    def __repr__(self):
+        return "{}.keyframes".format(repr(self.node()))
 
 #-----------------------------------------|
 #-----------------------------------------|    MAIN CLASS
@@ -13,6 +100,10 @@ import maya.cmds as m
 class AnimCurve(DependNode):
 
     __time_based__ = True
+
+    @property
+    def keyframes(self):
+        return Keyframes(self)
 
     #-----------------------------|    Broad keyframe inspections
 
@@ -48,6 +139,9 @@ class AnimCurve(DependNode):
 
     #-----------------------------|    Locate keyframes
 
+    def numKeys(self) -> int:
+        return self.__apimfn__().numKeys
+
     def getKeyTimeAtIndex(self, index:int) -> Optional[float]:
         kwargs = {'q': True,
                   'index': (index, index),
@@ -61,6 +155,15 @@ class AnimCurve(DependNode):
         kwargs = {'q': True,
                   'index': (index, index),
                   'vc': True}
+        result = m.keyframe(str(self), **kwargs)
+
+        if result is not None:
+            return result[0]
+
+    def getKeyIndexAtTime(self, time:float) -> Optional[int]:
+        kwargs = {'q': True,
+                  't' if self.__time_based__ else 'f': (time, time),
+                  'iv': True}
         result = m.keyframe(str(self), **kwargs)
 
         if result is not None:
@@ -86,6 +189,13 @@ class AnimCurve(DependNode):
 
         if result is not None:
             return result[0]
+
+    def keyExistsAtIndex(self, index:int) -> bool:
+        kwargs = {'q': True,
+                  'index': (index, index),
+                  'iv': True}
+
+        return m.keyframe(str(self), **kwargs) is not None
 
     def keyExistsAtTime(self, time:Union[int, float]) -> bool:
         kwargs = {'q': True,
