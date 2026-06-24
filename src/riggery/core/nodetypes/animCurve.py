@@ -1,10 +1,27 @@
 import re
-from typing import Optional, Literal, Union, Iterator
+from typing import Optional, Literal, Union, Iterator, TypeAlias
 
 from ..nodetypes import __pool__ as nodes
+from riggery.general.functions import short
 DependNode = nodes['DependNode']
 
 import maya.cmds as m
+
+TangentType:TypeAlias = [
+    "auto",
+    "autocustom",
+    "autoease",
+    "automix",
+    "clamped",
+    "fast",
+    "flat",
+    "linear",
+    "plateau",
+    "slow",
+    "spline",
+    "step",
+    "stepnext"
+]
 
 #-----------------------------------------|
 #-----------------------------------------|    INTERFACE
@@ -105,7 +122,7 @@ class AnimCurve(DependNode):
     def keyframes(self):
         return Keyframes(self)
 
-    #-----------------------------|    Broad keyframe inspections
+    #-----------------------------|    Keyframe querying
 
     def getKeyTimes(self) -> list[float]:
         args = (str(self),)
@@ -136,8 +153,6 @@ class AnimCurve(DependNode):
             return []
 
         return out
-
-    #-----------------------------|    Locate keyframes
 
     def numKeys(self) -> int:
         return self.__apimfn__().numKeys
@@ -203,3 +218,48 @@ class AnimCurve(DependNode):
                   'tc' if self.__time_based__ else 'fc': True}
 
         return m.keyframe(str(self), **kwargs) is not None
+
+    #-----------------------------|    Weighted
+
+    def getWeighted(self) -> bool:
+        return self.__apimfn__().isWeighted
+
+    def setWeighted(self, state:bool):
+        m.keyTangent(str(self), e=True, weightedTangents=True)
+
+    weighted = property(getWeighted, setWeighted)
+
+    #-----------------------------|    Editing
+
+    @short(inTangentType='itt',
+           outTangentType='ott',
+           minimizeRotation='mr')
+    def setKey(self,
+               time:float,
+               value:float,
+               inTangentType:Optional[TangentType]=None,
+               outTangentType:Optional[TangentType]=None,
+               minimizeRotation:Optional[bool]=None):
+
+        kwargs = {'t' if self.__time_based__ else 'f': (time, time),
+                  'value': value}
+
+        if inTangentType is not None:
+            kwargs['itt'] = inTangentType
+
+        if outTangentType is not None:
+            kwargs['ott'] = outTangentType
+
+        if minimizeRotation is not None:
+            kwargs['mr'] = minimizeRotation
+
+        m.setKeyframe(str(self), **kwargs)
+        return self
+
+    @short(preserveCurveShape='pcs')
+    def insertKey(self, time:float, preserveCurveShape:Optional[bool]=None):
+        kwargs = {'t' if self.__time_based__ else 'f': (time, time),
+                  'insert': True}
+
+        m.setKeyframe(str(self), **kwargs)
+        return self
