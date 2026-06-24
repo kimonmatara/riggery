@@ -1,5 +1,6 @@
 import re
 from typing import Iterator, Optional, Union, Literal
+import itertools as _itr
 
 import maya.cmds as m
 import maya.api.OpenMaya as om
@@ -1179,6 +1180,64 @@ class Transform(nodes['DagNode']):
         self.attr('segmentScaleCompensate').set(False)
 
         return self
+
+    #-----------------------------------------|    Animation
+
+    @short(translate='t',
+           rotate='r',
+           scale='s',
+           shear='sh')
+    def iterTransformAnimCurves(
+            self,
+            translate:Optional[bool]=None,
+            rotate:Optional[bool]=None,
+            scale:Optional[bool]=None,
+            shear:Optional[bool]=None
+    ) -> Iterator['nodes.AnimCurve']:
+        """Yields animation curves attached to the transform channels."""
+
+        translate, rotate, scale, shear = resolve_flags(translate,
+                                                        rotate,
+                                                        scale,
+                                                        shear)
+
+        typemap = {'translate': 'animCurveTL',
+                   'rotate': 'animCurveTA',
+                   'scale': 'animCurveTU',
+                   'shear': 'animCurveTU'}
+
+        visited = set()
+
+        for state, chan in zip((translate, rotate, scale, shear),
+                               ('translate', 'rotate', 'scale', 'shear')):
+            if state:
+                plug = self.attr(chan)
+
+                for child in plug.children:
+                    curve = next(child.iterInputs(type=typemap[chan]), None)
+
+                    if (curve is not None) and curve not in visited:
+                        visited.add(curve)
+                        yield curve
+
+    @short(translate='t',
+           rotate='r',
+           scale='s',
+           shear='sh')
+    def getTransformKeyTimes(self,
+                              translate:Optional[bool]=None,
+                              rotate:Optional[bool]=None,
+                              scale:Optional[bool]=None,
+                              shear:Optional[bool]=None) -> list[float]:
+        """Yields times with transformation keys, without duplicates."""
+
+        curves = self.iterTransformAnimCurves(t=translate,
+                                              r=rotate,
+                                              s=scale,
+                                              sh=shear)
+
+        times = _itr.chain(*(curve.getKeyTimes() for curve in curves))
+        return list(sorted(set(times)))
 
     #-----------------------------------------|    Repr
 
