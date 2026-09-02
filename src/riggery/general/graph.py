@@ -1,4 +1,4 @@
-from itertools import pairwise, chain
+from itertools import pairwise
 from .iterables import without_duplicates
 from typing import Optional, Iterator, Callable
 
@@ -9,9 +9,25 @@ class CycleError(Exception): ...
 class DagData:
     """
     Data model (Python)
+    -------------------
     {
         <name:str>: {'dirty':bool, 'inputs': list[str], 'tool': Callable}
     }
+
+    How to use
+    ----------
+
+    1.  Instantiate: `graph = GraphData()`
+    2.  Add some nodes: `graph.create_node('build_puppet', 'bind_geometry')`
+    3.  Define connections using the provided methods:
+        `graph.connect('build_puppet', 'bind_geometry')`
+    4.  Use :meth:`sequence` to get a flat build sequence
+    5.  Subclass this class and override :meth:`_set_dirty` and
+        :meth:`get_dirty` to implement external 'dirty' tracking (e.g. in
+        sidecar files)
+    6.  Use :meth:`set_tool` to embed actual callables into the graph so that,
+        when you call :meth:`cook`, they get run and the dirty states are set
+        accordingly.
     """
     #--------------------------------------|    Init
 
@@ -45,11 +61,11 @@ class DagData:
 
     def create_node(self, *names:str):
         for name in names:
-            if name in self.names():
+            if name in self._data:
                 raise KeyError("name '{}' already in use".format(name))
 
         for name in names:
-            self._data[name] = {'dirty': True}
+            self._data[name] = {}
 
     #--------------------------------------|    Tools
 
@@ -82,17 +98,23 @@ class DagData:
         """
         :return: A dictionary of {node:inputs}, for backup purposes.
         """
-        return {name: spec.get('inputs') for name, spec in self.items()}
+        return {name: list(spec.get('inputs', []))
+                for name, spec in self.items()}
 
     def inputs(self, name:str) -> Iterator[str]:
         """Yields nodes that connect into *name*."""
         yield from self[name].get('inputs', [])
 
-    def upstream(self, name:str) -> Iterator[str]:
+    def upstream(self, name:str, visited:Optional[set]=None) -> Iterator[str]:
         """Yields all nodes upstream of *name*, proximal nodes first."""
-        for input in self.inputs(name):
-            yield input
-            yield from self.upstream(input)
+        if visited is None:
+            visited = set()
+
+        for us_node in self.inputs(name):
+            if us_node not in visited:
+                visited.add(us_node)
+                yield us_node
+                yield from self.upstream(us_node, visited)
 
     def outputs(self, name:str) -> Iterator[str]:
         """Yields nodes that *name* connects into."""
@@ -104,13 +126,18 @@ class DagData:
             if name in this_spec.get('inputs', []):
                 yield this_name
 
-    def downstream(self, name:str) -> Iterator[str]:
+    def downstream(self,
+                   name:str,
+                   visited:Optional[set]=None) -> Iterator[str]:
         """Yields all nodes downstream of *name*, proximal nodes first."""
-        self._check_name(name)
+        if visited is None:
+            visited = set()
 
         for output in self.outputs(name):
-            yield output
-            yield from self.downstream(output)
+            if output not in visited:
+                visited.add(output)
+                yield output
+                yield from self.downstream(output, visited)
 
     def roots(self) -> Iterator[str]:
         """Yields all nodes in the graph with no inputs."""
@@ -217,13 +244,19 @@ class DagData:
     def sequence(self,
                  *end_nodes:str,
                  force:bool=False) -> list[str]:
-
+        """
+        :param \*end_nodes: if omitted, defaults to all 'tip' nodes in the graph
+        :param force: ignore dirty states and return the full dependency stack;
+            defaults to False
+        :return: The sequence of nodes that would have to be cooked to make
+            all the end nodes 'clean'.
+        """
         if end_nodes:
             _end_nodes = list(without_duplicates(end_nodes))
             end_nodes = []
 
             for end_node in _end_nodes:
-                siblings = (node for node in end_nodes if node != end_node)
+                siblings = (node for node in _end_nodes if node != end_node)
                 if any(end_node in self.upstream(sibling)
                        for sibling in siblings):
                     continue
@@ -247,7 +280,7 @@ class DagData:
 
         return out
 
-    def run(self, *end_nodes:str, force:bool=False):
+    def cook(self, *end_nodes:str, force:bool=False):
         for node in self.sequence(*end_nodes, force=force):
             spec = self[node]
             tool = spec.get('tool')
@@ -261,42 +294,24 @@ class DagData:
     def json(self) -> str:
         """Note that any embedded tools will be discarded."""
         data = []
+        keys_to_include = ('inputs', 'dirty')
 
         for name, spec in self._data.items():
-            data.append(name, {k:spec[k] for k in ('inputs', 'dirty')})
+            this_simplified_spec = {}
+            for key in keys_to_include:
+                try:
+                    this_simplified_spec[key] = spec[key]
+                except KeyError:
+                    continue
+            data.append((name, this_simplified_spec))
 
         return json.dumps(data, indent=4)
 
     @classmethod
-    def from_json(cls, json_data:str) -> 'Graph':
+    def from_json(cls, json_data:str) -> 'DagData':
         return cls({k: v for k, v in json.loads(json_data)})
 
     #--------------------------------------|    Repr
 
     def __repr__(self) -> str:
         return "{}({})".format(type(self).__name__, repr(self._data))
-
-
-def test():
-    graph = DagData()
-    graph.create_node('build_puppet')
-    graph.create_node('extract_unified_skel')
-    graph.create_node('import_geo_and_bind_to_unified_skel')
-    graph.create_node('import_geo_and_bind_to_puppet')
-    graph.create_node('deform_only_rig')
-    graph.create_node('full_rig')
-
-    graph.connect('build_puppet',
-                  'extract_unified_skel',
-                  'import_geo_and_bind_to_unified_skel',
-                  'deform_only_rig')
-
-    graph.connect('build_puppet',
-                  'import_geo_and_bind_to_puppet',
-                  'full_rig')
-
-    graph.clean_all()
-    graph.dirty('extract_unified_skel')
-
-    for x in graph.run():
-        print(x)
