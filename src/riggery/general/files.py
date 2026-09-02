@@ -289,3 +289,48 @@ class SGStream:
 
     def __eq__(self, other):
         return str(self) == str(other)
+
+
+# Below is a stub, not sure needed as such
+# class QuickNav:
+#     """
+#     ```
+#     root = QuickNav('/maya_root')
+#     rig = root / 'dragon' / 'rig'
+#     print(rig) # result: '/maya_root/assets/dragon/rig'
+#     print(rig.stream('dragon_rig')) # get the stream for ``/maya_root/assets/dragon_rig/dragon_rig``
+#     print(rig.streams()) # yield all available streams under that directory
+#     ```
+#     """
+#     #-------------------------------|    Init
+#
+#     def __init__(self, root:str|Path):
+#         self._root = Path(root)
+#
+#     #-------------------------------|    Subdirs
+#
+#     def __truediv__(self, subdir_name:str) -> 'QuickNav':
+#         return type(self)(self._root / subdir_name)
+#
+#     #-------------------------------|    Streams
+#
+#     def streams(self) -> Iterator[SGStream]:
+#         yield from SGStream.iterFromDir(self._root)
+#
+#     def stream(self,
+#                stream_basename:str,
+#                extension:str='ma') -> SGStream:
+#         """
+#         If there's an extension in *extension*, override any extension in stream_basename
+#         """
+#         base_template = '{}_v###.{}'.format(stream_basename,
+#                                             extension.strip('.'))
+#         return SGStream.fromTemplate(str(self._root / base_template))
+#
+#     #-------------------------------|    Repr
+#
+#     def __str__(self) -> str:
+#         return str(self._root)
+#
+#     def __repr__(self) -> str:
+#         return "{}({})".format(type(self).__name__, repr(str(self)))

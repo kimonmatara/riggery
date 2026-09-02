@@ -1,7 +1,6 @@
 from itertools import pairwise
 from .iterables import without_duplicates
-from typing import Optional, Iterator, Callable
-
+from typing import Optional, Iterator, Callable, Iterable
 import json
 
 class CycleError(Exception): ...
@@ -29,6 +28,37 @@ class DagData:
         when you call :meth:`cook`, they get run and the dirty states are set
         accordingly.
     """
+    #--------------------------------------|    Constructor(s)
+
+    @classmethod
+    def from_shorthand(cls, items:Iterable[Iterable[str]|str]):
+        """
+        :param items: An iterable of iterables or single strings (for node
+            names); where there are sub-iterables, they will be used to define
+            sequential connections between nodes
+        """
+        items = [item if isinstance(item, str) else list(item)
+                 for item in items]
+
+        node_names = []
+        connections = []
+
+        for item in items:
+            if isinstance(item, str):
+                node_names.append(item)
+            else:
+                node_names.extend(item)
+                connections.append(item)
+
+        graph = cls()
+        graph.create_node(*without_duplicates(node_names))
+
+        for connection in connections:
+            if len(connection) > 1:
+                graph.connect(*connection)
+
+        return graph
+
     #--------------------------------------|    Init
 
     def __init__(self, data:Optional[dict]=None, /):
