@@ -243,7 +243,18 @@ class Dag:
         return self[node].get('dirty', True)
 
     def get_dirty(self, node:str) -> bool:
-        return self._get_dirty(node)
+        """
+        This has some redundancy baked-in (will traverse upstream nodes to
+        make sure none are dirty).
+        """
+        if self._get_dirty(node):
+            return True
+
+        for us_node in self.upstream(node):
+            if self._get_dirty(us_node):
+                return True
+
+        return False
 
     def _set_dirty(self, node:str, state:bool):
         """

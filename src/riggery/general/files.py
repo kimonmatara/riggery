@@ -257,8 +257,9 @@ class SGStream:
         raise SGEmptyStreamError
 
     def nextVersion(self) -> int:
-        lastVersion = self.lastVersion()
-        if lastVersion is None:
+        try:
+            lastVersion = self.lastVersion()
+        except SGEmptyStreamError:
             return 1
         return lastVersion + 1
 
