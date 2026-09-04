@@ -5,7 +5,7 @@ import json
 
 class CycleError(Exception): ...
 
-class DagData:
+class Dag:
     """
     Data model (Python)
     -------------------
@@ -22,7 +22,7 @@ class DagData:
         `graph.connect('build_puppet', 'bind_geometry')`
     4.  Use :meth:`sequence` to get a flat build sequence
     5.  Subclass this class and override :meth:`_set_dirty` and
-        :meth:`get_dirty` to implement external 'dirty' tracking (e.g. in
+        :meth:`_get_dirty` to implement external 'dirty' tracking (e.g. in
         sidecar files)
     6.  Use :meth:`set_tool` to embed actual callables into the graph so that,
         when you call :meth:`cook`, they get run and the dirty states are set
@@ -236,17 +236,18 @@ class DagData:
 
     #--------------------------------------|    Exec
 
-    def get_dirty(self, node:str) -> bool:
+    def _get_dirty(self, node:str) -> bool:
         """
-        If no value is embedded in the data, the default will always be True.
-        Override this method if you want the state to be derived externally.
+        Override this method if you want the state to be stored externally.
         """
         return self[node].get('dirty', True)
 
+    def get_dirty(self, node:str) -> bool:
+        return self._get_dirty(node)
+
     def _set_dirty(self, node:str, state:bool):
         """
-        Non-propagating implementation. Override to implement external
-        tagging.
+        Override this method if you want the state to be stored externally.
         """
         self[node]['dirty'] = bool(state)
 
@@ -310,13 +311,26 @@ class DagData:
 
         return out
 
-    def cook(self, *end_nodes:str, force:bool=False):
+    def run(self):
+        raise NotImplementedError
+
+    def cook(self, *end_nodes:str, force:bool=False) -> Iterator[str]:
+        """
+        Note that this method returns an iterator of cooked nodes. It won't do
+        anything if it's just called on its own. Iterate over it or list it
+        instead.
+        """
         for node in self.sequence(*end_nodes, force=force):
-            spec = self[node]
-            tool = spec.get('tool')
+            tool = self.get_tool(node)
+
             if tool is not None:
                 tool()
+
             self._set_dirty(node, False)
+
+            for output in self.outputs(node):
+                self.set_dirty(output, True)
+
             yield node
 
     #--------------------------------------|    Serialization
@@ -338,7 +352,7 @@ class DagData:
         return json.dumps(data, indent=4)
 
     @classmethod
-    def from_json(cls, json_data:str) -> 'DagData':
+    def from_json(cls, json_data:str) -> 'Dag':
         return cls({k: v for k, v in json.loads(json_data)})
 
     #--------------------------------------|    Repr
