@@ -18,6 +18,14 @@ class Reference(DependNode):
     #-------------------------------------|    Constructors
 
     @classmethod
+    def findFromNamespace(cls, namespace:str) -> Optional['Reference']:
+        namespace = _ns.Namespace(namespace)
+
+        for node in cls.ls():
+            if node.referenceNamespace == namespace:
+                return node
+
+    @classmethod
     @short(namespace='ns')
     def create(cls, filePath:Union[str, Path], namespace:Optional[str]=None):
         """
@@ -166,7 +174,7 @@ class Reference(DependNode):
     # Caution: .namespace returns the *node's* namespace, which is not the same
     # as the *reference* namespace.
 
-    def getReferenceNamespace(self):
+    def getReferenceNamespace(self) -> _ns.Namespace:
         """
         Returns the reference namespace (this is not the same as the namespace
         of the *reference node*).
@@ -183,3 +191,39 @@ class Reference(DependNode):
 
     referenceNamespace = property(getReferenceNamespace,
                                   setReferenceNamespace)
+
+    #-------------------------------------|    Node navigation
+
+    def iterNodes(self, type:Optional[str|list[str]]=None) -> Iterator:
+        if type is None:
+            nodes = m.referenceQuery(str(self), nodes=True)
+            if nodes:
+                for node in nodes:
+                    yield DependNode(node)
+        else:
+            ns = self.referenceNamespace
+
+            if ns == _ns.Namespace(':'):
+                nodes = m.referenceQuery(str(self), nodes=True)
+
+                if type is not None:
+                    nodes = m.ls(*nodes, type=type)
+
+                for node in nodes:
+                    yield DependNode(node)
+
+            else:
+                kwargs = {}
+
+                if type is not None:
+                    kwargs['type'] = type
+
+                nodes = m.ls(ns+':*', **kwargs)
+
+                for node in nodes:
+                    yield DependNode(node)
+
+    def iterRootTransforms(self) -> Iterator:
+        for node in self.iterNodes(type='transform'):
+            if node.parent is None:
+                yield node
