@@ -311,10 +311,24 @@ def splitSide(s:str) -> Optional[tuple[str, str]]:
     """
     mt = re.match(SIDE_EXTRACT, s)
     if mt:
-        elems = mt.groups()
+        elems = list(mt.groups())
         if elems[1] is None:
             elems[1] = ''
         return tuple(elems)
+
+def flipSide(s:str) -> str:
+    """
+    If *s* starts with 'L_', flips it to 'R_' and vice versa. If no match,
+    returns the string as-is.
+    """
+    mt = re.match(r"^([LR])_(.*?)$", s)
+
+    if mt:
+        elems = list(mt.groups())
+        elems[0] = {'L':'R', 'R':'L'}[elems[0]]
+        newName = '_'.join(elems)
+        return newName
+    return s
 
 #--------------------------------------|
 #--------------------------------------|    STARTUP
