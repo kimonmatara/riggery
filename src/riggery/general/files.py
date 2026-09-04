@@ -10,6 +10,9 @@ class SGStreamInvalidTemplateError(ValueError):
 class SGStreamInvalidFileOrDirNameError(ValueError):
     ...
 
+class SGEmptyStreamError(Exception):
+    ...
+
 SG_PARSE_PAT = re.compile(r"^(?:(.*?)_)?v([0-9]+)(?:\.([^.]+))?$")
 SG_TMPL_PAT = re.compile(r"^(?:(.*?)_)?v(#+)(?:\.([^.]+))?$")
 
@@ -196,14 +199,17 @@ class SGStream:
         if self.parent is not None:
             pat = self.pattern
 
-            for item in os.scandir(self.parent):
+            try:
+                for item in os.scandir(self.parent):
 
-                n = item.name
-                mt = re.match(pat, n)
+                    n = item.name
+                    mt = re.match(pat, n)
 
-                if mt:
-                    version = int(mt.group(1))
-                    yield version, self.parent / n
+                    if mt:
+                        version = int(mt.group(1))
+                        yield version, self.parent / n
+            except FileNotFoundError:
+                pass
 
     def items(self) -> Iterator[tuple[int, Path]]:
         yield from sorted(self._items(), key=lambda pair: pair[0])
@@ -229,18 +235,26 @@ class SGStream:
     def first(self) -> Optional[Path]:
         return next(self.paths(), None)
 
-    def last(self) -> Optional[Path]:
-        paths = list(self.paths())
-        if paths:
-            return paths[-1]
+    def last(self) -> Path:
+        try:
+            paths = list(self.paths())
+            if paths:
+                return paths[-1]
+        except FileNotFoundError:
+            pass
+        raise SGEmptyStreamError
 
     def firstVersion(self) -> Optional[int]:
         return next(self.versions(), None)
 
-    def lastVersion(self) -> Optional[int]:
+    def lastVersion(self) -> int:
+        """
+        :raises SGEmptyStreamError
+        """
         versions = list(self.versions())
         if versions:
             return versions[-1]
+        raise SGEmptyStreamError
 
     def nextVersion(self) -> int:
         lastVersion = self.lastVersion()
@@ -264,6 +278,10 @@ class SGStream:
 
     def exists(self) -> bool:
         return next(self._items(), None) is not None
+
+    def __iter__(self):
+        for version in self.versions():
+            yield self[version]
 
     #-------------------------------|    Repr
 
