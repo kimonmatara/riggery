@@ -1,6 +1,13 @@
+"""
+Todo:
+Create a context where upstream() / downstream() are cached
+(memoized), e.g. when called within the sequence() calculations. Look over
+recursion carefully so that all intermediate calls are cached accordingly.
+"""
+
 from itertools import pairwise
 from .iterables import without_duplicates
-from typing import Optional, Iterator, Callable, Iterable
+from typing import Optional, Iterator, Callable, Iterable, Literal
 import json
 
 class CycleError(Exception): ...
@@ -137,6 +144,7 @@ class Dag:
 
     def upstream(self, name:str, visited:Optional[set]=None) -> Iterator[str]:
         """Yields all nodes upstream of *name*, proximal nodes first."""
+
         if visited is None:
             visited = set()
 
@@ -171,13 +179,13 @@ class Dag:
 
     def roots(self) -> Iterator[str]:
         """Yields all nodes in the graph with no inputs."""
-        for name, spec in self.items():
+        for name in self.names():
             if not list(self.inputs(name)):
                 yield name
 
     def tips(self) -> Iterator[str]:
         """Yields all nodes in the graph with no outputs."""
-        for name, spec in self.items():
+        for name in self.names():
             if not list(self.outputs(name)):
                 yield name
 
@@ -283,31 +291,75 @@ class Dag:
         for name in self.names():
             self._set_dirty(name, state)
 
-    def sequence(self,
-                 *end_nodes:str,
-                 force:bool=False) -> list[str]:
+    def _clean_worklist(self,
+                        *nodes:str,
+                        mode:Literal[0, 1, 2]=0) -> list[str]:
         """
-        :param \*end_nodes: if omitted, defaults to all 'tip' nodes in the graph
-        :param force: ignore dirty states and return the full dependency stack;
-            defaults to False
-        :return: The sequence of nodes that would have to be cooked to make
-            all the end nodes 'clean'.
+        :param \*nodes: the user worklist to clean up
+        :param mode: 1: remove any nodes in the list that are upstream of any
+            other nodes in the list; 2: remove any nodes in the list that are
+            downstream of any other nodes in the list; 0: don't prune for
+            implicit membership; defaults to 0
         """
-        if end_nodes:
-            _end_nodes = list(without_duplicates(end_nodes))
-            end_nodes = []
+        nodes = list(without_duplicates(nodes))
 
-            for end_node in _end_nodes:
-                siblings = (node for node in _end_nodes if node != end_node)
-                if any(end_node in self.upstream(sibling)
+        if mode == 1:
+            _nodes = []
+            for node in nodes:
+                siblings = [x for x in nodes if x != node]
+                if any(node in self.upstream(sibling)
                        for sibling in siblings):
                     continue
-                end_nodes.append(end_node)
-        else:
-            end_nodes = list(self.tips())
+                _nodes.append(node)
+            return _nodes
+
+        if mode == 2:
+            _nodes = []
+            for node in nodes:
+                siblings = [x for x in nodes if x != node]
+                if any(node in self.downstream(sibling)
+                       for sibling in siblings):
+                    continue
+                _nodes.append(node)
+            return _nodes
+
+        return nodes
+
+    def sequence_from(self, *start_nodes:str) -> list[str]:
+        """
+        :return: Every node that would have to be built if *start_nodes* were
+            marked dirty.
+        """
+        start_nodes = self._clean_worklist(*start_nodes, mode=2)
+
+        if not start_nodes:
+            raise ValueError('no start nodes')
+
+        visited = set()
+        out = []
+
+        for node in start_nodes:
+            out.append(node)
+            for ds_node in self.downstream(node, visited):
+                out.append(ds_node)
+
+        return out
+
+    def sequence_to(self, *end_nodes:str, sparse:bool=True) -> list[str]:
+        """
+        :param sparse: don't build anything that isn't marked dirty; defaults
+            to True
+        :return: If *sparse* is True, only the nodes that will have to be
+            built to 'clean' the end nodes, in order. Otherwise, all nodes
+            upstream of, and including, the end nodes, in build order.
+        """
+        end_nodes = self._clean_worklist(*end_nodes, mode=1)
+
+        if not end_nodes:
+            raise ValueError('no end nodes')
 
         def chase(node):
-            if force or self.get_dirty(node):
+            if (not sparse) or self.get_dirty(node):
                 yield node
                 for input_node in self.inputs(node):
                     yield from chase(input_node)
@@ -322,21 +374,28 @@ class Dag:
 
         return out
 
-    def run(self):
-        raise NotImplementedError
+    def sequence(self, sparse:bool=True) -> list[str]:
+        """
+        :param sparse: don't build anything that isn't marked dirty; defaults
+            to True
+        :return: If *sparse* is True, only the nodes that will have to be
+            built to 'clean' the graph, in order. Otherwise, all nodes, in
+            order.
+        """
+        return self.sequence_to(*self.tips(), sparse=sparse)
 
-    def cook(self, *end_nodes:str, force:bool=False) -> Iterator[str]:
+    def cook_nodes(self, *nodes:str) -> Iterator[str]:
         """
-        Note that this method returns an iterator of cooked nodes. It won't do
-        anything if it's just called on its own. Iterate over it or list it
-        instead.
+        Prepare a build sequence using one of the 'sequence' methods, then
+        iterate over this generator.
         """
-        for node in self.sequence(*end_nodes, force=force):
+        nodes = self._clean_worklist(*nodes)
+
+        for node in nodes:
             tool = self.get_tool(node)
 
             if tool is not None:
                 tool()
-
             self._set_dirty(node, False)
 
             for output in self.outputs(node):
