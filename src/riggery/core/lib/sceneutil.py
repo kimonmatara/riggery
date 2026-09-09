@@ -185,7 +185,8 @@ def stripdown(*nodes) -> list[str]:
 @short(namespace='ns')
 def openScene(path,
               mode:Literal[0, 1, 2, 'open', 'import', 'reference']=0,
-              namespace=None):
+              namespace=None,
+              returnImportedNodes:bool=False):
 
     if isinstance(mode, str):
         mode = ['open', 'import', 'reference'].index(mode)
@@ -206,6 +207,9 @@ def openScene(path,
 
         else:
             kwargs['rpr'] = path.stem
+
+        if returnImportedNodes:
+            kwargs['rnn'] = True
 
     elif mode == 2:
         if not namespace:
