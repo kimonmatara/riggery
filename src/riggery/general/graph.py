@@ -1,431 +1,428 @@
-"""
-Todo:
-Create a context where upstream() / downstream() are cached
-(memoized), e.g. when called within the sequence() calculations. Look over
-recursion carefully so that all intermediate calls are cached accordingly.
-"""
-
-from itertools import pairwise
-from .iterables import without_duplicates
-from typing import Optional, Iterator, Callable, Iterable, Literal
 import json
+from copy import deepcopy
+from itertools import pairwise, chain
+from typing import Optional, Iterator, Iterable, Callable, Any
 
-class CycleError(Exception): ...
+from riggery.general.iterables import without_duplicates
+from .functions import resolve_flags
 
-class Dag:
-    """
-    Data model (Python)
-    -------------------
-    {
-        <name:str>: {'dirty':bool, 'inputs': list[str], 'tool': Callable}
-    }
 
-    How to use
-    ----------
+class DagBase:
 
-    1.  Instantiate: `graph = GraphData()`
-    2.  Add some nodes: `graph.create_node('build_puppet', 'bind_geometry')`
-    3.  Define connections using the provided methods:
-        `graph.connect('build_puppet', 'bind_geometry')`
-    4.  Use :meth:`sequence` to get a flat build sequence
-    5.  Subclass this class and override :meth:`_set_dirty` and
-        :meth:`_get_dirty` to implement external 'dirty' tracking (e.g. in
-        sidecar files)
-    6.  Use :meth:`set_tool` to embed actual callables into the graph so that,
-        when you call :meth:`cook`, they get run and the dirty states are set
-        accordingly.
-    """
-    #--------------------------------------|    Constructor(s)
+    #------------------------------------|    Constructor(s)
 
     @classmethod
-    def from_shorthand(cls, items:Iterable[Iterable[str]|str]):
+    def from_shorthand(cls,
+                       shorthand:Iterable[str|Iterable[str]]) -> 'DagBase':
         """
-        :param items: An iterable of iterables or single strings (for node
-            names); where there are sub-iterables, they will be used to define
-            sequential connections between nodes
+        Where *shorthand* is an iterable of strings or lists of strings. If a
+        member is a string, it will be added to the graph as an unmoored node.
+        Otherwise, if it's an iterable of strings, the iterable will be added
+        as a chain of connected nodes.
         """
-        items = [item if isinstance(item, str) else list(item)
-                 for item in items]
+        out = cls()
 
-        node_names = []
-        connections = []
-
-        for item in items:
+        for item in shorthand:
             if isinstance(item, str):
-                node_names.append(item)
+                out.add(item)
             else:
-                node_names.extend(item)
-                connections.append(item)
+                out.connect(*item, add_nodes=True)
 
-        graph = cls()
-        graph.create_node(*without_duplicates(node_names))
+        return out
 
-        for connection in connections:
-            if len(connection) > 1:
-                graph.connect(*connection)
+    #------------------------------------|    Init
 
-        return graph
-
-    #--------------------------------------|    Init
-
-    def __init__(self, data:Optional[dict]=None, /):
+    def __init__(self,
+                 data:Optional[dict[str, list[str]]]=None, /):
         if data is None:
-            self._data = {}
-        else:
-            self._data = data
+            data = {}
+        self._data = data
 
-    #--------------------------------------|    Enumeration
+    #------------------------------------|    Errors
 
-    def names(self) -> Iterator[str]:
-        yield from self._data.keys()
+    class UnrecognizedNodeError(Exception):...
+    class CycleError(Exception):...
 
-    def specs(self) -> Iterator[dict]:
-        yield from self._data.values()
+    #------------------------------------|    General membership
 
-    def items(self) -> Iterator[tuple[str, dict]]:
-        yield from self._data.items()
+    def __len__(self):
+        return len(list(self.nodes()))
 
-    def __getitem__(self, name:str):
-        return self._data[name]
-
-    def __contains__(self, name:str):
-        return name in self._data
-
-    def __iter__(self):
-        return iter(self.names())
-
-    #--------------------------------------|    Create nodes
-
-    def create_node(self, *names:str):
-        for name in names:
-            if name in self._data:
-                raise KeyError("name '{}' already in use".format(name))
-
-        for name in names:
-            self._data[name] = {}
-
-    #--------------------------------------|    Tools
-
-    def set_tool(self, node:str, tool:Optional[Callable]):
-        data = self[node]
-
-        if tool is None:
-            try:
-                del(data['tool'])
-            except KeyError:
-                pass
-        else:
-            if callable(tool):
-                data['tool'] = tool
-            else:
-                raise TypeError("expected a callable")
-
-    def get_tool(self, node:str) -> Optional[Callable]:
-        return self[node].get('tool')
-
-    #--------------------------------------|    Inspect topology
-
-    def _check_name(self, name:str):
-        """:raises KeyError:"""
-        if name not in self._data:
-            raise KeyError("name not found: '{}'".format(name))
-        return name
-
-    def _get_topology(self) -> dict[str, list[str]]:
+    def nodes(self) -> Iterator[str]:
         """
-        :return: A dictionary of {node:inputs}, for backup purposes.
+        Yields all the nodes in the graph. Order is historical, and not
+            related to evaluation.
         """
-        return {name: list(spec.get('inputs', []))
-                for name, spec in self.items()}
+        visited = set()
 
-    def inputs(self, name:str) -> Iterator[str]:
-        """Yields nodes that connect into *name*."""
-        yield from self[name].get('inputs', [])
+        for dest_node, src_nodes in self._data.items():
+            if dest_node not in visited:
+                visited.add(dest_node)
+                yield dest_node
+            for src_node in src_nodes:
+                if src_node not in visited:
+                    visited.add(src_node)
+                    yield src_node
 
-    def upstream(self, name:str, visited:Optional[set]=None) -> Iterator[str]:
-        """Yields all nodes upstream of *name*, proximal nodes first."""
+    def add(self, *nodes_to_add):
+        existing = set(self.nodes())
 
-        if visited is None:
-            visited = set()
+        for node_to_add in nodes_to_add:
+            if node_to_add not in existing:
+                self._data[node_to_add] = []
+                existing.add(node_to_add)
 
-        for us_node in self.inputs(name):
-            if us_node not in visited:
-                visited.add(us_node)
-                yield us_node
-                yield from self.upstream(us_node, visited)
-
-    def outputs(self, name:str) -> Iterator[str]:
-        """Yields nodes that *name* connects into."""
-        self._check_name(name)
-
-        for this_name, this_spec in self.items():
-            if name == this_name:
-                continue
-            if name in this_spec.get('inputs', []):
-                yield this_name
-
-    def downstream(self,
-                   name:str,
-                   visited:Optional[set]=None) -> Iterator[str]:
-        """Yields all nodes downstream of *name*, proximal nodes first."""
-        if visited is None:
-            visited = set()
-
-        for output in self.outputs(name):
-            if output not in visited:
-                visited.add(output)
-                yield output
-                yield from self.downstream(output, visited)
+    def _input_nodes(self) -> Iterator[str]:
+        """Yields nodes that are inputs for other nodes."""
+        yield from without_duplicates(chain(*self._data.values()))
 
     def roots(self) -> Iterator[str]:
-        """Yields all nodes in the graph with no inputs."""
-        for name in self.names():
-            if not list(self.inputs(name)):
-                yield name
+        """Yields nodes that have no inputs."""
+        for node in self.nodes():
+            if not self._data.get(node):
+                yield node
 
     def tips(self) -> Iterator[str]:
-        """Yields all nodes in the graph with no outputs."""
-        for name in self.names():
-            if not list(self.outputs(name)):
-                yield name
+        """Yields nodes that have no outputs."""
+        input_nodes = set(self._input_nodes())
 
-    #--------------------------------------|    Edit topology
+        for node in self.nodes():
+            if node not in input_nodes:
+                yield node
 
-    def _set_topology(self, topology:dict):
-        for name, spec in self._data.items():
-            try:
-                new_inputs = topology[name]
-            except KeyError:
-                continue
-            if new_inputs:
-                spec.setdefault('inputs', [])[:] = new_inputs
-            else:
-                try:
-                    del(spec['inputs'])
-                except KeyError:
+    #------------------------------------|    Inputs / upstream
+
+    def inputs(self, node:str) -> Iterator[str]:
+        yield from self._data.get(node, [])
+
+    def upstream(self, end_node:str, visited:Optional[set[str]]=None, /):
+        if visited is None:
+            visited = set()
+
+        for input_node in self.inputs(end_node):
+            if input_node not in visited:
+                visited.add(input_node)
+                yield input_node
+                yield from self.upstream(input_node, visited)
+
+    #------------------------------------|    Outputs / downstream
+
+    def outputs(
+            self,
+            src_node:str,
+            _outputs_cache:Optional[dict[str, list[str]]]=None, /
+    ) -> Iterator[str]:
+        """Yields nodes that are outputs to *src_node*."""
+        if _outputs_cache is None:
+            for dest_node, src_nodes in self._data.items():
+                if dest_node == src_node:
                     continue
+                if src_node in src_nodes:
+                    yield dest_node
+        else:
+            yield from _outputs_cache[src_node]
 
-    def connect(self, *node_sequence:str) -> int:
+    def downstream(
+            self,
+            start_node:str,
+            _visited:Optional[set[str]]=None,
+            _outputs_cache:Optional[dict[str, list[str]]]=None
+    ) -> Iterator[str]:
+        if _outputs_cache is None:
+            _outputs_cache = {node:list(self.outputs(node))
+                              for node in self.nodes()}
+
+        if _visited is None:
+            _visited = set()
+
+        for out_node in self.outputs(start_node, _outputs_cache):
+            if out_node not in _visited:
+                _visited.add(out_node)
+                yield out_node
+                yield from self.downstream(out_node, _visited, _outputs_cache)
+
+    #------------------------------------|    Edge editing
+
+    def connect(self,
+                *node_chain,
+                add_nodes:bool=False,
+                _prevent_partial_edits:bool=True):
         """
-        Sets each node in the sequence as an input for the next one.
-
-        :param *node_sequence: the nodes to connect
-        :raises CycleError:
-        :return: Number of new connections made.
+        :param node_chain: the nodes to connect, in a chain
+        :param add_nodes: if this is True, then nodes will be added to the
+            graph as required; defaults to False
+        :raises UnrecognizedNodeError: node is not a member of the graph
+        :param _prevent_partial_edits: if one of the attempted connections
+            throws a cycle error, reverts preceding connections before
+            raising; defaults to True
         """
-        backup = self._get_topology()
+        num = len(node_chain)
+        if num < 2:
+            raise ValueError("need at least two nodes")
 
-        node_sequence = list(node_sequence)
+        if not add_nodes:
+            for node in set(node_chain):
+                if node not in self.nodes():
+                    raise self.UnrecognizedNodeError(node)
 
-        if len(node_sequence) < 2:
-            raise Exception("need at least two nodes")
+        _prevent_partial_edits = _prevent_partial_edits and num > 2
 
-        for node in node_sequence:
-            self._check_name(node)
-
-        count = 0
+        if _prevent_partial_edits:
+            backup = deepcopy(self._data)
 
         try:
-            for src_node, dest_node in pairwise(node_sequence):
-                if src_node == dest_node or dest_node in self.upstream(src_node):
-                    raise CycleError
+            for src_node, dest_node in pairwise(node_chain):
+                if (src_node == dest_node
+                        or dest_node in self.upstream(src_node)):
+                    raise self.CycleError('{} -> {}'.format(src_node,
+                                                            dest_node))
 
-                dest_data = self._data[dest_node]
-                if src_node in dest_data.get('inputs', []):
-                    continue
-                dest_data.setdefault('inputs', []).append(src_node)
-                count += 1
+                pool = self._data.setdefault(dest_node, [])
 
-        except CycleError as e:
-            self._set_topology(backup)
+                if src_node not in pool:
+                    pool.append(src_node)
+
+        except self.CycleError as e:
+            if _prevent_partial_edits:
+                self._data.clear()
+                self._data.update(backup)
             raise e
 
-        return count
+    def disconnect(self, *node_chain):
+        """Disconnects nodes that are connected in the specified chain."""
+        orig_nodes = list(self.nodes())
 
-    #--------------------------------------|    Exec
+        for src_node, dest_node in pairwise(node_chain):
+            try:
+                self._data[dest_node].remove(src_node)
+            except (KeyError, ValueError):
+                continue
 
-    def _get_dirty(self, node:str) -> bool:
-        """
-        Override this method if you want the state to be stored externally.
-        """
-        return self[node].get('dirty', True)
+        self.add(*orig_nodes)
 
-    def get_dirty(self, node:str) -> bool:
-        """
-        This has some redundancy baked-in (will traverse upstream nodes to
-        make sure none are dirty).
-        """
-        if self._get_dirty(node):
-            return True
+    def unmoor_all(self):
+        """Removes all connections in the graph."""
+        orig_nodes = list(self.nodes())
+        self._data.clear()
+        self.add(*orig_nodes)
 
-        for us_node in self.upstream(node):
-            if self._get_dirty(us_node):
-                return True
-
-        return False
-
-    def _set_dirty(self, node:str, state:bool):
+    def unmoor(self,
+               *nodes,
+               inputs:Optional[bool]=None,
+               outputs:Optional[bool]=None):
         """
-        Override this method if you want the state to be stored externally.
+        The *inputs* / *outputs* arguments are evaluated by-omission. If both
+        are omitted, both default to True. If only one is specified, the other
+        defaults to False.
         """
-        self[node]['dirty'] = bool(state)
+        if not nodes:
+            raise ValueError("no nodes specified")
 
-    def set_dirty(self, node:str, state:bool):
-        """
-        :param node: the node to tag
-        :param state: if this is True, then both *node* and all nodes
-            downstream of it will be marked as dirty; otherwise, both *node*
-            and all nodes *upstream* of it will be marked as clean
-        """
-        if state:
-            self._set_dirty(node, True)
-            for ds_node in self.downstream(node):
-                self._set_dirty(ds_node, True)
-        else:
-            self._set_dirty(node, False)
-            for us_node in self.upstream(node):
-                self._set_dirty(us_node, False)
+        nodes = set(nodes)
+        orig_nodes = list(self.nodes())
 
-    def set_dirty_all(self, state:bool):
-        """Marks all nodes in the graph."""
-        for name in self.names():
-            self._set_dirty(name, state)
+        inputs, outputs = resolve_flags(inputs, outputs)
 
-    def _clean_worklist(self,
-                        *nodes:str,
-                        mode:Literal[0, 1, 2]=0) -> list[str]:
-        """
-        :param \*nodes: the user worklist to clean up
-        :param mode: 1: remove any nodes in the list that are upstream of any
-            other nodes in the list; 2: remove any nodes in the list that are
-            downstream of any other nodes in the list; 0: don't prune for
-            implicit membership; defaults to 0
-        """
-        nodes = list(without_duplicates(nodes))
-
-        if mode == 1:
-            _nodes = []
+        if inputs:
             for node in nodes:
-                siblings = [x for x in nodes if x != node]
-                if any(node in self.upstream(sibling)
-                       for sibling in siblings):
-                    continue
-                _nodes.append(node)
-            return _nodes
+                self._data.pop(node, None)
 
-        if mode == 2:
-            _nodes = []
-            for node in nodes:
-                siblings = [x for x in nodes if x != node]
-                if any(node in self.downstream(sibling)
-                       for sibling in siblings):
-                    continue
-                _nodes.append(node)
-            return _nodes
+        if outputs:
+            for src_nodes in self._data.values():
+                src_nodes[:] = [src_node for src_node in src_nodes
+                                if src_node not in nodes]
 
-        return nodes
+        self.add(*orig_nodes)
 
-    def sequence_from(self, *start_nodes:str) -> list[str]:
-        """
-        :return: Every node that would have to be built if *start_nodes* were
-            marked dirty.
-        """
-        start_nodes = self._clean_worklist(*start_nodes, mode=2)
+    #------------------------------------|    Sequence calculations
 
-        if not start_nodes:
-            raise ValueError('no start nodes')
+    def sequence_to(self, target_node:str) -> list[str]:
+        if target_node not in self.nodes():
+            raise self.UnrecognizedNodeError(target_node)
 
-        visited = set()
         out = []
 
-        for node in start_nodes:
+        def chase(node:str):
             out.append(node)
-            for ds_node in self.downstream(node, visited):
-                out.append(ds_node)
+            for in_node in self.inputs(node):
+                chase(in_node)
 
-        return out
+        chase(target_node)
 
-    def sequence_to(self, *end_nodes:str, sparse:bool=True) -> list[str]:
-        """
-        :param sparse: don't build anything that isn't marked dirty; defaults
-            to True
-        :return: If *sparse* is True, only the nodes that will have to be
-            built to 'clean' the end nodes, in order. Otherwise, all nodes
-            upstream of, and including, the end nodes, in build order.
-        """
-        end_nodes = self._clean_worklist(*end_nodes, mode=1)
+        return list(without_duplicates(reversed(out)))
 
-        if not end_nodes:
-            raise ValueError('no end nodes')
+    def sequence(self) -> list[str]:
+        return list(
+            without_duplicates(
+                chain.from_iterable(
+                    self.sequence_to(tip) for tip in self.tips()
+                )
+            )
+        )
 
-        def chase(node):
-            if (not sparse) or self.get_dirty(node):
-                yield node
-                for input_node in self.inputs(node):
-                    yield from chase(input_node)
+    #------------------------------------|    Serialization, comparisons
 
-        out = []
+    def canonical(self) -> list[tuple[str, tuple[str, ...]]]:
+        return [(dest_node, tuple(src_nodes))
+                for dest_node, src_nodes in self._data.items()]
 
-        for end_node in end_nodes:
-            this_sequence = reversed(list(chase(end_node)))
-            for node in this_sequence:
-                if node not in out:
-                    out.append(node)
-
-        return out
-
-    def sequence(self, sparse:bool=True) -> list[str]:
-        """
-        :param sparse: don't build anything that isn't marked dirty; defaults
-            to True
-        :return: If *sparse* is True, only the nodes that will have to be
-            built to 'clean' the graph, in order. Otherwise, all nodes, in
-            order.
-        """
-        return self.sequence_to(*self.tips(), sparse=sparse)
-
-    def cook_nodes(self, *nodes:str) -> Iterator[str]:
-        """
-        Prepare a build sequence using one of the 'sequence' methods, then
-        iterate over this generator.
-        """
-        nodes = self._clean_worklist(*nodes)
-
-        for node in nodes:
-            tool = self.get_tool(node)
-
-            if tool is not None:
-                tool()
-            self._set_dirty(node, False)
-
-            for output in self.outputs(node):
-                self.set_dirty(output, True)
-
-            yield node
-
-    #--------------------------------------|    Serialization
-
-    def json(self) -> str:
-        """Note that any embedded tools will be discarded."""
-        data = []
-        keys_to_include = ('inputs', 'dirty')
-
-        for name, spec in self._data.items():
-            this_simplified_spec = {}
-            for key in keys_to_include:
-                try:
-                    this_simplified_spec[key] = spec[key]
-                except KeyError:
-                    continue
-            data.append((name, this_simplified_spec))
-
+    def to_json(self) -> str:
+        data = [[dest_node, src_nodes]
+                for dest_node, src_nodes in self._data.items()]
         return json.dumps(data, indent=4)
 
     @classmethod
-    def from_json(cls, json_data:str) -> 'Dag':
-        return cls({k: v for k, v in json.loads(json_data)})
+    def from_json(cls, data:str) -> 'DagBase':
+        data = json.loads(data)
+        graph = cls()
 
-    #--------------------------------------|    Repr
+        for dest_node, src_nodes in data:
+            if src_nodes:
+                for src_node in src_nodes:
+                    graph.connect(src_node, dest_node, add_nodes=True)
+            else:
+                graph.add(dest_node)
+
+        return graph
+
+    def copy(self) -> 'DagBase':
+        return type(self)(deepcopy(self._data))
+
+    def __eq__(self, other):
+        return isinstance(other,
+                          DagBase) and self.canonical() == other.canonical()
+
+    def __bool__(self):
+        return bool(self._data)
+
+    #------------------------------------|    Repr
 
     def __repr__(self) -> str:
         return "{}({})".format(type(self).__name__, repr(self._data))
+
+
+class DagRunner(DagBase):
+    """
+    Abstract class. Dirty management relies on the interplay between the
+    embedded ``runner`` callable and :meth:`get_dirty`.
+
+    Subclass, implement :meth:`get_dirty` to return a value based on external
+    conditions (check upstream too), and then pass-in a ``runner`` callable
+    that will alter those external conditions in such a way that
+    :meth:`get_dirty` will reflect them.
+    """
+    #------------------------------------|    Constructor(s)
+
+    @classmethod
+    def from_shorthand(cls,
+                       shorthand:Iterable[str|Iterable[str]], *,
+                       runner:Optional[Callable[[str], Any]]=None) -> 'DagBase':
+        out = super().from_shorthand(shorthand)
+        out.runner = runner
+        return out
+
+    #------------------------------------|    Init
+
+    def __init__(self,
+                 data:Optional[dict[str, list[str]]]=None, /,
+                 runner:Optional[Callable[[str], Any]]=None):
+        super().__init__(data)
+        self.runner = runner
+
+    #------------------------------------|    Dirty state
+
+    def get_dirty(self, node:str) -> bool:
+        """
+        Override this to determine, based on external data, whether a node
+        should be recooked (this will involve looking at upstream nodes too).
+        """
+        raise NotImplementedError
+
+    def dirty_nodes(self) -> Iterator[str]:
+        for node in self.nodes():
+            if self.get_dirty(node):
+                yield node
+
+    #------------------------------------|    Sequence calcs
+
+    def sequence_to(self, target_node:str, dirty:bool=True) -> list[str]:
+        out = super().sequence_to(target_node)
+        if dirty:
+            out = [node for node in out if self.get_dirty(node)]
+        return out
+
+    def sequence(self, dirty:bool=True) -> list[str]:
+        out = list(
+            without_duplicates(
+                chain.from_iterable(
+                    self.sequence_to(tip, False) for tip in self.tips()
+                )
+            )
+        )
+        if dirty:
+            out = [node for node in out if self.get_dirty(node)]
+        return out
+
+    #------------------------------------|    Runs
+
+    def _run_node(self, node:str) -> Any:
+        if self.runner is None:
+            return_value = None
+        else:
+            return_value = self.runner(node)
+
+        return return_value
+
+    def run_to(self,
+               target_node:str,
+               dirty:bool=True) -> Iterator[tuple[str, Any]]:
+        for node in self.sequence_to(target_node, dirty):
+            yield node, self._run_node(node)
+
+    def run(self,
+            dirty:bool=True) -> Iterator[tuple[str, Any]]:
+        for node in self.sequence(dirty):
+            yield node, self._run_node(node)
+
+    #------------------------------------|    Copying
+
+    def copy(self) -> 'DagBase':
+        out = super().copy()
+        out.runner = self.runner
+        return out
+
+
+class DagTestRunner(DagRunner):
+    """
+    Testing variant of :class:`DagRunner` that doesn't take a ``runner`` and
+    implements``get_dirty`` to work off of an internal lookup.
+    """
+    #------------------------------------|    Init
+
+    def __init__(self, data:Optional[dict[str, list[str]]]=None):
+        super().__init__(data)
+        self._dirties = {}
+
+    #------------------------------------|    Dirty
+
+    def get_dirty(self, node:str) -> bool:
+        return (self._dirties.get(node, True)
+                or any((self._dirties.get(us_node, True)
+                        for us_node in self.upstream(node))))
+
+    def set_dirty(self, node:str, state:bool):
+        self._dirties[node] = state
+
+    def set_dirty_all(self, state:bool):
+        for node in self.nodes():
+            self._dirties[node] = state
+
+    def _run_node(self, node:str) -> Any:
+        self._dirties[node] = False
+
+    #------------------------------------|    Copying
+
+    def copy(self) -> 'DagBase':
+        out = super().copy()
+        out._dirties = self._dirties.copy()
+        return out
