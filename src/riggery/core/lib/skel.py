@@ -300,9 +300,15 @@ class Chain(list):
         """
         joints = []
         T = nodes['Joint']
+        num = len(matrices)
 
         for i, matrix in enumerate(map(data.Matrix, matrices)):
-            with _nm.Name(i+1):
+            if i == num - 1:
+                args = ['END']
+            else:
+                args = [i+1]
+
+            with _nm.Name(*args):
                 joint = T.create(matrix=matrix,
                                  worldSpace=worldSpace,
                                  parent=joints[-1] if joints else None,
@@ -1153,9 +1159,19 @@ class Chain(list):
     #-------------------------------------------|    Naming
 
     def rename(self):
+        num = len(self)
+
         for i, joint in enumerate(self):
-            with _nm.Name(i+1, pad=len(str(len(self)))):
+            if i == num - 1:
+                args = ['END']
+                kwargs = {}
+            else:
+                args = [i+1]
+                kwargs = {'pad': len(str(num))}
+
+            with _nm.Name(*args, **kwargs):
                 del(joint.name)
+
         return self
 
     #-------------------------------------------|    Instance copying
