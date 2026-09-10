@@ -62,6 +62,9 @@ class Section:
 
     #-------------------------------------|    Inspections
 
+    def attr(self):
+        return self._node.attr(self.name)
+
     def node(self) -> 'nodes.DependNode':
         return self._node
 
@@ -167,6 +170,12 @@ class Sections:
             _reo.removeSection(str(self._node), sectionName)
         except AttributeError:
             raise KeyError(sectionName)
+
+    #-------------------------------------|    Iteration
+
+    def __iter__(self):
+        for key in self.keys():
+            yield self[key]
 
     #-------------------------------------|    Dict-like
 
