@@ -1,221 +1,117 @@
+from typing import Iterator, Optional
 import os
-from typing import Optional, Iterator, Union
 from pathlib import Path
 import re
-from .functions import short
 
-class SGStreamInvalidTemplateError(ValueError):
-    ...
+class NotAStreamedNameError(Exception):...
+class BadSGTemplateError(Exception):...
+class SGEmptyStreamError(Exception):...
 
-class SGStreamInvalidFileOrDirNameError(ValueError):
-    ...
+#-----------------------------------|
+#-----------------------------------|    Stream wrangling utilities
+#-----------------------------------|
 
-class SGEmptyStreamError(Exception):
-    ...
+TMPL_FROM_NAME_PAT = re.compile(r"(?:(?<=^)|(?<=_))v[0-9]+(?=[.$_])")
+TMPL_HASH_GROUP_PAT = re.compile(r"(?:(?<=^)|(?<=_))v#+(?=[.$_])")
 
-SG_PARSE_PAT = re.compile(r"^(?:(.*?)_)?v([0-9]+)(?:\.([^.]+))?$")
-SG_TMPL_PAT = re.compile(r"^(?:(.*?)_)?v(#+)(?:\.([^.]+))?$")
+def getTemplateFromName(fileName:str|Path) -> str:
+    fileName = Path(fileName)
+    baseName:str = fileName.name
 
-def conformExtension(ext) -> Optional[str]:
-    if ext:
-        if ext.startswith('.'):
-            ext = ext[1:]
-        return ext
+    def replacer(x:re.Match):
+        substring = x.string[x.start():x.end()]
+        return re.sub(r"[0-9]", "#", substring)
+
+    newString, numSubs = re.subn(TMPL_FROM_NAME_PAT, replacer, baseName)
+
+    if numSubs == 0:
+        raise NotAStreamedNameError(
+            "Can't derive a template from name '{}'; no number group".format(baseName)
+        )
+
+    elif numSubs > 1:
+        raise NotAStreamedNameError(
+            "Can't derive a template from name '{}'; too many number groups".format(baseName)
+        )
+
+    return str(fileName.parent / newString)
+
+def getVersionStringFromName(fileName:str|Path) -> str:
+    found = re.findall(TMPL_FROM_NAME_PAT, Path(fileName).name)
+    if len(found) == 1:
+        return found[0][1:]
+    raise NotAStreamedNameError(fileName)
+
+def actualizeTemplate(template:str, version:int) -> str:
+    template = Path(template)
+    baseName:str = template.name
+
+    def replacer(x:re.Match):
+        substring = x.string[x.start():x.end()]
+        return 'v' + str(version).zfill(substring.count('#'))
+
+    newString, numSubs = re.subn(TMPL_HASH_GROUP_PAT, replacer, baseName)
+
+    if numSubs != 1:
+        raise BadSGTemplateError("Can't actualize bad template: '{}'".format(baseName))
+
+    return str(template.parent / newString)
+
+#-----------------------------------|
+#-----------------------------------|    SG STREAM CLASS
+#-----------------------------------|
 
 class SGStream:
-    """
-    Notes
-    =====
 
-    Templates must follow this format:
-    <any identifier>_v<any number of hashes ('#')>.<file extension>
-    or
-    v<any number of hashes ('#')>.<file extension>
-
-    All version listings are yielded *in reverse* (highest version first).
-    """
     #-------------------------------|    Init
 
-    @classmethod
-    def iterFromDir(cls, parentdir:Union[str, Path]) -> Iterator['SGStream']:
-        visited = []
-        parentdir = Path(str(parentdir))
+    def __init__(self, template:str|Path):
+        actualizeTemplate(template, 0) # error
+        self._template = str(Path(template))
 
-        for item in os.scandir(parentdir):
-            try:
-                stream = cls.fromName(parentdir / item.name)
-            except SGStreamInvalidFileOrDirNameError:
-                continue
-
-            if stream not in visited:
-                visited.append(stream)
-                yield stream
+    #-------------------------------|    Constructors
 
     @classmethod
-    def fromTemplate(cls, template:Union[str, Path]):
-        template = Path(str(template))
-
-        mt = re.match(SG_TMPL_PAT, template.name)
-
-        if mt:
-            descriptor, hashes, extension = mt.groups()
-            inst = cls()
-            inst.descriptor = descriptor
-            inst.padding = len(hashes)
-            inst.extension = extension
-            inst.parent = template.parent
-
-            return inst
-
-        raise SGStreamInvalidTemplateError(template)
+    def fromTemplate(cls, template:str|Path) -> 'SGStream':
+        return cls(template)
 
     @classmethod
-    def fromName(cls, fileOrDirName:Union[str, Path]):
-        fileOrDirName = Path(fileOrDirName)
+    def fromName(cls, name:str|Path) -> 'SGStream':
+        template = getTemplateFromName(name)
+        return cls(template)
 
-        mt = re.match(SG_PARSE_PAT, fileOrDirName.name)
+    @classmethod
+    def iterFromDir(cls, dirpath:str|Path) -> Iterator['SGStream']:
+        visited = set()
 
-        if mt:
-            descriptor, version, extension = mt.groups()
-            inst = cls()
-            inst.descriptor = descriptor
-            inst.padding = len(version)
-            inst.extension = extension
-            inst.parent = fileOrDirName.parent
+        for item in os.scandir(Path(dirpath)):
+            if item.is_file():
+                path = item.path
+                try:
+                    inst = cls.fromName(path)
+                except NotAStreamedNameError:
+                    continue
+                if inst not in visited:
+                    visited.add(inst)
+                    yield inst
 
-            return inst
+    #-------------------------------|    Iteration
 
-        raise SGStreamInvalidFileOrDirNameError(fileOrDirName)
-
-    def __init__(self,
-                 *arg,
-                 parent:Optional[Union[str, Path]]=None,
-                 descriptor:Optional[str]=None,
-                 padding:int=3,
-                 extension:Optional[str]=None):
-        self._parent = None
-        self._descriptor = None
-        self._padding = 3
-        self._extension = None
-
-        if arg:
-            numArgs = len(arg)
-            if numArgs > 2:
-                raise ValueError("too many positional arguments")
-            arg = arg[0]
-            stream = SGStream.fromTemplate(arg)
-            self.parent = stream.parent
-            self.descriptor = stream.descriptor
-            self.padding = stream.padding
-            self.extension = stream.extension
-
-        if parent is not None:
-            self.parent = parent
-
-        if descriptor is not None:
-            self.descriptor = descriptor
-
-        if padding is not None:
-            self.padding = padding
-
-        if extension is not None:
-            self.extension = padding
-
-    #-------------------------------|    Properties
-
-    def getParent(self):
-        return self._parent
-
-    def setParent(self, parentDir:Optional[Union[str, Path]]):
-        if parentDir:
-            self._parent = Path(parentDir)
-        else:
-            self._parent = None
-
-    def clearParent(self):
-        self._parent = None
-        return self
-
-    parent = property(getParent, setParent, clearParent)
-
-    def getDescriptor(self) -> Optional[str]:
-        return self._descriptor
-
-    def setDescriptor(self, descriptor:Optional[str]):
-        self._descriptor = descriptor
-        return self
-
-    def clearDescriptor(self):
-        self._descriptor = None
-        return self
-
-    descriptor = property(getDescriptor, setDescriptor, clearDescriptor)
-
-    def getPadding(self) -> int:
-        return self._padding
-
-    def setPadding(self, padding:int):
-        self._padding = padding
-
-    padding = property(getPadding, setPadding)
-
-    def getExtension(self) -> str:
-        return self._extension
-
-    def setExtension(self, ext:Optional[str]):
-        self._extension = conformExtension(ext)
-        return self
-
-    def clearExtension(self):
-        self._extension = None
-        return self
-
-    extension = property(getExtension, setExtension, clearExtension)
-
-    #-------------------------------|    Access
-
-    @short(ignorePadding='ip')
-    def getPattern(self, ignorePadding:bool=False) -> re.Pattern:
-        elems = []
-
-        if self.descriptor:
-            elems.append(self.descriptor)
-
-        if ignorePadding:
-            elems.append(r"v([0-9]+)")
-        else:
-            elems.append(r"v([0-9]{" + str(self.padding) + "})")
-
-        pat = '_'.join(elems)
-        if self.extension:
-            pat += '.' + self.extension
-
-        pat = r"^" + pat + "$"
-        return re.compile(pat)
-
-    pattern = property(getPattern)
+    def isMember(self, path:str|Path) -> bool:
+        path = Path(path)
+        return self.fromName(path) == self
 
     def _items(self) -> Iterator[tuple[int, Path]]:
-        if self.parent is not None:
-            pat = self.pattern
-
-            try:
-                for item in os.scandir(self.parent):
-
-                    n = item.name
-                    mt = re.match(pat, n)
-
-                    if mt:
-                        version = int(mt.group(1))
-                        yield version, self.parent / n
-            except FileNotFoundError:
-                pass
+        for item in os.scandir(Path(self._template).parent):
+            if self.isMember(item.path):
+                version = int(getVersionStringFromName(item.path))
+                yield version, item.path
 
     def items(self) -> Iterator[tuple[int, Path]]:
         yield from sorted(self._items(), key=lambda pair: pair[0])
 
     def _versions(self) -> Iterator[int]:
-        for version, path in self._items():
+        for version, _ in self._items():
             yield version
 
     def versions(self) -> Iterator[int]:
@@ -229,17 +125,16 @@ class SGStream:
         for version, path in self.items():
             yield path
 
-    def __contains__(self, version:int) -> bool:
-        return version in self._versions()
-
     def first(self) -> Optional[Path]:
         return next(self.paths(), None)
 
     def last(self) -> Path:
         try:
             paths = list(self.paths())
+
             if paths:
                 return paths[-1]
+
         except FileNotFoundError:
             pass
         raise SGEmptyStreamError
@@ -267,89 +162,26 @@ class SGStream:
         return self[self.nextVersion()]
 
     def __getitem__(self, version:int):
-        tmpl = Path(str(self))
-        basename = tmpl.name
-        basename = basename.replace(
-            '#' * self.padding, str(version).zfill(self.padding)
-        )
-        return tmpl.parent / basename
+        return Path(actualizeTemplate(self._template, version))
 
     def __len__(self):
-        return len(list(self.items()))
+        return len(list(self._items()))
 
     def exists(self) -> bool:
         return next(self._items(), None) is not None
 
-    def __iter__(self):
-        for version in self.versions():
-            yield self[version]
+    #-------------------------------|    Identity
+
+    def __eq__(self, value: object, /) -> bool:
+        return str(value) == str(self)
+
+    def __hash__(self) -> int:
+        return hash((type(self), self._template))
 
     #-------------------------------|    Repr
 
-    def __str__(self):
-        elems = []
+    def __str__(self) -> str:
+        return self._template
 
-        if self.descriptor:
-            elems.append(self.descriptor)
-
-        elems.append('v' + ('#' * self.padding))
-
-        basename = '_'.join(elems)
-
-        if self.extension:
-            basename += '.' + self.extension
-
-        if self.parent:
-            return str(self.parent / basename)
-        return basename
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, repr(str(self)))
-
-    def __eq__(self, other):
-        return str(self) == str(other)
-
-
-# Below is a stub, not sure needed as such
-# class QuickNav:
-#     """
-#     ```
-#     root = QuickNav('/maya_root')
-#     rig = root / 'dragon' / 'rig'
-#     print(rig) # result: '/maya_root/assets/dragon/rig'
-#     print(rig.stream('dragon_rig')) # get the stream for ``/maya_root/assets/dragon_rig/dragon_rig``
-#     print(rig.streams()) # yield all available streams under that directory
-#     ```
-#     """
-#     #-------------------------------|    Init
-#
-#     def __init__(self, root:str|Path):
-#         self._root = Path(root)
-#
-#     #-------------------------------|    Subdirs
-#
-#     def __truediv__(self, subdir_name:str) -> 'QuickNav':
-#         return type(self)(self._root / subdir_name)
-#
-#     #-------------------------------|    Streams
-#
-#     def streams(self) -> Iterator[SGStream]:
-#         yield from SGStream.iterFromDir(self._root)
-#
-#     def stream(self,
-#                stream_basename:str,
-#                extension:str='ma') -> SGStream:
-#         """
-#         If there's an extension in *extension*, override any extension in stream_basename
-#         """
-#         base_template = '{}_v###.{}'.format(stream_basename,
-#                                             extension.strip('.'))
-#         return SGStream.fromTemplate(str(self._root / base_template))
-#
-#     #-------------------------------|    Repr
-#
-#     def __str__(self) -> str:
-#         return str(self._root)
-#
-#     def __repr__(self) -> str:
-#         return "{}({})".format(type(self).__name__, repr(str(self)))
+    def __repr__(self) -> str:
+        return "{}({})".format(type(self).__name__, repr(self._template))
