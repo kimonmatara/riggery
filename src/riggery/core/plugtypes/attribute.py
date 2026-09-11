@@ -1693,6 +1693,13 @@ class Attribute(Elem, metaclass=AttributeMeta):
         """
         return self.__apimplug__().isProxy
 
+    def isProxyOf(self, srcAttr:Union[str, 'Attribute']) -> bool:
+        srcAttr = Attribute(srcAttr)
+
+        _self = str(self)
+        return m.addAttr(_self, q=True, proxy=True
+                         ) and srcAttr in self.iterInputs(plugs=True)
+
     def getOrig(self):
         """
         If this is a proxy attribute, returns the attribute for which it is a
@@ -1702,91 +1709,62 @@ class Attribute(Elem, metaclass=AttributeMeta):
             return self.inputs(plugs=True)[0]
         return self
 
-    @short(longName='ln',
-           shortName='sn',
-           section='s')
+    @short(longName='ln', section='s')
     def createProxy(self,
-                    node=None, /,
+                    node=None, *,
                     longName=None,
-                    shortName=None,
                     section=None):
-        """
-        Creates a proxy for this attribute on the specified node.
-
-        :param node: if omitted, defaults to this node
-        :param longName/ln: an optional override for the attribute long name
-        :param shortName/sn: an optional override for the attribute short name
-        :return: The generated proxy attribute.
-        """
         if node is None:
             node = self
-        return self.createProxies([node],
-                                  longName=longName,
-                                  shortName=shortName,
-                                  section=section)[0]
+            sameNode = True
+        else:
+            node = _nodes['DependNode'](node)
+            sameNode = node == self
 
-    @short(longName='ln', shortName='sn', section='s')
-    def createProxies(self,
-                      nodes:Iterable,
-                      longName=None,
-                      shortName=None, *,
-                      section=None):
-        """
-        Creates a proxy for this attribute on each specified node.
+        if sameNode:
+            if longName is None:
+                raise RuntimeError(
+                    "longName (-ln) is required if same node"
+                )
+        else:
+            if longName is None:
+                longName = self.longName()
 
-        :param \*nodes: the node(s) on which to create proxy attributes,
-            packed or unpackeds
-        :param longName/ln: an optional override for the attribute long name
-        :param shortName/sn: an optional override for the attribute short name
-        :return: The generated proxy attributes, in a list.
-        """
+            if node.hasAttr(longName):
+                testAttr = node.attr(longName)
+
+                if testAttr.isProxyOf(self):
+                    return testAttr
+
+                raise RuntimeError(f"name '{longName}' is in use")
+
         kwargs = self.getAddAttrCmdFlags()
 
-        if shortName:
-            kwargs['shortName'] = shortName
-
-        elif longName:
+        for k in ('shortName', 'parent'):
             try:
-                del(kwargs['shortName'])
+                del(kwargs[k])
             except KeyError:
-                pass
-            kwargs['longName'] = longName
-
-        try:
-            accessName = kwargs['longName']
-        except kwargs:
-            accessName = kwargs['shortName']
-
-        try:
-            del(kwargs['parent'])
-        except:
-            pass
+                continue
 
         kwargs['proxy'] = str(self)
 
         channelBox = self.getFlag('channelBox')
         locked = self.getFlag('l')
 
-        out = []
+        if section is not None and section not in node.sections:
+            node.sections.add(section)
 
-        for node in nodes:
-            _node = str(node)
-            m.addAttr(_node, **kwargs)
-            inst = Attribute(f"{_node}.{accessName}")
+        _node = str(node)
+        m.addAttr(_node, **kwargs)
+        inst = Attribute(f"{_node}.{longName}")
 
-            if section is not None:
-                sectionInst = node.sections.add(section)
-                inst = node.attr(accessName)
+        if channelBox:
+            inst.setFlag('channelBox', True)
 
-            if channelBox:
-                inst.setFlag('channelBox', True)
+        if locked:
+            inst.setFlag('l', True)
 
-            if locked:
-                inst.setFlag('l', True)
-
-            out.append(inst)
-
-        return out
+        return inst
 
     @classmethod
     @short(lock='l')
