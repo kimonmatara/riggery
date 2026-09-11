@@ -1164,12 +1164,10 @@ class Chain(list):
         for i, joint in enumerate(self):
             if i == num - 1:
                 args = ['END']
-                kwargs = {}
             else:
                 args = [i+1]
-                kwargs = {'pad': len(str(num))}
 
-            with _nm.Name(*args, **kwargs):
+            with _nm.Name(*args):
                 del(joint.name)
 
         return self
