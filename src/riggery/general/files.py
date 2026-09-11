@@ -102,10 +102,13 @@ class SGStream:
         return self.fromName(path) == self
 
     def _items(self) -> Iterator[tuple[int, Path]]:
-        for item in os.scandir(Path(self._template).parent):
-            if self.isMember(item.path):
-                version = int(getVersionStringFromName(item.path))
-                yield version, item.path
+        try:
+            for item in os.scandir(Path(self._template).parent):
+                if self.isMember(item.path):
+                    version = int(getVersionStringFromName(item.path))
+                    yield version, item.path
+        except FileNotFoundError:
+            return
 
     def items(self) -> Iterator[tuple[int, Path]]:
         yield from sorted(self._items(), key=lambda pair: pair[0])
