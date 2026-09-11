@@ -1747,6 +1747,7 @@ class Attribute(Elem, metaclass=AttributeMeta):
                 continue
 
         kwargs['proxy'] = str(self)
+        kwargs['longName'] = longName
 
         channelBox = self.getFlag('channelBox')
         locked = self.getFlag('l')
