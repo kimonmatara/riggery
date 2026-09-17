@@ -110,7 +110,7 @@ def getLengthRatios(
         cumulativeLengths. Otherwise, cumulativeLengths only.
     """
     points = (_mm.conform(x, (plugs['Point'], data['Point']), force=True)
-            for x in points)
+              for x in points)
     mags = ((y - x).length() for x, y in pairwise(points))
     sums = list(accumulate(mags, initial=0))
 
@@ -1085,3 +1085,88 @@ def atan2(x, y):
         return node.attr('output')
 
     return math.atan2(x, y)
+
+def pointToPlane(refPoint,
+                 planePoint,
+                 planeNormal,
+                 epsilon:float=1e-5) -> tuple[
+    Union['data.Scalar', 'plugs.Scalar'],
+    Union['data.Point', 'plugs.Point']
+]:
+    """
+    Calculates the distance from *refPoint* to the nearest point on a plane,
+    along the plane's normal vector.
+
+    :return: Tuple of: distance, intersection point.
+    """
+    refPoint, _, _ = _mm.info(refPoint, (data['Point'], plugs['Point']))
+    planePoint, _, _ = _mm.info(planePoint, (data['Point'], plugs['Point']))
+    planeNormal, _, _ = _mm.info(planeNormal, (data['Vector'], plugs['Vector']))
+
+    normalLength = planeNormal.length()
+    signedDistance = planeNormal.dot(refPoint-planePoint) / normalLength
+    intersectionPoint = refPoint - (planeNormal / normalLength) * signedDistance
+
+    return signedDistance, intersectionPoint
+
+def pointToPlaneAlongVector(refPoint,
+                            planePoint,
+                            planeNormal,
+                            directionVector,
+                            epsilon:float=1e-5) -> tuple[
+    Union['data.Scalar', 'plugs.Scalar'],
+    Union['data.Point', 'plugs.Point']
+]:
+    """
+    Similar to :meth:`pointToPlane`, but calculates the distance and
+    intersection point along an arbitrary vector instead.
+    """
+    refPoint, _, refPointIsPlug = _mm.info(refPoint, (data['Point'], plugs['Point']))
+    planePoint, _, planePointIsPlug = _mm.info(planePoint, (data['Point'], plugs['Point']))
+    planeNormal, _, planeNormalIsPlug = _mm.info(planeNormal, (data['Vector'], plugs['Vector']))
+    directionVector, _, directionVectorIsPlug = _mm.info(directionVector, (data['Vector'], plugs['Vector']))
+
+    hasPlugs = any((refPointIsPlug,
+                    planePointIsPlug,
+                    planeNormalIsPlug,
+                    directionVectorIsPlug))
+
+    if hasPlugs:
+        # Pull up a patchbay, conform
+        with _nm.Name('patchbay'):
+            pb = nodes['Network'].createNode()
+            refPoint = pb.addPointAttr('refPoint', i=refPoint)
+            planePoint = pb.addPointAttr('planePoint', i=planePoint)
+            planeNormal = pb.addVectorAttr('planeNormal', i=planeNormal)
+            directionVector = pb.addVectorAttr('directionVector', i=directionVector)
+
+    denom = planeNormal.dot(directionVector)
+
+    if hasPlugs:
+        isParallel = denom.abs() < epsilon
+        one = pb.addAttr('one', at='double', dv=1.0)
+        safeDenom = isParallel.ifElse(one, denom, plugs['Number'])
+    else:
+        if abs(denom) < epsilon:
+            return pointToPlane(refPoint, planePoint, planeNormal)
+
+        safeDenom = denom
+
+    t = planeNormal.dot(planePoint - refPoint) / safeDenom
+    distance = t * directionVector.length()
+    intersectionPoint = refPoint + directionVector * t
+
+    if hasPlugs:
+        fallbackDistance, fallbackPoint = pointToPlane(refPoint,
+                                                       planePoint,
+                                                       planeNormal)
+
+        distance = isParallel.ifElse(fallbackDistance,
+                                     distance,
+                                     plugs['Number'])
+
+        intersectionPoint = isParallel.ifElse(fallbackPoint,
+                                              intersectionPoint,
+                                              plugs['Point'])
+
+    return distance, intersectionPoint
