@@ -1,9 +1,10 @@
 """This is auto-populated with wrapped commands from maya.cmds on startup."""
 
-from typing import Optional
+from typing import Optional, Iterable, Iterator
 from pathlib import Path
 from .wrap import *
 from ..general.functions import short
+from ..general.iterables import without_duplicates
 from .nodetypes import __pool__ as _nodes
 import maya.cmds as m
 
@@ -58,3 +59,28 @@ def referenceScene(path, namespace:Optional[str]=None) -> '_nodes.Reference':
                     mergeNamespacesOnClash=False)
 
     return _nodes['Reference'](m.referenceQuery(result, referenceNode=True))
+
+def iterExpandLookups(*lookups:str,
+                      type:Optional[str|Iterable[str]]=None) -> Iterator['_nodes.DependNode']:
+    """
+    Yields nodes.
+
+    :param lookups: one or more lookups for ``ls``
+    :param type: one or more optional type filters; defaults to None
+    """
+    kwargs = {}
+    if type is not None:
+        if isinstance(type, str):
+            kwargs['typ'] = type
+        else:
+            kwargs['typ'] = list(without_duplicates(type))
+
+    visited = set()
+
+    for lookup in map(str, lookups):
+        matches = m.ls(lookup, **kwargs)
+        for match in matches:
+            if match in visited:
+                continue
+            visited.add(match)
+            yield _nodes['DependNode'](match)
