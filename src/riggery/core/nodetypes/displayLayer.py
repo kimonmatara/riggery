@@ -29,12 +29,15 @@ class DisplayLayer(DependNode):
 
     @classmethod
     @short(name='n')
-    def create(cls, *members, name=None, reuse:bool=False, **attrs):
+    def create(cls, *members, name=None, reuse:bool=False, recurse:bool=False, **attrs):
         if not name:
             if _nm.Name.__elems__:
                 name = _nm.Name.evaluate(typeSuffix=cls.__typesuffix__)
 
         kwargs = {}
+
+        if not recurse:
+            kwargs['noRecurse'] = True
 
         if name:
             kwargs['name'] = name
@@ -55,6 +58,12 @@ class DisplayLayer(DependNode):
         return layer
 
     #---------------------------------|    Members
+
+    def iterMembers(self) -> Iterator:
+        for item in m.editDisplayLayerMembers(str(self), q=True, fullNames=True):
+            yield _nodes['DependNode'](item)
+
+    members = property(iterMembers)
 
     @short(recurse='r')
     def addMembers(self, *members, recurse:bool=False):
