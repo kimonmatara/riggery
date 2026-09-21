@@ -11,6 +11,7 @@ from riggery.general.functions import short
 from .selection import keepsel
 
 mel.eval('source MLdeleteUnused')
+import maya.api.OpenMaya as om
 
 #-------------------------------------------------|
 #-------------------------------------------------|    Errors
@@ -59,6 +60,33 @@ def removeUnknownNodes(*nodes, skipErrors=False):
             raise CleanupError(str(exc))
 
     return removed
+
+def forceDeleteNodes(*nodes, skipErrors:bool=False):
+    m.select(cl=True)
+    m.refresh()
+    nodes = list(without_duplicates(nodes))
+    selList = om.MSelectionList()
+
+    for name in nodes:
+        selList.add(name)
+
+    for i in range(selList.length()):
+        try:
+            dgMod = om.MDGModifier()
+            node = selList.getDependNode(i)
+            fnNode = om.MFnDependencyNode(node)
+            fnNode.isLocked = False
+            for plug in fnNode.getConnections():
+                if plug.isDestination:
+                    dgMod.disconnect(plug.source(), plug)
+                for dest in plug.destinations():
+                    dgMod.disconnect(plug, dest)
+            dgMod.deleteNode(node)
+            dgMod.doIt()
+        except Exception as e:
+            if skipErrors:
+                continue
+            raise e
 
 #-------------------------------------------------|
 #-------------------------------------------------|    Unknown plugins
@@ -110,7 +138,7 @@ def removeUnusedShaders():
 #-------------------------------------------------|
 
 @keepsel
-def stripdown(*nodes) -> list[str]:
+def stripdown(*nodes, preserveSceneName:bool=True) -> list[str]:
     """
     :raises ValueError: no nodes specified
     :return: The resolved partial DAG paths.
@@ -124,11 +152,15 @@ def stripdown(*nodes) -> list[str]:
     tmpDir = Path(gettempdir())
     index = 0
 
+    origSuffix = Path(sceneName).suffix
+    longTyp = {'.mb':'mayaBinary',
+               '.ma':'mayaAscii'}[origSuffix]
+
     while True:
         basename = 'mayaStripDownTmp'
         if index > 0:
             basename += '_'+str(index)
-        filename = basename + '.mb'
+        filename = basename + origSuffix
         filepath = tmpDir / filename
 
         if filepath.is_file():
@@ -141,17 +173,16 @@ def stripdown(*nodes) -> list[str]:
     m.file(filepath.as_posix(),
            force=True,
            options='v=0;',
-           typ='mayaBinary',
+           typ=longTyp,
            es=True)
 
     m.file(newFile=True, force=True)
 
-    if sceneName:
+    if sceneName and preserveSceneName:
         m.file(rename=sceneName)
 
     m.file(filepath.as_posix(),
            i=True,
-           typ='mayaBinary',
            ignoreVersion=True,
            mergeNamespacesOnClash=False,
            rpr='stripdown',
