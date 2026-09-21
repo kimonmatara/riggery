@@ -64,6 +64,20 @@ class ObjectSet(DependNode):
 
         return self
 
+    @short(recurse='r')
+    def remove(self, recurse:bool=False):
+        """
+        Removes this set. Wonky method name.
+        """
+        if recurse:
+            for member in self.iterSubsets():
+                member.remove(recurse=True)
+
+        try:
+            m.delete(str(self))
+        except:
+            pass
+
     #---------------------------------|    Get members
 
     @short(recurse='r')
