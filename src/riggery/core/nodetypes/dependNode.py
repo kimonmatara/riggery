@@ -1090,7 +1090,7 @@ class DependNode(Elem, metaclass=DependNodeMeta):
 
     #-----------------------------------------|    Selection
 
-    def select(self, *, add=False):
+    def select(self, *, add=False, noExpand:bool=False):
         """
         Selects this node.
 
@@ -1100,6 +1100,8 @@ class DependNode(Elem, metaclass=DependNodeMeta):
         kwargs = {}
         if add:
             kwargs['add'] = True
+        if noExpand:
+            kwargs['noExpand'] = True
         m.select(str(self), **kwargs)
         return self
 
