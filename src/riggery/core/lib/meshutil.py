@@ -296,3 +296,115 @@ def selectVertsCloseToMeshSurface(carrierMesh:str,
 
         if dx*dx + dy*dy + dz*dz <= thresholdSq:
             yield i
+
+import maya.api.OpenMaya as om
+
+
+def getSeamLoopApi(meshDag, seamEdgeId):
+    """Walk the edge loop containing seamEdgeId, both directions."""
+    itEdge = om.MItMeshEdge(meshDag)
+    itVert = om.MItMeshVertex(meshDag)
+
+    def edgeVerts(e):
+        itEdge.setIndex(e)
+        return itEdge.vertexId(0), itEdge.vertexId(1)
+
+    def edgeFaces(e):
+        itEdge.setIndex(e)
+        return set(itEdge.getConnectedFaces())
+
+    def vertEdges(v):
+        itVert.setIndex(v)
+        return list(itVert.getConnectedEdges())
+
+    loop = [seamEdgeId]
+    seen = {seamEdgeId}
+
+    for startVert in edgeVerts(seamEdgeId):
+        edge = seamEdgeId
+        vert = startVert
+        while True:
+            faces = edgeFaces(edge)
+            candidates = [e for e in vertEdges(vert) if e != edge]
+            if len(candidates) != 3:
+                break
+            nextEdge = None
+            for e in candidates:
+                if not (edgeFaces(e) & faces):
+                    nextEdge = e
+                    break
+            if nextEdge is None or nextEdge in seen:
+                break
+            loop.append(nextEdge)
+            seen.add(nextEdge)
+            a, b = edgeVerts(nextEdge)
+            vert = b if a == vert else a
+            edge = nextEdge
+
+    return loop
+
+
+def getSideVertsApi(meshDag, seamEdgeId, rightSide=False):
+    mesh = om.MFnMesh(meshDag)
+    itEdge = om.MItMeshEdge(meshDag)
+
+    seamVerts = set()
+    for e in getSeamLoopApi(meshDag, seamEdgeId):
+        itEdge.setIndex(e)
+        seamVerts.add(itEdge.vertexId(0))
+        seamVerts.add(itEdge.vertexId(1))
+
+    numVerts = mesh.numVertices
+    adjacency = [set() for _ in range(numVerts)]
+    counts, connects = mesh.getVertices()
+    offset = 0
+    for count in counts:
+        face = connects[offset:offset + count]
+        offset += count
+        for i in range(count):
+            a = face[i]
+            b = face[(i + 1) % count]
+            adjacency[a].add(b)
+            adjacency[b].add(a)
+
+    points = mesh.getPoints(om.MSpace.kWorld)
+    visited = set(seamVerts)
+    components = []
+
+    for seed in range(numVerts):
+        if seed in visited:
+            continue
+        visited.add(seed)
+        stack = [seed]
+        component = []
+        while stack:
+            v = stack.pop()
+            component.append(v)
+            for n in adjacency[v]:
+                if n not in visited:
+                    visited.add(n)
+                    stack.append(n)
+        components.append(component)
+
+    result = []
+    for component in components:
+        meanX = sum(points[v].x for v in component) / len(component)
+        if (meanX < 0.0) == rightSide:
+            result.extend(component)
+
+    result.sort()
+    return result
+
+def getSideVerts(meshShape:str, seamEdge:int, rightSide:bool=False) -> list[int]:
+    """
+    :param meshShape: the mesh shape
+    :param seamEdge: any edge along the topological seam (index)
+    :param rightSide: return verts on the right side (along X) rather than
+        the left; defaults to False
+    :return: The vertices on either side of the seam edge, as a list of
+        indices.
+    """
+    sel = om.MSelectionList()
+    sel.add(meshShape)
+    meshDag = sel.getDagPath(0)
+    return getSideVertsApi(meshDag, seamEdge, rightSide)
