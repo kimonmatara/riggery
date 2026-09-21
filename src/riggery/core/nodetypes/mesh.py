@@ -7,6 +7,7 @@ from ..elem import Elem
 
 from riggery.general.iterables import expand_tuples_lists, without_duplicates
 import riggery.core.lib.names as _nm
+import riggery.core.lib.meshutil as _mut
 import riggery.core.lib.mixedmode as _mm
 SurfaceShape = nodes['SurfaceShape']
 
@@ -14,6 +15,7 @@ from riggery.general.functions import short
 
 import maya.api.OpenMaya as om
 import maya.cmds as m
+import maya.mel as mel
 
 def bary(p, a, b, c):
     v0 = om.MVector(b) - om.MVector(a)
@@ -809,3 +811,75 @@ class Mesh(SurfaceShape):
     #                 destParent.resetSRT(force=True)
     #         else:
     #             destParent = self.parent
+
+    #-------------------------------------|    Misc modelling
+
+    def getSideVerts(self,
+                     seamEdge:int,
+                     rightSide:bool=False,
+                     asComponent:bool=False) -> list[int]|list[str]:
+        """
+        :param meshShape: the mesh shape
+        :param seamEdge: any edge along the topological seam (index)
+        :param rightSide: return verts on the right side (along X) rather than
+            the left; defaults to False
+        :return: The vertices on either side of the seam edge, as a list of
+            indices.
+        """
+        _self = str(self)
+        verts = _mut.getSideVerts(_self, seamEdge, rightSide)
+
+        if asComponent:
+            verts = [f"{_self}.vtx[{i}]" for i in verts]
+
+        return verts
+
+    def symmetrize(self,
+                   seamEdge:int,
+                   snapSeam:bool=False):
+        """
+        :param seamEdge: the index of any edge along the seam loop
+            (index)
+        :param snapSeam: snap the seam loop to the YZ plane, to ensure a
+            clean reflection; defaults to False
+        """
+        _self = str(self)
+
+        seamEdgeComp = f"{self}.e[{seamEdge}]"
+
+        if snapSeam:
+            # Select the seam edge selection to an edge loop
+            # From there, convert to verts
+            # Move all the verts
+            m.select(seamEdgeComp)
+            mel.eval('polySelectSp -loop;')
+            vertices = m.polyListComponentConversion(
+                m.ls(sl=True),
+                fromEdge=True,
+                toVertex=True
+            )
+            m.move(0, vertices, moveX=True, absolute=True, worldSpace=True)
+
+        # Get the side verts
+        sideVerts = self.getSideVerts(seamEdge, asComponent=True)
+
+        # Activate symmetry
+        setting = m.symmetricModelling(q=True, s=True)
+
+        m.symmetricModelling(seamEdgeComp,
+                             a='topo',
+                             ax='x',
+                             ps=True,
+                             s=True,
+                             ts=True)
+        try:
+            # Select side verts
+            m.select(sideVerts, symmetry=True)
+
+            # Run the command
+            mel.eval('dR_symmetrize')
+        finally:
+            # Restore user setting
+            m.symmetricModelling(s=setting)
+
+        return self
