@@ -36,6 +36,7 @@ def getTemplateFromName(fileName:str|Path) -> str:
 
     return str(fileName.parent / newString)
 
+
 def getVersionStringFromName(fileName:str|Path) -> str:
     found = re.findall(TMPL_FROM_NAME_PAT, Path(fileName).name)
     if len(found) == 1:
@@ -99,7 +100,11 @@ class SGStream:
 
     def isMember(self, path:str|Path) -> bool:
         path = Path(path)
-        return self.fromName(path) == self
+        try:
+            inst = self.fromName(path)
+        except NotAStreamedNameError:
+            return False
+        return inst == self
 
     def _items(self) -> Iterator[tuple[int, Path]]:
         try:
