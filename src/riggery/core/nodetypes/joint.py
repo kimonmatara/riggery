@@ -26,6 +26,24 @@ class Joint(nodes['Transform']):
     #------------------------------------------|    Retrievers
 
     @classmethod
+    def ls(cls, *patterns, bound:bool=False, **kwargs):
+        """
+        Overloads :meth:`~riggery.core.nodetypes.dependNode.DependNode.ls` to
+            add the *bound* option.
+
+        :param bound: only yield joints attached to a skin cluster; defaults
+            to False
+        """
+        baseIter = super().ls(*patterns, **kwargs)
+
+        if bound:
+            for j in baseIter:
+                if next(j.skinClusters, None) is not None:
+                    yield j
+        else:
+            yield from baseIter
+
+    @classmethod
     def iterRootJoints(cls) -> Iterator['Joint']:
         """
         Yields joints in the scene that don't have a joint parent.
