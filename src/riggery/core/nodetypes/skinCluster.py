@@ -900,15 +900,18 @@ class SkinCluster(GeometryFilter):
         return self
 
     def mirrorCopy(self, destGeo=None, /):
-        # Resolve dest geo
 
-        if destGeo is None:
-            destGeo = next(self.shapes).parent.findOppositeNodeByName()
+        #---------------------------|    Resolve mirror geo
 
-            if destGeo is None:
-                raise RuntimeError("couldn't resolve destination geo")
+        if destGeo:
+            destGeo = nodes['DagNode'](destGeo).toTransform()
         else:
-            destGeo = nodes['DagNode'](destGeo)
+            ourGeo = next(self.shapes).toTransform()
+            destGeo = ourGeo.findOppositeNodeByName()
+            if destGeo is None:
+                raise RuntimeError(
+                    "Couldn't auto-detect the opposite geometry."
+                )
 
         # Resolve destination influences
         destInfl = []
@@ -949,6 +952,7 @@ class SkinCluster(GeometryFilter):
             joint.setLabelState(state)
 
         return destSkin
+
 
     @short(name='n',
            replace='rep',
