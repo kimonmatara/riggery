@@ -6,7 +6,7 @@ import maya.cmds as m
 import maya.api.OpenMaya as om
 
 from riggery.general.functions import short, resolve_flags
-from riggery.general.iterables import expand_tuples_lists
+from riggery.general.iterables import expand_tuples_lists, without_duplicates
 from riggery.general.numbers import floatrange
 
 from ..elem import Elem, ElemInstError
@@ -1238,6 +1238,51 @@ class Transform(nodes['DagNode']):
 
         times = _itr.chain(*(curve.getKeyTimes() for curve in curves))
         return list(sorted(set(times)))
+
+    #-----------------------------------------|    Geo chasing
+
+    @short(type='t',
+           shapes='s',
+           intermediate='i',
+           recurse='r')
+    def iterGeosUnderThis(self,
+                          type:Optional[str|list[str]|tuple[str]]=None,
+                          shapes:bool=False,
+                          intermediate:Optional[bool]=None,
+                          recurse=False):
+        """
+        Yields geometries under this transform.
+
+        :param type/t: optional type filter (shape level)
+        :param recurse/r: walk all descendants; defaults to False
+        :param shapes/s: if True, return shape nodes; if False, return their
+            transforms; defaults to False
+        :param intermediate/i: if omitted, yield any; if True, yield only
+            intermediate; if False, yield only non-intermediate; defaults to
+            None (any)
+        """
+        items = self.iterRelatives(allDescendents=recurse,
+                                   type='deformableShape')
+        visited = set()
+
+        if type is not None:
+            type = list(without_duplicates(expand_tuples_lists(type)))
+
+        for item in items:
+            if type:
+                if not any(item.isATypeOf(x) for x in type):
+                    continue
+
+            if intermediate is not None:
+                if (not intermediate) and item.isIntermediate():
+                    continue
+
+            if not shapes:
+                item = item.parent
+
+            if item not in visited:
+                visited.add(item)
+                yield item
 
     #-----------------------------------------|    Repr
 
