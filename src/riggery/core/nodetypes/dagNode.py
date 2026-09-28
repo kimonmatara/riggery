@@ -357,12 +357,23 @@ class DagNode(DependNode):
 
     #-----------------------------------------|    Show / hide
 
-    def show(self, **kwargs):
+    @short(force='f')
+    def show(self, force:bool=False, **kwargs):
         """
-        Thin wrapper for :func:`maya.cmds.showHidden`.
+        Wrapper for :func:`maya.cmds.showHidden`.
+
+        :param force/f: traverses the entire parent stack, releasing overrides
+            etc. to guarantee that the object will be made visible (caution,
+            this will edit the scene)
+
         :return: self
         """
-        m.showHidden(str(self), **kwargs)
+        if force:
+            for item in self.stack:
+                item.attr('overrideEnabled').release().set(False)
+                item.attr('v').release().set(True)
+        else:
+            m.showHidden(str(self), **kwargs)
         return self
 
     def hide(self, **kwargs):
