@@ -1,3 +1,7 @@
+"""
+To-Do:
+Get rid of inversion stuff. Leave that to higher-level pipelines.
+"""
 import json
 from copy import deepcopy
 import re
@@ -1001,7 +1005,10 @@ class BlendShape(WeightGeometryFilter):
         newBaseName = newBase.shortName()
         newTargets = []
 
-        for originalTarget in originalTargets:
+        num = len(originalTargets)
+
+        for i, originalTarget in enumerate(originalTargets):
+            print(f"Rebasing {i+1} of {num}...")
             targetEntry = bsn.targets.add(originalTarget)
             targetEntry.weight.set(1.0)
 
