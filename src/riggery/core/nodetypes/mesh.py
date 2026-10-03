@@ -648,6 +648,7 @@ class Mesh(SurfaceShape):
             # Wrap settings
             smoothNormals:Optional[Union[int, 'plugs.Number']]=None,
             smoothInfluences:Optional[Union[int, 'plugs.Number']]=None,
+            falloffScale:Optional[float]=None,
             globalScale:Optional[
                 Union[
                     int,
@@ -659,6 +660,9 @@ class Mesh(SurfaceShape):
             ]=None
     ) -> dict:
         """
+        Applies the deformation delta from *startMesh* to *endMesh* onto this
+        shape. Essentially a reformulation of wrapping.
+
         The rest of the \*\*kwargs concern the final proximity wrap stage.
 
         :param startMesh: the 'base' mesh for the delta
@@ -737,6 +741,9 @@ class Mesh(SurfaceShape):
 
         if globalScale is not None:
             wrapNode.putGlobalScale(globalScale) # generalized, implement it
+
+        if falloffScale is not None:
+            wrapNode.attr('falloffScale').set(falloffScale)
 
         historyInput >> wrapNode.attr('input')[0].attr('inputGeometry')
 
