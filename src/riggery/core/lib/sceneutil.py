@@ -48,14 +48,19 @@ def removeUnknownNodes(*nodes, skipErrors=False):
         nodes = getUnknownNodes()
 
     removed = []
+    n = len(nodes)
 
-    for node in nodes:
+    for i, node in enumerate(nodes):
         try:
             removeUnknownNode(node)
             removed.append(node)
+            print("Successfully removed node '{}' ({} of {})".format(node, i+1, n))
 
         except Exception as exc:
             if skipErrors:
+                print(
+                    "Couldn't remove node '{}' ({} of {})".format(node, i+1, n)
+                )
                 continue
             raise CleanupError(str(exc))
 
@@ -152,9 +157,13 @@ def stripdown(*nodes, preserveSceneName:bool=True) -> list[str]:
     tmpDir = Path(gettempdir())
     index = 0
 
-    origSuffix = Path(sceneName).suffix
-    longTyp = {'.mb':'mayaBinary',
-               '.ma':'mayaAscii'}[origSuffix]
+    if sceneName:
+        origSuffix = Path(sceneName).suffix
+        longTyp = {'.mb':'mayaBinary',
+                   '.ma':'mayaAscii'}[origSuffix]
+    else:
+        origSuffix = '.mb'
+        longTyp = 'mayaBinary'
 
     while True:
         basename = 'mayaStripDownTmp'
@@ -170,7 +179,9 @@ def stripdown(*nodes, preserveSceneName:bool=True) -> list[str]:
 
     m.select(nodes, replace=True, noExpand=True)
 
-    m.file(filepath.as_posix(),
+    _fp = filepath.as_posix()
+
+    m.file(_fp,
            force=True,
            options='v=0;',
            typ=longTyp,
@@ -181,7 +192,7 @@ def stripdown(*nodes, preserveSceneName:bool=True) -> list[str]:
     if sceneName and preserveSceneName:
         m.file(rename=sceneName)
 
-    m.file(filepath.as_posix(),
+    m.file(_fp,
            i=True,
            ignoreVersion=True,
            mergeNamespacesOnClash=False,
