@@ -519,8 +519,6 @@ class Namespace(str):
         for item in self.findNodes(pattern, recurse=recurse):
             return item
 
-    #---------------------------------|    Add / remove nodes
-
     def addNodes(self, *nodes):
         """
         :param \*nodes: the nodes to add to this namespace, packed or unpacked
@@ -553,6 +551,20 @@ class Namespace(str):
         """
         if not self.isRoot():
             Namespace(':').addNodes(*nodes)
+
+    #---------------------------------|    Concatenation
+
+    def concat(self, *others) -> str:
+        elems = self.split(':')
+
+        for other in expand_tuples_lists(*others):
+            elems.extend(other.split(':'))
+        elems = list(filter(bool, elems))
+
+        if not elems:
+            return Namespace(':')
+
+        return ':' + ':'.join(elems)
 
     #---------------------------------|    Repr
 
